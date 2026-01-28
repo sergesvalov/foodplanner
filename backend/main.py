@@ -1,251 +1,282 @@
-import json
-import os
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from typing import List
+import React, { useState, useEffect } from 'react';
 
-import models
-import schemas
-from database import SessionLocal, engine
+const ProductsPage = () => {
+  const [products, setProducts] = useState([]);
+  const [editingId, setEditingId] = useState(null);
 
-# Создаем таблицы
-models.Base.metadata.create_all(bind=engine)
+  const [form, setForm] = useState({
+    name: '', price: '', amount: '1', unit: 'шт', calories: ''
+  });
 
-app = FastAPI(title="Menu Planner API")
+  const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'упак'];
 
-# Путь к файлу для экспорта/импорта (внутри контейнера)
-# Docker volume монтирует /opt/foodplanner в /app/data
-EXPORT_FILE_PATH = "/app/data/products.json"
+  const fetchProducts = () => {
+    fetch('/api/products/')
+      .then(res => res.json())
+      .then(data => setProducts(data))
+      .catch(err => console.error(err));
+  };
 
-# Настройка CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-# ===========================
-# API ПРОДУКТОВ
-# ===========================
-
-@app.get("/products/", response_model=List[schemas.ProductResponse])
-def read_products(db: Session = Depends(get_db)):
-    return db.query(models.Product).all()
-
-@app.post("/products/", response_model=schemas.ProductResponse)
-def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
-    db_product = models.Product(**product.dict())
-    db.add(db_product)
-    db.commit()
-    db.refresh(db_product)
-    return db_product
-
-@app.put("/products/{product_id}", response_model=schemas.ProductResponse)
-def update_product(product_id: int, product: schemas.ProductCreate, db: Session = Depends(get_db)):
-    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+  // --- ЛОГИКА СЕРВЕРНОГО ЭКСПОРТА ---
+  const handleServerExport = async () => {
+    if(!window.confirm("Сохранить текущую базу в файл на сервере (перезапишет старый файл)?")) return;
     
-    if db_product is None:
-        raise HTTPException(status_code=404, detail="Product not found")
-    
-    db_product.name = product.name
-    db_product.price = product.price
-    db_product.unit = product.unit
-    db_product.amount = product.amount
-    db_product.calories = product.calories
-    
-    db.commit()
-    db.refresh(db_product)
-    return db_product
-
-@app.delete("/products/{product_id}")
-def delete_product(product_id: int, db: Session = Depends(get_db)):
-    item = db.query(models.Product).filter(models.Product.id == product_id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Product not found")
-    db.delete(item)
-    db.commit()
-    return {"ok": True}
-
-# --- ЭКСПОРТ И ИМПОРТ ---
-
-@app.get("/products/export")
-def export_products(db: Session = Depends(get_db)):
-    """Сохранить каталог в JSON файл рядом с БД"""
-    products = db.query(models.Product).all()
-    
-    data = []
-    for p in products:
-        data.append({
-            "name": p.name,
-            "price": p.price,
-            "unit": p.unit,
-            "amount": p.amount,
-            "calories": p.calories
-        })
-    
-    try:
-        with open(EXPORT_FILE_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        return {"message": f"Каталог сохранен: {len(data)} товаров в {EXPORT_FILE_PATH}"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
-
-@app.post("/products/import")
-def import_products(db: Session = Depends(get_db)):
-    """Загрузить каталог из JSON файла (Update/Create)"""
-    if not os.path.exists(EXPORT_FILE_PATH):
-        raise HTTPException(status_code=404, detail="Файл products.json не найден на сервере")
-
-    try:
-        with open(EXPORT_FILE_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка чтения файла: {str(e)}")
-
-    created_count = 0
-    updated_count = 0
-    
-    for item in data:
-        # Ищем продукт по имени
-        db_product = db.query(models.Product).filter(models.Product.name == item["name"]).first()
-        
-        # Данные из файла
-        file_price = item.get("price", 0)
-        file_amount = item.get("amount", 1.0)
-        file_unit = item.get("unit", "шт")
-        file_cals = item.get("calories", 0)
-
-        if not db_product:
-            # Если товара нет — создаем
-            new_product = models.Product(
-                name=item["name"],
-                price=file_price,
-                unit=file_unit,
-                amount=file_amount,
-                calories=file_cals
-            )
-            db.add(new_product)
-            created_count += 1
-        else:
-            # Если товар есть — проверяем отличия
-            # Если цена, вес или единица отличаются — обновляем. Иначе не трогаем.
-            if (db_product.price != file_price or 
-                db_product.amount != file_amount or
-                db_product.unit != file_unit or
-                db_product.calories != file_cals):
-                
-                db_product.price = file_price
-                db_product.amount = file_amount
-                db_product.unit = file_unit
-                db_product.calories = file_cals
-                updated_count += 1
-
-    db.commit()
-    return {
-        "message": "Импорт завершен",
-        "created": created_count,
-        "updated": updated_count,
-        "total_in_file": len(data)
+    try {
+      const res = await fetch('/api/products/export');
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert("✅ " + data.message);
+      } else {
+        alert("❌ Ошибка: " + data.detail);
+      }
+    } catch (err) {
+      alert("Ошибка сети");
     }
+  };
 
-# ===========================
-# API РЕЦЕПТОВ
-# ===========================
-
-@app.get("/recipes/", response_model=List[schemas.RecipeResponse])
-def read_recipes(db: Session = Depends(get_db)):
-    return db.query(models.Recipe).all()
-
-@app.post("/recipes/", response_model=schemas.RecipeResponse)
-def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
-    db_recipe = models.Recipe(title=recipe.title, description=recipe.description)
-    db.add(db_recipe)
-    db.commit()
-    db.refresh(db_recipe)
-
-    for item in recipe.ingredients:
-        db_ingredient = models.RecipeIngredient(
-            recipe_id=db_recipe.id,
-            product_id=item.product_id,
-            quantity=item.quantity
-        )
-        db.add(db_ingredient)
+  // --- ЛОГИКА СЕРВЕРНОГО ИМПОРТА ---
+  const handleServerImport = async () => {
+    if(!window.confirm("Загрузить данные из файла на сервере? \nЦены и вес существующих товаров будут обновлены.")) return;
     
-    db.commit()
-    db.refresh(db_recipe)
-    return db_recipe
+    try {
+      // Метод POST, так как это действие, меняющее состояние
+      const res = await fetch('/api/products/import', { method: 'POST' });
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(`✅ Успешно!\nСоздано новых: ${data.created}\nОбновлено цен: ${data.updated}\nВсего в файле: ${data.total_in_file}`);
+        fetchProducts(); // Обновляем таблицу на экране
+      } else {
+        alert("❌ Ошибка: " + data.detail);
+      }
+    } catch (err) {
+      alert("Ошибка сети");
+    }
+  };
+  // ----------------------------------
 
-@app.put("/recipes/{recipe_id}", response_model=schemas.RecipeResponse)
-def update_recipe(recipe_id: int, recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
-    db_recipe = db.query(models.Recipe).filter(models.Recipe.id == recipe_id).first()
-    if not db_recipe:
-        raise HTTPException(status_code=404, detail="Recipe not found")
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      name: form.name,
+      price: parseFloat(form.price),
+      amount: parseFloat(form.amount),
+      unit: form.unit,
+      calories: form.calories ? parseFloat(form.calories) : 0
+    };
 
-    db_recipe.title = recipe.title
-    db_recipe.description = recipe.description
+    try {
+      let url = '/api/products/';
+      let method = 'POST';
 
-    db.query(models.RecipeIngredient).filter(models.RecipeIngredient.recipe_id == recipe_id).delete()
-    
-    for item in recipe.ingredients:
-        db_ingredient = models.RecipeIngredient(
-            recipe_id=db_recipe.id,
-            product_id=item.product_id,
-            quantity=item.quantity
-        )
-        db.add(db_ingredient)
+      if (editingId) {
+        url = `/api/products/${editingId}`;
+        method = 'PUT';
+      }
 
-    db.commit()
-    db.refresh(db_recipe)
-    return db_recipe
+      const res = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
-@app.delete("/recipes/{recipe_id}")
-def delete_recipe(recipe_id: int, db: Session = Depends(get_db)):
-    db_recipe = db.query(models.Recipe).filter(models.Recipe.id == recipe_id).first()
-    if not db_recipe:
-        raise HTTPException(status_code=404, detail="Recipe not found")
-    
-    db.delete(db_recipe)
-    db.commit()
-    return {"ok": True}
+      if (res.ok) {
+        fetchProducts();
+        resetForm();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-# ===========================
-# API ПЛАНИРОВЩИКА
-# ===========================
+  const resetForm = () => {
+    setForm({ name: '', price: '', amount: '1', unit: 'шт', calories: '' });
+    setEditingId(null);
+  };
 
-@app.get("/plan/", response_model=List[schemas.PlanItemResponse])
-def get_plan(db: Session = Depends(get_db)):
-    return db.query(models.WeeklyPlanEntry).all()
+  const handleEditClick = (product) => {
+    setEditingId(product.id);
+    setForm({
+      name: product.name,
+      price: product.price,
+      amount: product.amount || 1,
+      unit: product.unit,
+      calories: product.calories || ''
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-@app.post("/plan/", response_model=schemas.PlanItemResponse)
-def add_to_plan(item: schemas.PlanItemCreate, db: Session = Depends(get_db)):
-    recipe = db.query(models.Recipe).filter(models.Recipe.id == item.recipe_id).first()
-    if not recipe:
-        raise HTTPException(status_code=404, detail="Recipe not found")
+  const handleDelete = async (id) => {
+    if (!window.confirm('Удалить продукт?')) return;
+    await fetch(`/api/products/${id}`, { method: 'DELETE' });
+    if (editingId === id) resetForm();
+    fetchProducts();
+  };
 
-    db_item = models.WeeklyPlanEntry(
-        day_of_week=item.day_of_week,
-        meal_type=item.meal_type,
-        recipe_id=item.recipe_id
-    )
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
+  return (
+    <div className="container mx-auto max-w-6xl">
+      
+      {/* ЗАГОЛОВОК И СЕРВЕРНЫЕ КНОПКИ */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <h2 className="text-2xl font-bold text-gray-800">Каталог продуктов</h2>
+        
+        <div className="flex gap-2">
+          <button 
+            onClick={handleServerExport}
+            className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 border border-blue-200 font-medium text-sm flex items-center gap-2 shadow-sm transition-colors"
+            title="Сохранить JSON файл на сервере"
+          >
+            💾 Сохранить на сервер
+          </button>
+          
+          <button 
+            onClick={handleServerImport}
+            className="px-4 py-2 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 border border-orange-200 font-medium text-sm flex items-center gap-2 shadow-sm transition-colors"
+            title="Загрузить JSON файл с сервера"
+          >
+            📂 Загрузить с сервера
+          </button>
+        </div>
+      </div>
 
-@app.delete("/plan/{item_id}")
-def delete_from_plan(item_id: int, db: Session = Depends(get_db)):
-    item = db.query(models.WeeklyPlanEntry).filter(models.WeeklyPlanEntry.id == item_id).first()
-    if item:
-        db.delete(item)
-        db.commit()
-    return {"ok": True}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        
+        {/* ФОРМА (Слева) */}
+        <div className={`bg-white p-6 rounded-lg shadow border h-fit transition-colors ${editingId ? 'border-yellow-400 ring-1 ring-yellow-400' : 'border-gray-200'}`}>
+          <h3 className="font-bold text-lg mb-4 flex justify-between items-center">
+            <span className={editingId ? "text-yellow-600" : "text-indigo-600"}>
+              {editingId ? 'Редактирование' : 'Новый продукт'}
+            </span>
+            {editingId && (
+              <button onClick={resetForm} className="text-xs text-gray-500 hover:text-gray-800 underline">
+                Отмена
+              </button>
+            )}
+          </h3>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Название</label>
+              <input 
+                type="text" required
+                className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                placeholder="Напр. Сливочное масло"
+                value={form.name}
+                onChange={e => setForm({...form, name: e.target.value})}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Цена (€)</label>
+                <input 
+                  type="number" step="0.01" required min="0"
+                  className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                  placeholder="0.00"
+                  value={form.price}
+                  onChange={e => setForm({...form, price: e.target.value})}
+                />
+              </div>
+              
+              <div>
+                 <label className="block text-sm font-medium text-gray-700">Вес / Кол-во</label>
+                 <div className="flex mt-1">
+                    <input 
+                        type="number" step="0.001" required min="0.001"
+                        className="w-1/2 border rounded-l p-2 focus:ring-2 focus:ring-indigo-200 outline-none border-r-0"
+                        placeholder="1"
+                        value={form.amount}
+                        onChange={e => setForm({...form, amount: e.target.value})}
+                    />
+                    <select 
+                        className="w-1/2 border rounded-r p-2 bg-gray-50 focus:ring-2 focus:ring-indigo-200 outline-none cursor-pointer"
+                        value={form.unit}
+                        onChange={e => setForm({...form, unit: e.target.value})}
+                    >
+                        {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                 </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Ккал (на всю упаковку/шт)</label>
+              <input 
+                type="number" step="1" min="0"
+                className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                placeholder="Необязательно"
+                value={form.calories}
+                onChange={e => setForm({...form, calories: e.target.value})}
+              />
+            </div>
+
+            <div className="flex gap-2">
+                <button 
+                    type="submit" 
+                    className={`w-full py-2 rounded text-white font-medium shadow-sm transition-colors ${
+                        editingId ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-indigo-600 hover:bg-indigo-700'
+                    }`}
+                >
+                    {editingId ? 'Сохранить' : 'Добавить'}
+                </button>
+            </div>
+          </form>
+        </div>
+
+        {/* ТАБЛИЦА (Справа) */}
+        <div className="md:col-span-2 bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-gray-600">
+              <thead className="bg-gray-50 text-gray-800 font-bold uppercase text-xs">
+                <tr>
+                  <th className="px-6 py-3">Название</th>
+                  <th className="px-6 py-3">Цена</th>
+                  <th className="px-6 py-3">Вес/Кол-во</th>
+                  <th className="px-6 py-3 text-right">Действия</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {products.length === 0 && (
+                  <tr>
+                    <td colSpan="4" className="text-center py-8 text-gray-400">Каталог пуст</td>
+                  </tr>
+                )}
+                {products.map((product) => (
+                  <tr key={product.id} className={`hover:bg-gray-50 ${editingId === product.id ? 'bg-yellow-50' : ''}`}>
+                    <td className="px-6 py-3 font-medium text-gray-900">{product.name}</td>
+                    <td className="px-6 py-3">€{product.price.toFixed(2)}</td>
+                    <td className="px-6 py-3 font-mono">
+                      {product.amount} {product.unit}
+                    </td>
+                    <td className="px-6 py-3 text-right flex justify-end gap-2">
+                      <button 
+                        onClick={() => handleEditClick(product)}
+                        className="text-indigo-600 hover:text-indigo-900 font-semibold px-2 py-1"
+                      >
+                        ✎
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(product.id)}
+                        className="text-red-500 hover:text-red-700 font-bold px-2 py-1"
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+export default ProductsPage;
