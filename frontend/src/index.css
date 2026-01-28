@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Убираем дефолтные отступы */
+html, body {
+  height: 100%;
+  margin: 0;
+}

@@ -1,0 +1,25 @@
+services:
+  # --- БЭКЕНД ---
+  backend:
+    build: ./backend
+    container_name: menu_backend
+    restart: always
+    volumes:
+      # База данных сохраняется в папку foodplanner на сервере
+      - ./foodplanner:/app/data
+    expose:
+      - "8000" 
+      # Можно убрать ports: "8000:8000", если не нужен прямой доступ к API снаружи.
+      # Nginx будет общаться с бэкендом внутри сети Docker.
+
+  # --- ФРОНТЕНД (NGINX) ---
+  frontend:
+    build: ./frontend
+    container_name: menu_frontend
+    restart: always
+    ports:
+      # СЛЕВА: Порт на сервере Ubuntu (внешний)
+      # СПРАВА: Порт внутри контейнера (внутренний, Nginx слушает 80)
+      - "8010:80"
+    depends_on:
+      - backend
