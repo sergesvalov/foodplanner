@@ -5,34 +5,41 @@ from database import Base
 
 class Product(Base):
     __tablename__ = "products"
-
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
-    price = Column(Float)            # Цена (в евро)
-    unit = Column(String)            # Единица: 'шт', 'кг', 'г', 'л'
-    calories = Column(Float, default=0) # Ккал (на 1 единицу измерения)
+    price = Column(Float)
+    unit = Column(String)
+    calories = Column(Float, default=0)
 
 class Recipe(Base):
-    # ... (код без изменений)
     __tablename__ = "recipes"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     description = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
     ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan")
 
+    # --- НОВОЕ: Считаем цену рецепта "на лету" ---
+    @property
+    def total_cost(self):
+        total = 0.0
+        for item in self.ingredients:
+            if item.product: # Проверка на всякий случай
+                total += item.quantity * item.product.price
+        return round(total, 2)
+
 class RecipeIngredient(Base):
-    # ... (код без изменений)
     __tablename__ = "recipe_ingredients"
     id = Column(Integer, primary_key=True, index=True)
     recipe_id = Column(Integer, ForeignKey("recipes.id"))
     product_id = Column(Integer, ForeignKey("products.id"))
     quantity = Column(Float)
+
     recipe = relationship("Recipe", back_populates="ingredients")
     product = relationship("Product")
 
 class WeeklyPlanEntry(Base):
-    # ... (код без изменений)
     __tablename__ = "weekly_plan"
     id = Column(Integer, primary_key=True, index=True)
     day_of_week = Column(String)

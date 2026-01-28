@@ -5,7 +5,7 @@ from typing import List, Optional
 class ProductBase(BaseModel):
     name: str
     price: float
-    unit: str        # 'шт', 'кг' и т.д.
+    unit: str
     calories: Optional[float] = 0
 
 class ProductCreate(ProductBase):
@@ -16,17 +16,19 @@ class ProductResponse(ProductBase):
     class Config:
         from_attributes = True
 
-# ... (Остальные схемы IngredientBase, RecipeCreate и т.д. оставляем без изменений)
+# --- ИНГРЕДИЕНТЫ ---
 class IngredientBase(BaseModel):
     product_id: int
     quantity: float
 
 class IngredientResponse(IngredientBase):
     id: int
-    product: ProductResponse 
+    product: ProductResponse
+    quantity: float
     class Config:
         from_attributes = True
 
+# --- РЕЦЕПТЫ ---
 class RecipeCreate(BaseModel):
     title: str
     description: Optional[str] = None
@@ -37,9 +39,14 @@ class RecipeResponse(BaseModel):
     title: str
     description: Optional[str]
     ingredients: List[IngredientResponse] = []
+    
+    # --- НОВОЕ: Поле для цены ---
+    total_cost: float 
+
     class Config:
         from_attributes = True
 
+# --- ПЛАН ---
 class PlanItemCreate(BaseModel):
     day_of_week: str
     meal_type: str

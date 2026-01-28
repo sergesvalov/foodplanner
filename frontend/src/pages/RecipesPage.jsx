@@ -3,8 +3,6 @@ import RecipeBuilder from '../components/RecipeBuilder';
 
 const RecipesPage = () => {
   const [recipes, setRecipes] = useState([]);
-  
-  // Состояние: какой рецепт мы сейчас редактируем (null = режим создания)
   const [editingRecipe, setEditingRecipe] = useState(null);
 
   const fetchRecipes = () => {
@@ -18,13 +16,11 @@ const RecipesPage = () => {
     fetchRecipes();
   }, []);
 
-  // Коллбек: рецепт создан или обновлен
   const handleRecipeSaved = () => {
     fetchRecipes();
-    setEditingRecipe(null); // Выход из режима редактирования
+    setEditingRecipe(null);
   };
 
-  // Удаление рецепта
   const handleDelete = async (id) => {
     if (!window.confirm("Удалить этот рецепт?")) return;
     try {
@@ -41,7 +37,7 @@ const RecipesPage = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-full pb-10">
         
-        {/* КОЛОНКА 1: Конструктор (Форма) */}
+        {/* КОЛОНКА 1: Конструктор */}
         <div className="overflow-y-auto">
           <RecipeBuilder 
             onRecipeCreated={handleRecipeSaved} 
@@ -67,7 +63,15 @@ const RecipesPage = () => {
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-bold text-gray-800">{recipe.title}</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-gray-800">{recipe.title}</h4>
+                    
+                    {/* --- НОВОЕ: Цена в списке управления --- */}
+                    <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">
+                      €{recipe.total_cost.toFixed(2)}
+                    </span>
+                  </div>
+                  
                   <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                     {recipe.ingredients.length} инг.
                   </span>
@@ -81,7 +85,6 @@ const RecipesPage = () => {
                   <button 
                     onClick={() => {
                         setEditingRecipe(recipe);
-                        // Прокрутка вверх на мобильных, чтобы увидеть форму
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     className="text-sm px-3 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 font-medium transition"
@@ -103,7 +106,6 @@ const RecipesPage = () => {
             )}
           </div>
         </div>
-
       </div>
     </div>
   );
