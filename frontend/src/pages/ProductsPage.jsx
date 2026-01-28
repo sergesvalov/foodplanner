@@ -1,8 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [editingId, setEditingId] = useState(null);
+
+  // --- НОВОЕ: Состояние сортировки ---
+  // key: 'name' | 'price' | 'amount' | null
+  // direction: 'ascending' | 'descending'
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
 
   const [form, setForm] = useState({
     name: '', price: '', amount: '1', unit: 'шт', calories: ''
@@ -21,43 +26,74 @@ const ProductsPage = () => {
     fetchProducts();
   }, []);
 
-  // --- ЛОГИКА ЭКСПОРТА (На сервер) ---
+  // --- ЛОГИКА СОРТИРОВКИ ---
+  const sortedProducts = useMemo(() => {
+    let sortableItems = [...products];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+
+        // Если сортируем по имени — приводим к нижнему регистру для корректного сравнения
+        if (sortConfig.key === 'name') {
+            aValue = aValue.toLowerCase();
+            bValue = bValue.toLowerCase();
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [products, sortConfig]);
+
+  const requestSort = (key) => {
+    let direction = 'ascending';
+    // Если кликнули по той же колонке, меняем направление
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Визуальная стрелочка в заголовке
+  const getSortIndicator = (name) => {
+    if (sortConfig.key === name) {
+        return sortConfig.direction === 'ascending' ? ' ▲' : ' ▼';
+    }
+    return ''; // Или можно вернуть серенький значок сортировки ' ⇅'
+  };
+  // -------------------------
+
+  // --- ЛОГИКА ЭКСПОРТА / ИМПОРТА (СЕРВЕР) ---
   const handleServerExport = async () => {
-    if(!window.confirm("Сохранить текущую базу в файл на сервере?\nЭто перезапишет старый файл products.json.")) return;
-    
+    if(!window.confirm("Сохранить текущую базу в файл на сервере?")) return;
     try {
       const res = await fetch('/api/products/export');
       const data = await res.json();
-      
-      if (res.ok) {
-        alert("✅ " + data.message);
-      } else {
-        alert("❌ Ошибка: " + data.detail);
-      }
-    } catch (err) {
-      alert("Ошибка сети");
-    }
+      if (res.ok) alert("✅ " + data.message);
+      else alert("❌ Ошибка: " + data.detail);
+    } catch (err) { alert("Ошибка сети"); }
   };
 
-  // --- ЛОГИКА ИМПОРТА (С сервера) ---
   const handleServerImport = async () => {
-    if(!window.confirm("Загрузить данные из файла на сервере?\nЦены и вес существующих товаров обновятся.\nНовые товары будут созданы.")) return;
-    
+    if(!window.confirm("Загрузить данные из файла на сервере?")) return;
     try {
       const res = await fetch('/api/products/import', { method: 'POST' });
       const data = await res.json();
-      
       if (res.ok) {
-        alert(`✅ Импорт успешен!\nСоздано новых: ${data.created}\nОбновлено: ${data.updated}\nВсего в файле: ${data.total_in_file}`);
-        fetchProducts(); // Обновляем таблицу
+        alert(`✅ Успешно!\nСоздано: ${data.created}\nОбновлено: ${data.updated}`);
+        fetchProducts();
       } else {
         alert("❌ Ошибка: " + data.detail);
       }
-    } catch (err) {
-      alert("Ошибка сети");
-    }
+    } catch (err) { alert("Ошибка сети"); }
   };
-  // ----------------------------------
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -88,9 +124,7 @@ const ProductsPage = () => {
         fetchProducts();
         resetForm();
       }
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const resetForm = () => {
@@ -120,7 +154,7 @@ const ProductsPage = () => {
   return (
     <div className="container mx-auto max-w-6xl">
       
-      {/* HEADER: Заголовок и кнопки управления файлом */}
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="text-2xl font-bold text-gray-800">Каталог продуктов</h2>
         
@@ -128,7 +162,6 @@ const ProductsPage = () => {
           <button 
             onClick={handleServerExport}
             className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 border border-blue-200 font-medium text-sm flex items-center gap-2 shadow-sm transition-colors"
-            title="Сохранить базу в JSON файл на сервере"
           >
             💾 Сохранить на сервер
           </button>
@@ -136,7 +169,6 @@ const ProductsPage = () => {
           <button 
             onClick={handleServerImport}
             className="px-4 py-2 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 border border-orange-200 font-medium text-sm flex items-center gap-2 shadow-sm transition-colors"
-            title="Загрузить JSON файл с сервера (обновит цены)"
           >
             📂 Загрузить с сервера
           </button>
@@ -227,15 +259,31 @@ const ProductsPage = () => {
           </form>
         </div>
 
-        {/* СПИСОК (Справа) */}
+        {/* ТАБЛИЦА (Справа) */}
         <div className="md:col-span-2 bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-gray-600">
               <thead className="bg-gray-50 text-gray-800 font-bold uppercase text-xs">
                 <tr>
-                  <th className="px-6 py-3">Название</th>
-                  <th className="px-6 py-3">Цена</th>
-                  <th className="px-6 py-3">Вес/Кол-во</th>
+                  {/* ЗАГОЛОВКИ СТАЛИ КЛИКАБЕЛЬНЫМИ */}
+                  <th 
+                    className="px-6 py-3 cursor-pointer hover:bg-gray-100 select-none transition-colors"
+                    onClick={() => requestSort('name')}
+                  >
+                    Название {getSortIndicator('name')}
+                  </th>
+                  <th 
+                    className="px-6 py-3 cursor-pointer hover:bg-gray-100 select-none transition-colors"
+                    onClick={() => requestSort('price')}
+                  >
+                    Цена {getSortIndicator('price')}
+                  </th>
+                  <th 
+                    className="px-6 py-3 cursor-pointer hover:bg-gray-100 select-none transition-colors"
+                    onClick={() => requestSort('amount')}
+                  >
+                    Вес/Кол-во {getSortIndicator('amount')}
+                  </th>
                   <th className="px-6 py-3 text-right">Действия</th>
                 </tr>
               </thead>
@@ -245,7 +293,8 @@ const ProductsPage = () => {
                     <td colSpan="4" className="text-center py-8 text-gray-400">Каталог пуст</td>
                   </tr>
                 )}
-                {products.map((product) => (
+                {/* ИСПОЛЬЗУЕМ sortedProducts ВМЕСТО products */}
+                {sortedProducts.map((product) => (
                   <tr key={product.id} className={`hover:bg-gray-50 ${editingId === product.id ? 'bg-yellow-50' : ''}`}>
                     <td className="px-6 py-3 font-medium text-gray-900">{product.name}</td>
                     <td className="px-6 py-3">€{product.price.toFixed(2)}</td>
