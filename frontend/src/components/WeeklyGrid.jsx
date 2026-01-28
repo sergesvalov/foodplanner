@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 
 const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
-// Конфигурация слотов
 const MEALS = [
   { id: 'pre_breakfast', label: 'Ранний старт', color: 'bg-orange-50 border-orange-100', isSnack: true },
   { id: 'breakfast', label: 'Завтрак', color: 'bg-yellow-50 border-yellow-100', isSnack: false },
@@ -45,10 +44,8 @@ const WeeklyGrid = () => {
   const handleDrop = async (e, day, mealType) => {
     e.preventDefault();
     e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white');
-
     const data = e.dataTransfer.getData('recipeData');
     if (!data) return;
-    
     const recipe = JSON.parse(data);
 
     try {
@@ -74,20 +71,25 @@ const WeeklyGrid = () => {
   };
 
   return (
-    // Внешний контейнер: создает горизонтальный скролл если экран маленький, но держит сетку жесткой
-    <div className="h-full overflow-x-auto overflow-y-hidden bg-gray-100 rounded-lg border border-gray-300">
+    // Внешний контейнер: занимает всю высоту родителя.
+    // overflow-x-auto дает горизонтальный скролл всей недели
+    <div className="h-full w-full overflow-x-auto overflow-y-hidden bg-gray-100 rounded-lg border border-gray-300 flex flex-col">
       
-      {/* Сетка: фиксированные колонки, не сжимаются меньше 140px */}
-      <div className="grid grid-cols-7 h-full min-w-[980px] divide-x divide-gray-300">
+      {/* Grid container: 
+          min-w-[1050px] гарантирует, что колонки не сожмутся в кашу (по 150px на день)
+          h-full растягивает его на всю высоту
+      */}
+      <div className="grid grid-cols-7 h-full min-w-[1050px] divide-x divide-gray-300">
         
         {DAYS.map((day) => {
           const dayCost = calculateDayCost(day);
           const hasCost = parseFloat(dayCost) > 0;
 
           return (
-            <div key={day} className="flex flex-col h-full bg-white relative group">
+            // Колонка дня: flex-col + h-full, чтобы вложенный список мог скроллиться
+            <div key={day} className="flex flex-col h-full bg-white relative group min-w-0">
               
-              {/* --- ШАПКА ДНЯ (Sticky) --- */}
+              {/* Шапка дня (фиксированная) */}
               <div className="bg-gray-800 text-white py-2 flex flex-col items-center justify-center shadow-md z-10 shrink-0 border-b border-gray-600">
                 <span className="font-bold text-xs uppercase tracking-wider">{day}</span>
                 <div className={`text-[10px] mt-1 px-2 py-0.5 rounded-full font-mono font-bold ${
@@ -97,11 +99,11 @@ const WeeklyGrid = () => {
                 </div>
               </div>
 
-              {/* --- СКРОЛЛЯЩАЯСЯ ОБЛАСТЬ ДНЯ --- */}
-              <div className="flex-1 overflow-y-auto p-1 space-y-1 scrollbar-thin scrollbar-thumb-gray-300">
+              {/* Список слотов (Скроллится по вертикали) */}
+              {/* min-h-0 важен для вложенных flex-контейнеров, чтобы скролл работал корректно */}
+              <div className="flex-1 overflow-y-auto p-1 space-y-1 scrollbar-thin scrollbar-thumb-gray-300 min-h-0">
                 {MEALS.map((meal) => {
                     const itemsInSlot = plan.filter(p => p.day_of_week === day && p.meal_type === meal.id);
-                    // Компактный режим, если слот пустой и это перекус
                     const isCompact = meal.isSnack && itemsInSlot.length === 0;
 
                     return (
@@ -118,7 +120,6 @@ const WeeklyGrid = () => {
                         onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, day, meal.id)}
                       >
-                        {/* Заголовок слота (Завтрак, Обед...) */}
                         {isCompact ? (
                             <span className="text-[9px] text-gray-400 uppercase font-bold select-none">+ {meal.label}</span>
                         ) : (
@@ -127,13 +128,10 @@ const WeeklyGrid = () => {
                             </div>
                         )}
 
-                        {/* Список рецептов в слоте */}
                         {!isCompact && (
                           <div className="px-1 space-y-1">
                               {itemsInSlot.map(item => (
                                   <div key={item.id} className="relative flex flex-col bg-white rounded border border-gray-200 shadow-sm p-1.5 group/item hover:border-indigo-300 transition-colors">
-                                      
-                                      {/* Кнопка удаления (появляется при наведении) */}
                                       <button 
                                           onClick={(e) => { e.stopPropagation(); handleRemove(item.id); }}
                                           className="absolute -top-1.5 -right-1.5 bg-red-100 text-red-500 rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold opacity-0 group-hover/item:opacity-100 shadow-sm hover:bg-red-500 hover:text-white transition-all z-20"
@@ -141,13 +139,12 @@ const WeeklyGrid = () => {
                                       >
                                           ×
                                       </button>
-
-                                      {/* Название блюда (с обрезкой текста) */}
-                                      <span className="text-[11px] text-gray-800 font-medium leading-tight line-clamp-2 break-words" title={item.recipe.title}>
+                                      
+                                      {/* break-words для переноса длинных названий */}
+                                      <span className="text-[11px] text-gray-800 font-medium leading-tight line-clamp-3 break-words" title={item.recipe.title}>
                                           {item.recipe.title}
                                       </span>
                                       
-                                      {/* Цена (мелко) */}
                                       <span className="text-[9px] text-green-600 mt-0.5 font-mono">
                                           €{item.recipe.total_cost.toFixed(2)}
                                       </span>
@@ -158,9 +155,7 @@ const WeeklyGrid = () => {
                       </div>
                     );
                 })}
-                
-                {/* Пустое место внизу, чтобы удобно было бросать в последний слот */}
-                <div className="h-4"></div>
+                <div className="h-8"></div>
               </div>
             </div>
           );
