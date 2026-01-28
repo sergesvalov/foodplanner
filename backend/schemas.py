@@ -1,11 +1,12 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
-# --- Схемы для ПРОДУКТОВ ---
+# --- ПРОДУКТЫ ---
 class ProductBase(BaseModel):
     name: str
     price: float
-    unit: str = "шт"
+    unit: str        # 'шт', 'кг' и т.д.
+    calories: Optional[float] = 0
 
 class ProductCreate(ProductBase):
     pass
@@ -15,37 +16,30 @@ class ProductResponse(ProductBase):
     class Config:
         from_attributes = True
 
-
-# --- Схемы для ИНГРЕДИЕНТОВ ---
+# ... (Остальные схемы IngredientBase, RecipeCreate и т.д. оставляем без изменений)
 class IngredientBase(BaseModel):
     product_id: int
     quantity: float
 
 class IngredientResponse(IngredientBase):
     id: int
-    product: ProductResponse # Вкладываем полные данные о продукте (название, цена)
-    
+    product: ProductResponse 
     class Config:
         from_attributes = True
 
-
-# --- Схемы для РЕЦЕПТОВ ---
 class RecipeCreate(BaseModel):
     title: str
     description: Optional[str] = None
-    ingredients: List[IngredientBase] # Список {product_id, quantity}
+    ingredients: List[IngredientBase]
 
 class RecipeResponse(BaseModel):
     id: int
     title: str
     description: Optional[str]
-    ingredients: List[IngredientResponse] = [] # Возвращаем полный состав
-
+    ingredients: List[IngredientResponse] = []
     class Config:
         from_attributes = True
 
-
-# --- Схемы для ПЛАНИРОВЩИКА ---
 class PlanItemCreate(BaseModel):
     day_of_week: str
     meal_type: str
@@ -53,7 +47,6 @@ class PlanItemCreate(BaseModel):
 
 class PlanItemResponse(PlanItemCreate):
     id: int
-    recipe: RecipeResponse # Вкладываем данные о рецепте
-
+    recipe: RecipeResponse
     class Config:
         from_attributes = True

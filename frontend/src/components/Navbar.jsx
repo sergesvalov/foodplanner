@@ -12,17 +12,20 @@ const Navbar = () => {
     }`;
 
   return (
-    <nav className="bg-white shadow mb-4">
+    <nav className="bg-white shadow mb-4 sticky top-0 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="text-xl font-bold text-indigo-600 flex items-center gap-2">
           🍽️ FoodPlanner
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-2">
           <Link to="/" className={linkClass('/')}>
-            📅 Меню на неделю
+            📅 Меню
           </Link>
           <Link to="/recipes" className={linkClass('/recipes')}>
-            🍳 Редакторы рецептов
+            🍳 Рецепты
+          </Link>
+          <Link to="/products" className={linkClass('/products')}>
+            📦 Каталог
           </Link>
         </div>
       </div>

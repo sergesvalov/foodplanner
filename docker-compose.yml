@@ -6,7 +6,7 @@ services:
     restart: always
     volumes:
       # База данных сохраняется в папку foodplanner на сервере
-      - ./foodplanner:/app/data
+      - /opt/foodplanner:/app/data
     expose:
       - "8000" 
       # Можно убрать ports: "8000:8000", если не нужен прямой доступ к API снаружи.
