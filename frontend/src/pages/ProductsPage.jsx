@@ -2,21 +2,18 @@ import React, { useState, useEffect } from 'react';
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([]);
-  
-  // ID продукта, который редактируем (null = режим создания)
   const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
     name: '',
     price: '',
-    amount: '1', // Значение по умолчанию
+    amount: '1',
     unit: 'шт',
     calories: ''
   });
 
   const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'упак'];
 
-  // Загрузка продуктов
   const fetchProducts = () => {
     fetch('/api/products/')
       .then(res => res.json())
@@ -28,14 +25,46 @@ const ProductsPage = () => {
     fetchProducts();
   }, []);
 
-  // Отправка формы (Create или Update)
+  // --- ЛОГИКА ЭКСПОРТА / ИМПОРТА ---
+  const handleServerExport = async () => {
+    if(!window.confirm("Сохранить текущий каталог в файл products.json на сервере?")) return;
+    try {
+      const res = await fetch('/api/products/export');
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+      } else {
+        alert("Ошибка: " + data.detail);
+      }
+    } catch (err) {
+      alert("Ошибка сети");
+    }
+  };
+
+  const handleServerImport = async () => {
+    if(!window.confirm("Загрузить каталог из файла на сервере? \nНовые товары будут добавлены. \nСуществующие товары обновятся, если цена/вес в файле отличаются.")) return;
+    try {
+      const res = await fetch('/api/products/import', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Импорт завершен!\nДобавлено: ${data.created}\nОбновлено: ${data.updated}`);
+        fetchProducts(); // Обновляем таблицу
+      } else {
+        alert("Ошибка: " + data.detail);
+      }
+    } catch (err) {
+      alert("Ошибка сети");
+    }
+  };
+  // ---------------------------------
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     const payload = {
       name: form.name,
       price: parseFloat(form.price),
-      amount: parseFloat(form.amount), // Вес/количество
+      amount: parseFloat(form.amount),
       unit: form.unit,
       calories: form.calories ? parseFloat(form.calories) : 0
     };
@@ -56,21 +85,19 @@ const ProductsPage = () => {
       });
 
       if (res.ok) {
-        fetchProducts(); // Обновляем список
-        resetForm();     // Сбрасываем форму
+        fetchProducts();
+        resetForm();
       }
     } catch (err) {
       console.error(err);
     }
   };
 
-  // Сброс формы
   const resetForm = () => {
     setForm({ name: '', price: '', amount: '1', unit: 'шт', calories: '' });
     setEditingId(null);
   };
 
-  // Клик по кнопке "Изменить"
   const handleEditClick = (product) => {
     setEditingId(product.id);
     setForm({
@@ -83,24 +110,41 @@ const ProductsPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Удаление
   const handleDelete = async (id) => {
     if (!window.confirm('Удалить продукт? Он исчезнет из рецептов!')) return;
     await fetch(`/api/products/${id}`, { method: 'DELETE' });
-    
-    // Если удалили редактируемый товар — сбросить форму
     if (editingId === id) resetForm();
-    
     fetchProducts();
   };
 
   return (
     <div className="container mx-auto max-w-6xl">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Каталог продуктов</h2>
+      
+      {/* ЗАГОЛОВОК И КНОПКИ УПРАВЛЕНИЯ ФАЙЛОМ */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <h2 className="text-2xl font-bold text-gray-800">Каталог продуктов</h2>
+        
+        <div className="flex gap-2">
+          <button 
+            onClick={handleServerExport}
+            className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 font-medium text-sm flex items-center gap-2 border border-indigo-200 transition-colors"
+            title="Сохранить базу в JSON файл на сервере"
+          >
+            💾 Сохранить в файл
+          </button>
+          <button 
+            onClick={handleServerImport}
+            className="px-4 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200 font-medium text-sm flex items-center gap-2 border border-green-200 transition-colors"
+            title="Загрузить из JSON файла (обновит цены)"
+          >
+            📂 Загрузить из файла
+          </button>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         
-        {/* --- ФОРМА --- */}
+        {/* ФОРМА (Слева) */}
         <div className={`bg-white p-6 rounded-lg shadow border h-fit transition-colors ${editingId ? 'border-yellow-400 ring-1 ring-yellow-400' : 'border-gray-200'}`}>
           <h3 className="font-bold text-lg mb-4 flex justify-between items-center">
             <span className={editingId ? "text-yellow-600" : "text-indigo-600"}>
@@ -114,7 +158,6 @@ const ProductsPage = () => {
           </h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Название */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Название</label>
               <input 
@@ -126,12 +169,11 @@ const ProductsPage = () => {
               />
             </div>
 
-            {/* Цена */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Цена (€)</label>
                 <input 
-                  type="number" step="0.01" required min="0" // Запрет отрицательных
+                  type="number" step="0.01" required min="0"
                   className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
                   placeholder="0.00"
                   value={form.price}
@@ -139,12 +181,11 @@ const ProductsPage = () => {
                 />
               </div>
               
-              {/* Вес/Количество + Юнит */}
               <div>
                  <label className="block text-sm font-medium text-gray-700">Вес / Кол-во</label>
                  <div className="flex mt-1">
                     <input 
-                        type="number" step="0.001" required min="0.001" // Строго больше 0
+                        type="number" step="0.001" required min="0.001"
                         className="w-1/2 border rounded-l p-2 focus:ring-2 focus:ring-indigo-200 outline-none border-r-0"
                         placeholder="1"
                         value={form.amount}
@@ -161,11 +202,10 @@ const ProductsPage = () => {
               </div>
             </div>
 
-            {/* Калории */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Ккал (на всю упаковку/шт)</label>
               <input 
-                type="number" step="1" min="0" // Запрет отрицательных
+                type="number" step="1" min="0"
                 className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
                 placeholder="Необязательно"
                 value={form.calories}
@@ -173,7 +213,6 @@ const ProductsPage = () => {
               />
             </div>
 
-            {/* Кнопки */}
             <div className="flex gap-2">
                 <button 
                     type="submit" 
@@ -187,7 +226,7 @@ const ProductsPage = () => {
           </form>
         </div>
 
-        {/* --- ТАБЛИЦА --- */}
+        {/* СПИСОК (Справа) */}
         <div className="md:col-span-2 bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-gray-600">
