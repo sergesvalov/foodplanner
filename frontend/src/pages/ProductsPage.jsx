@@ -5,11 +5,7 @@ const ProductsPage = () => {
   const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
-    name: '',
-    price: '',
-    amount: '1',
-    unit: 'шт',
-    calories: ''
+    name: '', price: '', amount: '1', unit: 'шт', calories: ''
   });
 
   const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'упак'];
@@ -25,42 +21,46 @@ const ProductsPage = () => {
     fetchProducts();
   }, []);
 
-  // --- ЛОГИКА ЭКСПОРТА / ИМПОРТА ---
+  // --- ЛОГИКА ЭКСПОРТА (На сервер) ---
   const handleServerExport = async () => {
-    if(!window.confirm("Сохранить текущий каталог в файл products.json на сервере?")) return;
+    if(!window.confirm("Сохранить текущую базу в файл на сервере?\nЭто перезапишет старый файл products.json.")) return;
+    
     try {
       const res = await fetch('/api/products/export');
       const data = await res.json();
+      
       if (res.ok) {
-        alert(data.message);
+        alert("✅ " + data.message);
       } else {
-        alert("Ошибка: " + data.detail);
+        alert("❌ Ошибка: " + data.detail);
       }
     } catch (err) {
       alert("Ошибка сети");
     }
   };
 
+  // --- ЛОГИКА ИМПОРТА (С сервера) ---
   const handleServerImport = async () => {
-    if(!window.confirm("Загрузить каталог из файла на сервере? \nНовые товары будут добавлены. \nСуществующие товары обновятся, если цена/вес в файле отличаются.")) return;
+    if(!window.confirm("Загрузить данные из файла на сервере?\nЦены и вес существующих товаров обновятся.\nНовые товары будут созданы.")) return;
+    
     try {
       const res = await fetch('/api/products/import', { method: 'POST' });
       const data = await res.json();
+      
       if (res.ok) {
-        alert(`Импорт завершен!\nДобавлено: ${data.created}\nОбновлено: ${data.updated}`);
+        alert(`✅ Импорт успешен!\nСоздано новых: ${data.created}\nОбновлено: ${data.updated}\nВсего в файле: ${data.total_in_file}`);
         fetchProducts(); // Обновляем таблицу
       } else {
-        alert("Ошибка: " + data.detail);
+        alert("❌ Ошибка: " + data.detail);
       }
     } catch (err) {
       alert("Ошибка сети");
     }
   };
-  // ---------------------------------
+  // ----------------------------------
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     const payload = {
       name: form.name,
       price: parseFloat(form.price),
@@ -111,7 +111,7 @@ const ProductsPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Удалить продукт? Он исчезнет из рецептов!')) return;
+    if (!window.confirm('Удалить продукт?')) return;
     await fetch(`/api/products/${id}`, { method: 'DELETE' });
     if (editingId === id) resetForm();
     fetchProducts();
@@ -120,24 +120,25 @@ const ProductsPage = () => {
   return (
     <div className="container mx-auto max-w-6xl">
       
-      {/* ЗАГОЛОВОК И КНОПКИ УПРАВЛЕНИЯ ФАЙЛОМ */}
+      {/* HEADER: Заголовок и кнопки управления файлом */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="text-2xl font-bold text-gray-800">Каталог продуктов</h2>
         
         <div className="flex gap-2">
           <button 
             onClick={handleServerExport}
-            className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 font-medium text-sm flex items-center gap-2 border border-indigo-200 transition-colors"
+            className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 border border-blue-200 font-medium text-sm flex items-center gap-2 shadow-sm transition-colors"
             title="Сохранить базу в JSON файл на сервере"
           >
-            💾 Сохранить в файл
+            💾 Сохранить на сервер
           </button>
+          
           <button 
             onClick={handleServerImport}
-            className="px-4 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200 font-medium text-sm flex items-center gap-2 border border-green-200 transition-colors"
-            title="Загрузить из JSON файла (обновит цены)"
+            className="px-4 py-2 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 border border-orange-200 font-medium text-sm flex items-center gap-2 shadow-sm transition-colors"
+            title="Загрузить JSON файл с сервера (обновит цены)"
           >
-            📂 Загрузить из файла
+            📂 Загрузить с сервера
           </button>
         </div>
       </div>
