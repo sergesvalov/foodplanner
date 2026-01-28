@@ -1,17 +1,20 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field # <-- Добавь импорт Field
 from typing import List, Optional
 
 # --- ПРОДУКТЫ ---
 class ProductBase(BaseModel):
     name: str
-    price: float
+    
+    # Цена: больше или равно 0
+    price: float = Field(..., ge=0)
+    
     unit: str
     
-    # --- НОВОЕ ПОЛЕ ---
-    amount: float = 1.0 
-    # ------------------
+    # Вес/Количество: строго больше 0 (не может быть 0 кг)
+    amount: float = Field(1.0, gt=0)
     
-    calories: Optional[float] = 0
+    # Калории: больше или равно 0
+    calories: Optional[float] = Field(0, ge=0)
 
 class ProductCreate(ProductBase):
     pass
@@ -21,10 +24,11 @@ class ProductResponse(ProductBase):
     class Config:
         from_attributes = True
 
-# ... Остальные схемы (IngredientBase, RecipeCreate, PlanItemCreate и т.д.) БЕЗ ИЗМЕНЕНИЙ
+# --- ИНГРЕДИЕНТЫ ---
 class IngredientBase(BaseModel):
     product_id: int
-    quantity: float
+    # Количество в рецепте: строго больше 0
+    quantity: float = Field(..., gt=0)
 
 class IngredientResponse(IngredientBase):
     id: int
@@ -33,6 +37,7 @@ class IngredientResponse(IngredientBase):
     class Config:
         from_attributes = True
 
+# ... Остальные схемы (RecipeCreate, RecipeResponse и т.д.) без изменений ...
 class RecipeCreate(BaseModel):
     title: str
     description: Optional[str] = None

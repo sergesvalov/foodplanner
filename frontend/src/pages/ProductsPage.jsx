@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([]);
+  
+  // ID продукта, который редактируем (null = режим создания)
   const [editingId, setEditingId] = useState(null);
 
   const [form, setForm] = useState({
@@ -14,6 +16,7 @@ const ProductsPage = () => {
 
   const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'упак'];
 
+  // Загрузка продуктов
   const fetchProducts = () => {
     fetch('/api/products/')
       .then(res => res.json())
@@ -25,13 +28,14 @@ const ProductsPage = () => {
     fetchProducts();
   }, []);
 
+  // Отправка формы (Create или Update)
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     const payload = {
       name: form.name,
       price: parseFloat(form.price),
-      amount: parseFloat(form.amount), // Отправляем вес/количество
+      amount: parseFloat(form.amount), // Вес/количество
       unit: form.unit,
       calories: form.calories ? parseFloat(form.calories) : 0
     };
@@ -52,35 +56,41 @@ const ProductsPage = () => {
       });
 
       if (res.ok) {
-        fetchProducts();
-        resetForm();
+        fetchProducts(); // Обновляем список
+        resetForm();     // Сбрасываем форму
       }
     } catch (err) {
       console.error(err);
     }
   };
 
+  // Сброс формы
   const resetForm = () => {
     setForm({ name: '', price: '', amount: '1', unit: 'шт', calories: '' });
     setEditingId(null);
   };
 
+  // Клик по кнопке "Изменить"
   const handleEditClick = (product) => {
     setEditingId(product.id);
     setForm({
       name: product.name,
       price: product.price,
-      amount: product.amount || 1, // Загружаем вес
+      amount: product.amount || 1,
       unit: product.unit,
       calories: product.calories || ''
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Удаление
   const handleDelete = async (id) => {
-    if (!window.confirm('Удалить продукт?')) return;
+    if (!window.confirm('Удалить продукт? Он исчезнет из рецептов!')) return;
     await fetch(`/api/products/${id}`, { method: 'DELETE' });
+    
+    // Если удалили редактируемый товар — сбросить форму
     if (editingId === id) resetForm();
+    
     fetchProducts();
   };
 
@@ -90,7 +100,7 @@ const ProductsPage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         
-        {/* ФОРМА */}
+        {/* --- ФОРМА --- */}
         <div className={`bg-white p-6 rounded-lg shadow border h-fit transition-colors ${editingId ? 'border-yellow-400 ring-1 ring-yellow-400' : 'border-gray-200'}`}>
           <h3 className="font-bold text-lg mb-4 flex justify-between items-center">
             <span className={editingId ? "text-yellow-600" : "text-indigo-600"}>
@@ -104,6 +114,7 @@ const ProductsPage = () => {
           </h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Название */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Название</label>
               <input 
@@ -115,11 +126,12 @@ const ProductsPage = () => {
               />
             </div>
 
+            {/* Цена */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Цена (€)</label>
                 <input 
-                  type="number" step="0.01" required
+                  type="number" step="0.01" required min="0" // Запрет отрицательных
                   className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
                   placeholder="0.00"
                   value={form.price}
@@ -127,12 +139,12 @@ const ProductsPage = () => {
                 />
               </div>
               
-              {/* --- НОВОЕ: Поле веса/количества и Единицы --- */}
+              {/* Вес/Количество + Юнит */}
               <div>
                  <label className="block text-sm font-medium text-gray-700">Вес / Кол-во</label>
                  <div className="flex mt-1">
                     <input 
-                        type="number" step="0.001" required
+                        type="number" step="0.001" required min="0.001" // Строго больше 0
                         className="w-1/2 border rounded-l p-2 focus:ring-2 focus:ring-indigo-200 outline-none border-r-0"
                         placeholder="1"
                         value={form.amount}
@@ -149,10 +161,11 @@ const ProductsPage = () => {
               </div>
             </div>
 
+            {/* Калории */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Ккал (на всю упаковку/шт)</label>
               <input 
-                type="number" step="1"
+                type="number" step="1" min="0" // Запрет отрицательных
                 className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
                 placeholder="Необязательно"
                 value={form.calories}
@@ -160,6 +173,7 @@ const ProductsPage = () => {
               />
             </div>
 
+            {/* Кнопки */}
             <div className="flex gap-2">
                 <button 
                     type="submit" 
@@ -173,7 +187,7 @@ const ProductsPage = () => {
           </form>
         </div>
 
-        {/* СПИСОК */}
+        {/* --- ТАБЛИЦА --- */}
         <div className="md:col-span-2 bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-gray-600">
@@ -181,7 +195,7 @@ const ProductsPage = () => {
                 <tr>
                   <th className="px-6 py-3">Название</th>
                   <th className="px-6 py-3">Цена</th>
-                  <th className="px-6 py-3">Вес/Кол-во</th> {/* Новая колонка */}
+                  <th className="px-6 py-3">Вес/Кол-во</th>
                   <th className="px-6 py-3 text-right">Действия</th>
                 </tr>
               </thead>
@@ -195,12 +209,9 @@ const ProductsPage = () => {
                   <tr key={product.id} className={`hover:bg-gray-50 ${editingId === product.id ? 'bg-yellow-50' : ''}`}>
                     <td className="px-6 py-3 font-medium text-gray-900">{product.name}</td>
                     <td className="px-6 py-3">€{product.price.toFixed(2)}</td>
-                    
-                    {/* --- Отображение веса --- */}
                     <td className="px-6 py-3 font-mono">
                       {product.amount} {product.unit}
                     </td>
-
                     <td className="px-6 py-3 text-right flex justify-end gap-2">
                       <button 
                         onClick={() => handleEditClick(product)}
@@ -221,6 +232,7 @@ const ProductsPage = () => {
             </table>
           </div>
         </div>
+
       </div>
     </div>
   );

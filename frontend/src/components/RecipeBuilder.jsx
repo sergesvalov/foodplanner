@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const [products, setProducts] = useState([]);
   
+  // Состояния формы
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [ingredients, setIngredients] = useState([
@@ -17,7 +18,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       .catch(err => console.error("Ошибка загрузки продуктов:", err));
   }, []);
 
-  // Заполнение формы при редактировании
+  // Если пришли данные на редактирование — заполняем форму
   useEffect(() => {
     if (initialData) {
       setTitle(initialData.title);
@@ -84,6 +85,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     }
   };
 
+  // Обновление строки ингредиента
   const updateIngredient = (index, field, value) => {
     const list = [...ingredients];
     list[index][field] = value;
@@ -104,7 +106,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     }
   };
 
-  // Вспомогательная функция для подсчета итогов по одной строке
+  // Подсчет итогов для одной строки
   const getIngredientSummary = (ing) => {
     const product = products.find(p => p.id === parseInt(ing.product_id));
     const qty = parseFloat(ing.quantity);
@@ -128,7 +130,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     );
   };
 
-  // Получить единицу измерения выбранного продукта
+  // Получить название единицы измерения
   const getUnitLabel = (productId) => {
     const product = products.find(p => p.id === parseInt(productId));
     return product ? product.unit : '';
@@ -148,16 +150,30 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Название блюда */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Название блюда</label>
-          <input className="w-full border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Например: Борщ" value={title} onChange={e => setTitle(e.target.value)} required />
+          <input 
+            className="w-full border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-indigo-500" 
+            placeholder="Например: Борщ" 
+            value={title} 
+            onChange={e => setTitle(e.target.value)} 
+            required 
+          />
         </div>
 
+        {/* Описание */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Способ приготовления</label>
-          <textarea className="w-full border border-gray-300 rounded-md p-2 h-24 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Опишите шаги..." value={description} onChange={e => setDescription(e.target.value)} />
+          <textarea 
+            className="w-full border border-gray-300 rounded-md p-2 h-24 outline-none focus:ring-2 focus:ring-indigo-500" 
+            placeholder="Опишите шаги..." 
+            value={description} 
+            onChange={e => setDescription(e.target.value)} 
+          />
         </div>
         
+        {/* Ингредиенты */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Ингредиенты</label>
           <div className="space-y-4">
@@ -174,17 +190,18 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                     <option value="">Выберите продукт...</option>
                     {products.map(p => (
                       <option key={p.id} value={p.id}>
-                        {/* Вывод с учетом amount: Яйца (10 шт) — €3.00 */}
+                        {/* Отображаем: Яйца (10 шт) — €3.00 */}
                         {p.name} ({p.amount || 1} {p.unit}) — €{p.price.toFixed(2)}
                       </option>
                     ))}
                   </select>
 
-                  {/* Ввод количества + Единица измерения */}
+                  {/* Ввод количества */}
                   <div className="relative w-24">
                       <input 
                         type="number" 
                         step="0.001" 
+                        min="0.001" // Запрет отрицательных
                         className="w-full border border-gray-300 rounded-md p-2 text-sm pr-8 focus:border-indigo-500 outline-none" 
                         placeholder="0.00" 
                         value={ing.quantity}
@@ -196,6 +213,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                       </span>
                   </div>
 
+                  {/* Кнопка удаления */}
                   <button 
                     type="button" 
                     onClick={() => removeRow(idx)}
@@ -206,7 +224,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                   </button>
                 </div>
 
-                {/* ИТОГИ по строке */}
+                {/* Итоги по строке */}
                 {getIngredientSummary(ing)}
               </div>
             ))}
