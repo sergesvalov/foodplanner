@@ -2,21 +2,18 @@ import React, { useState, useEffect } from 'react';
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([]);
-  
-  // ID продукта, который мы сейчас редактируем (null = режим создания)
   const [editingId, setEditingId] = useState(null);
 
-  // Состояние формы
   const [form, setForm] = useState({
     name: '',
     price: '',
+    amount: '1', // Значение по умолчанию
     unit: 'шт',
     calories: ''
   });
 
   const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'упак'];
 
-  // Загрузка продуктов
   const fetchProducts = () => {
     fetch('/api/products/')
       .then(res => res.json())
@@ -28,13 +25,13 @@ const ProductsPage = () => {
     fetchProducts();
   }, []);
 
-  // --- ЛОГИКА ОТПРАВКИ ФОРМЫ (CREATE или UPDATE) ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     const payload = {
       name: form.name,
       price: parseFloat(form.price),
+      amount: parseFloat(form.amount), // Отправляем вес/количество
       unit: form.unit,
       calories: form.calories ? parseFloat(form.calories) : 0
     };
@@ -43,7 +40,6 @@ const ProductsPage = () => {
       let url = '/api/products/';
       let method = 'POST';
 
-      // Если мы в режиме редактирования - меняем URL и метод
       if (editingId) {
         url = `/api/products/${editingId}`;
         method = 'PUT';
@@ -56,43 +52,35 @@ const ProductsPage = () => {
       });
 
       if (res.ok) {
-        fetchProducts();      // Обновляем таблицу
-        resetForm();          // Сбрасываем форму
+        fetchProducts();
+        resetForm();
       }
     } catch (err) {
       console.error(err);
     }
   };
 
-  // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
-
-  // Сброс формы в начальное состояние
   const resetForm = () => {
-    setForm({ name: '', price: '', unit: 'шт', calories: '' });
+    setForm({ name: '', price: '', amount: '1', unit: 'шт', calories: '' });
     setEditingId(null);
   };
 
-  // Включение режима редактирования
   const handleEditClick = (product) => {
     setEditingId(product.id);
     setForm({
       name: product.name,
       price: product.price,
+      amount: product.amount || 1, // Загружаем вес
       unit: product.unit,
       calories: product.calories || ''
     });
-    // Скролл наверх к форме (для мобилок удобно)
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Удаление
   const handleDelete = async (id) => {
-    if (!window.confirm('Удалить продукт? Он исчезнет из рецептов!')) return;
+    if (!window.confirm('Удалить продукт?')) return;
     await fetch(`/api/products/${id}`, { method: 'DELETE' });
-    
-    // Если удалили тот, что редактировали сейчас - сбросить форму
     if (editingId === id) resetForm();
-    
     fetchProducts();
   };
 
@@ -102,7 +90,7 @@ const ProductsPage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         
-        {/* ФОРМА (Левая колонка) */}
+        {/* ФОРМА */}
         <div className={`bg-white p-6 rounded-lg shadow border h-fit transition-colors ${editingId ? 'border-yellow-400 ring-1 ring-yellow-400' : 'border-gray-200'}`}>
           <h3 className="font-bold text-lg mb-4 flex justify-between items-center">
             <span className={editingId ? "text-yellow-600" : "text-indigo-600"}>
@@ -119,10 +107,9 @@ const ProductsPage = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700">Название</label>
               <input 
-                type="text" 
-                required
+                type="text" required
                 className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
-                placeholder="Напр. Куриное филе"
+                placeholder="Напр. Сливочное масло"
                 value={form.name}
                 onChange={e => setForm({...form, name: e.target.value})}
               />
@@ -139,20 +126,31 @@ const ProductsPage = () => {
                   onChange={e => setForm({...form, price: e.target.value})}
                 />
               </div>
+              
+              {/* --- НОВОЕ: Поле веса/количества и Единицы --- */}
               <div>
-                <label className="block text-sm font-medium text-gray-700">Ед. изм.</label>
-                <select 
-                  className="mt-1 w-full border rounded p-2 bg-white focus:ring-2 focus:ring-indigo-200 outline-none"
-                  value={form.unit}
-                  onChange={e => setForm({...form, unit: e.target.value})}
-                >
-                  {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
+                 <label className="block text-sm font-medium text-gray-700">Вес / Кол-во</label>
+                 <div className="flex mt-1">
+                    <input 
+                        type="number" step="0.001" required
+                        className="w-1/2 border rounded-l p-2 focus:ring-2 focus:ring-indigo-200 outline-none border-r-0"
+                        placeholder="1"
+                        value={form.amount}
+                        onChange={e => setForm({...form, amount: e.target.value})}
+                    />
+                    <select 
+                        className="w-1/2 border rounded-r p-2 bg-gray-50 focus:ring-2 focus:ring-indigo-200 outline-none cursor-pointer"
+                        value={form.unit}
+                        onChange={e => setForm({...form, unit: e.target.value})}
+                    >
+                        {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Ккал (на 1 ед.)</label>
+              <label className="block text-sm font-medium text-gray-700">Ккал (на всю упаковку/шт)</label>
               <input 
                 type="number" step="1"
                 className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
@@ -166,28 +164,16 @@ const ProductsPage = () => {
                 <button 
                     type="submit" 
                     className={`w-full py-2 rounded text-white font-medium shadow-sm transition-colors ${
-                        editingId 
-                        ? 'bg-yellow-500 hover:bg-yellow-600' 
-                        : 'bg-indigo-600 hover:bg-indigo-700'
+                        editingId ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-indigo-600 hover:bg-indigo-700'
                     }`}
                 >
-                    {editingId ? 'Сохранить изменения' : 'Добавить в каталог'}
+                    {editingId ? 'Сохранить' : 'Добавить'}
                 </button>
-                
-                {editingId && (
-                    <button 
-                        type="button"
-                        onClick={resetForm}
-                        className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50"
-                    >
-                        ✕
-                    </button>
-                )}
             </div>
           </form>
         </div>
 
-        {/* СПИСОК (Правая часть) */}
+        {/* СПИСОК */}
         <div className="md:col-span-2 bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-gray-600">
@@ -195,7 +181,7 @@ const ProductsPage = () => {
                 <tr>
                   <th className="px-6 py-3">Название</th>
                   <th className="px-6 py-3">Цена</th>
-                  <th className="px-6 py-3">Ккал</th>
+                  <th className="px-6 py-3">Вес/Кол-во</th> {/* Новая колонка */}
                   <th className="px-6 py-3 text-right">Действия</th>
                 </tr>
               </thead>
@@ -208,22 +194,23 @@ const ProductsPage = () => {
                 {products.map((product) => (
                   <tr key={product.id} className={`hover:bg-gray-50 ${editingId === product.id ? 'bg-yellow-50' : ''}`}>
                     <td className="px-6 py-3 font-medium text-gray-900">{product.name}</td>
-                    <td className="px-6 py-3">
-                      €{product.price.toFixed(2)} <span className="text-gray-400 text-xs">/ {product.unit}</span>
+                    <td className="px-6 py-3">€{product.price.toFixed(2)}</td>
+                    
+                    {/* --- Отображение веса --- */}
+                    <td className="px-6 py-3 font-mono">
+                      {product.amount} {product.unit}
                     </td>
-                    <td className="px-6 py-3">
-                      {product.calories > 0 ? `${product.calories}` : '—'}
-                    </td>
+
                     <td className="px-6 py-3 text-right flex justify-end gap-2">
                       <button 
                         onClick={() => handleEditClick(product)}
-                        className="text-indigo-600 hover:text-indigo-900 font-semibold px-2 py-1 rounded hover:bg-indigo-50"
+                        className="text-indigo-600 hover:text-indigo-900 font-semibold px-2 py-1"
                       >
-                        Изменить
+                        ✎
                       </button>
                       <button 
                         onClick={() => handleDelete(product.id)}
-                        className="text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50"
+                        className="text-red-500 hover:text-red-700 font-bold px-2 py-1"
                       >
                         ✕
                       </button>
@@ -234,7 +221,6 @@ const ProductsPage = () => {
             </table>
           </div>
         </div>
-
       </div>
     </div>
   );

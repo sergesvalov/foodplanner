@@ -7,7 +7,7 @@ import models
 import schemas
 from database import SessionLocal, engine
 
-# Создаем таблицы
+# Создаем таблицы (если их нет)
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Menu Planner API")
@@ -21,6 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -38,6 +39,7 @@ def read_products(db: Session = Depends(get_db)):
 
 @app.post("/products/", response_model=schemas.ProductResponse)
 def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
+    # Pydantic автоматически распакует все поля, включая amount
     db_product = models.Product(**product.dict())
     db.add(db_product)
     db.commit()
@@ -47,12 +49,15 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
 @app.put("/products/{product_id}", response_model=schemas.ProductResponse)
 def update_product(product_id: int, product: schemas.ProductCreate, db: Session = Depends(get_db)):
     db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     
+    # Обновляем все поля
     db_product.name = product.name
     db_product.price = product.price
     db_product.unit = product.unit
+    db_product.amount = product.amount  # <-- Обновление количества/веса
     db_product.calories = product.calories
     
     db.commit()
@@ -68,12 +73,14 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
+
 # ===========================
 # API РЕЦЕПТОВ
 # ===========================
 
 @app.get("/recipes/", response_model=List[schemas.RecipeResponse])
 def read_recipes(db: Session = Depends(get_db)):
+    # total_cost вычисляется автоматически в модели
     return db.query(models.Recipe).all()
 
 @app.post("/recipes/", response_model=schemas.RecipeResponse)
@@ -133,6 +140,7 @@ def delete_recipe(recipe_id: int, db: Session = Depends(get_db)):
     db.delete(db_recipe)
     db.commit()
     return {"ok": True}
+
 
 # ===========================
 # API ПЛАНИРОВЩИКА

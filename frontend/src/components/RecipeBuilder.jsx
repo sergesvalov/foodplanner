@@ -160,7 +160,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Ингредиенты</label>
-          <div className="space-y-4"> {/* Увеличили отступ между строками */}
+          <div className="space-y-4">
             {ingredients.map((ing, idx) => (
               <div key={idx} className="bg-gray-50 p-2 rounded border border-gray-200">
                 <div className="flex gap-2 items-start">
@@ -174,7 +174,8 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                     <option value="">Выберите продукт...</option>
                     {products.map(p => (
                       <option key={p.id} value={p.id}>
-                        {p.name} (за 1 {p.unit} — €{p.price})
+                        {/* Вывод с учетом amount: Яйца (10 шт) — €3.00 */}
+                        {p.name} ({p.amount || 1} {p.unit}) — €{p.price.toFixed(2)}
                       </option>
                     ))}
                   </select>
@@ -190,7 +191,6 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                         onChange={e => updateIngredient(idx, 'quantity', e.target.value)}
                         required 
                       />
-                      {/* Подсказка единицы измерения (кг, шт) внутри инпута */}
                       <span className="absolute right-2 top-2 text-xs text-gray-400 font-bold pointer-events-none">
                         {getUnitLabel(ing.product_id)}
                       </span>
@@ -206,7 +206,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                   </button>
                 </div>
 
-                {/* ИТОГИ по строке (Цена и Калории) */}
+                {/* ИТОГИ по строке */}
                 {getIngredientSummary(ing)}
               </div>
             ))}

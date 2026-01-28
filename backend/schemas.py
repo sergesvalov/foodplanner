@@ -6,6 +6,11 @@ class ProductBase(BaseModel):
     name: str
     price: float
     unit: str
+    
+    # --- НОВОЕ ПОЛЕ ---
+    amount: float = 1.0 
+    # ------------------
+    
     calories: Optional[float] = 0
 
 class ProductCreate(ProductBase):
@@ -16,7 +21,7 @@ class ProductResponse(ProductBase):
     class Config:
         from_attributes = True
 
-# --- ИНГРЕДИЕНТЫ ---
+# ... Остальные схемы (IngredientBase, RecipeCreate, PlanItemCreate и т.д.) БЕЗ ИЗМЕНЕНИЙ
 class IngredientBase(BaseModel):
     product_id: int
     quantity: float
@@ -28,7 +33,6 @@ class IngredientResponse(IngredientBase):
     class Config:
         from_attributes = True
 
-# --- РЕЦЕПТЫ ---
 class RecipeCreate(BaseModel):
     title: str
     description: Optional[str] = None
@@ -39,14 +43,10 @@ class RecipeResponse(BaseModel):
     title: str
     description: Optional[str]
     ingredients: List[IngredientResponse] = []
-    
-    # --- НОВОЕ: Поле для цены ---
     total_cost: float 
-
     class Config:
         from_attributes = True
 
-# --- ПЛАН ---
 class PlanItemCreate(BaseModel):
     day_of_week: str
     meal_type: str
