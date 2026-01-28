@@ -5,33 +5,42 @@ from database import Base
 
 class Product(Base):
     __tablename__ = "products"
-
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
-    price = Column(Float)            # Цена за упаковку/единицу
-    unit = Column(String)            # Единица измерения (кг, г, л, шт, упак)
-    
-    # --- НОВОЕ ПОЛЕ ---
-    amount = Column(Float, default=1.0) # Номинальный вес или количество в упаковке
-    # ------------------
-    
+    price = Column(Float)
+    unit = Column(String)
+    amount = Column(Float, default=1.0) # Вес/Кол-во упаковки
     calories = Column(Float, default=0)
 
-# ... Остальные классы (Recipe, RecipeIngredient, WeeklyPlanEntry) остаются БЕЗ ИЗМЕНЕНИЙ
 class Recipe(Base):
     __tablename__ = "recipes"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     description = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
     ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan")
+
+    # --- ИЗМЕНЕННАЯ ЛОГИКА ---
     @property
     def total_cost(self):
+        """
+        Считает стоимость: (Цена товара / Вес товара) * Количество в рецепте
+        """
         total = 0.0
         for item in self.ingredients:
             if item.product:
-                total += item.quantity * item.product.price
+                # Берем вес упаковки (защита от 0)
+                pack_amount = item.product.amount if item.product.amount > 0 else 1.0
+                
+                # Цена за 1 ед (гр/шт)
+                price_per_unit = item.product.price / pack_amount
+                
+                # Итог
+                total += item.quantity * price_per_unit
+                
         return round(total, 2)
+    # -------------------------
 
 class RecipeIngredient(Base):
     __tablename__ = "recipe_ingredients"
