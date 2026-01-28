@@ -3,8 +3,11 @@ import RecipeBuilder from '../components/RecipeBuilder';
 
 const RecipesPage = () => {
   const [recipes, setRecipes] = useState([]);
+  
+  // Состояние для редактирования: если null — создаем новый, если объект — редактируем
   const [editingRecipe, setEditingRecipe] = useState(null);
 
+  // Загрузка списка рецептов
   const fetchRecipes = () => {
     fetch('/api/recipes/')
       .then(res => res.json())
@@ -16,11 +19,46 @@ const RecipesPage = () => {
     fetchRecipes();
   }, []);
 
-  const handleRecipeSaved = () => {
-    fetchRecipes();
-    setEditingRecipe(null);
+  // --- ЛОГИКА ЭКСПОРТА РЕЦЕПТОВ (НА СЕРВЕР) ---
+  const handleServerExport = async () => {
+    if(!window.confirm("Сохранить тексты рецептов в файл recipes.json на сервере?")) return;
+    try {
+      const res = await fetch('/api/recipes/export');
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ " + data.message);
+      } else {
+        alert("❌ Ошибка: " + data.detail);
+      }
+    } catch (err) {
+      alert("Ошибка сети");
+    }
   };
 
+  // --- ЛОГИКА ИМПОРТА РЕЦЕПТОВ (С СЕРВЕРА) ---
+  const handleServerImport = async () => {
+    if(!window.confirm("Загрузить рецепты из файла?\nЕсли название совпадает, текст описания обновится.\nЕсли нет — создастся новый рецепт (без ингредиентов).")) return;
+    try {
+      const res = await fetch('/api/recipes/import', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`✅ Готово!\nСоздано: ${data.created}\nОбновлено текстов: ${data.updated}`);
+        fetchRecipes(); // Обновляем список
+      } else {
+        alert("❌ Ошибка: " + data.detail);
+      }
+    } catch (err) {
+      alert("Ошибка сети");
+    }
+  };
+
+  // Коллбек после успешного сохранения в RecipeBuilder
+  const handleRecipeSaved = () => {
+    fetchRecipes();
+    setEditingRecipe(null); // Сброс режима редактирования
+  };
+
+  // Удаление рецепта
   const handleDelete = async (id) => {
     if (!window.confirm("Удалить этот рецепт?")) return;
     try {
@@ -33,11 +71,33 @@ const RecipesPage = () => {
 
   return (
     <div className="container mx-auto max-w-6xl h-[calc(100vh-100px)]">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Управление рецептами</h2>
+      
+      {/* HEADER: Заголовок и кнопки управления файлом */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <h2 className="text-2xl font-bold text-gray-800">Управление рецептами</h2>
+        
+        <div className="flex gap-2">
+          <button 
+            onClick={handleServerExport}
+            className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 border border-blue-200 font-medium text-sm flex items-center gap-2 transition-colors"
+            title="Сохранить названия и тексты в файл"
+          >
+            💾 Сохранить тексты
+          </button>
+          
+          <button 
+            onClick={handleServerImport}
+            className="px-4 py-2 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 border border-orange-200 font-medium text-sm flex items-center gap-2 transition-colors"
+            title="Загрузить тексты из файла"
+          >
+            📂 Загрузить тексты
+          </button>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-full pb-10">
         
-        {/* КОЛОНКА 1: Конструктор */}
+        {/* КОЛОНКА 1: Конструктор (Форма) */}
         <div className="overflow-y-auto">
           <RecipeBuilder 
             onRecipeCreated={handleRecipeSaved} 
@@ -65,8 +125,7 @@ const RecipesPage = () => {
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2">
                     <h4 className="font-bold text-gray-800">{recipe.title}</h4>
-                    
-                    {/* --- НОВОЕ: Цена в списке управления --- */}
+                    {/* Отображение цены рецепта */}
                     <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">
                       €{recipe.total_cost.toFixed(2)}
                     </span>
@@ -85,6 +144,7 @@ const RecipesPage = () => {
                   <button 
                     onClick={() => {
                         setEditingRecipe(recipe);
+                        // Скролл вверх для удобства на мобильных
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     className="text-sm px-3 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 font-medium transition"
@@ -106,6 +166,7 @@ const RecipesPage = () => {
             )}
           </div>
         </div>
+
       </div>
     </div>
   );
