@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const [products, setProducts] = useState([]);
   
-  // Состояния формы
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [ingredients, setIngredients] = useState([
@@ -18,14 +17,12 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       .catch(err => console.error("Ошибка загрузки продуктов:", err));
   }, []);
 
-  // Если пришел initialData (режим редактирования) — заполняем форму
+  // Заполнение формы при редактировании
   useEffect(() => {
     if (initialData) {
       setTitle(initialData.title);
       setDescription(initialData.description || '');
       
-      // Преобразуем входящие ингредиенты в формат для формы
-      // Иногда API возвращает { product: {id: 1} }, иногда просто product_id
       const formattedIngredients = initialData.ingredients.map(ing => ({
         product_id: ing.product_id || (ing.product ? ing.product.id : ''), 
         quantity: ing.quantity
@@ -33,7 +30,6 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       
       setIngredients(formattedIngredients.length > 0 ? formattedIngredients : [{ product_id: '', quantity: '' }]);
     } else {
-      // Если initialData исчез (отмена) — сброс
       resetForm();
     }
   }, [initialData]);
@@ -78,7 +74,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
 
       if (res.ok) {
         alert(initialData ? 'Рецепт обновлен!' : 'Рецепт создан!');
-        if (!initialData) resetForm(); // Очищаем только при создании нового
+        if (!initialData) resetForm();
         if (onRecipeCreated) onRecipeCreated();
       } else {
         alert('Ошибка при сохранении рецепта');
@@ -108,6 +104,36 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     }
   };
 
+  // Вспомогательная функция для подсчета итогов по одной строке
+  const getIngredientSummary = (ing) => {
+    const product = products.find(p => p.id === parseInt(ing.product_id));
+    const qty = parseFloat(ing.quantity);
+    
+    if (!product || !qty) return null;
+
+    const totalCost = (product.price * qty).toFixed(2);
+    const totalCals = product.calories ? Math.round(product.calories * qty) : 0;
+
+    return (
+      <div className="text-xs text-gray-500 mt-1 ml-1 flex gap-3">
+        <span className="bg-green-50 text-green-700 px-1 rounded">
+          Итого: €{totalCost}
+        </span>
+        {totalCals > 0 && (
+          <span className="bg-orange-50 text-orange-700 px-1 rounded">
+            {totalCals} ккал
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  // Получить единицу измерения выбранного продукта
+  const getUnitLabel = (productId) => {
+    const product = products.find(p => p.id === parseInt(productId));
+    return product ? product.unit : '';
+  };
+
   return (
     <div className={`bg-white p-6 rounded-lg shadow border transition-colors ${initialData ? 'border-yellow-400 ring-1 ring-yellow-400' : 'border-gray-200'}`}>
       <div className="flex justify-between items-center mb-4">
@@ -124,63 +150,64 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Название блюда</label>
-          <input 
-            className="w-full border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-indigo-500" 
-            placeholder="Например: Борщ" 
-            value={title} 
-            onChange={e => setTitle(e.target.value)} 
-            required 
-          />
+          <input className="w-full border border-gray-300 rounded-md p-2 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Например: Борщ" value={title} onChange={e => setTitle(e.target.value)} required />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Способ приготовления</label>
-          <textarea 
-            className="w-full border border-gray-300 rounded-md p-2 h-24 outline-none focus:ring-2 focus:ring-indigo-500" 
-            placeholder="Опишите шаги..." 
-            value={description} 
-            onChange={e => setDescription(e.target.value)} 
-          />
+          <textarea className="w-full border border-gray-300 rounded-md p-2 h-24 outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Опишите шаги..." value={description} onChange={e => setDescription(e.target.value)} />
         </div>
         
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Ингредиенты</label>
-          <div className="space-y-2">
+          <div className="space-y-4"> {/* Увеличили отступ между строками */}
             {ingredients.map((ing, idx) => (
-              <div key={idx} className="flex gap-2 items-center">
-                <select 
-                  className="flex-1 border border-gray-300 rounded-md p-2 bg-white text-sm"
-                  value={ing.product_id}
-                  onChange={e => updateIngredient(idx, 'product_id', e.target.value)}
-                  required
-                >
-                  <option value="">Выберите продукт...</option>
-                  {products.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} — €{p.price}/{p.unit} {p.calories > 0 ? `(${p.calories} ккал)` : ''}
-                    </option>
-                  ))}
-                </select>
+              <div key={idx} className="bg-gray-50 p-2 rounded border border-gray-200">
+                <div className="flex gap-2 items-start">
+                  {/* Выбор продукта */}
+                  <select 
+                    className="flex-1 border border-gray-300 rounded-md p-2 bg-white text-sm focus:border-indigo-500 outline-none"
+                    value={ing.product_id}
+                    onChange={e => updateIngredient(idx, 'product_id', e.target.value)}
+                    required
+                  >
+                    <option value="">Выберите продукт...</option>
+                    {products.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} (за 1 {p.unit} — €{p.price})
+                      </option>
+                    ))}
+                  </select>
 
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  className="w-20 border border-gray-300 rounded-md p-2 text-sm" 
-                  placeholder="Кол-во" 
-                  value={ing.quantity}
-                  onChange={e => updateIngredient(idx, 'quantity', e.target.value)}
-                  required 
-                />
+                  {/* Ввод количества + Единица измерения */}
+                  <div className="relative w-24">
+                      <input 
+                        type="number" 
+                        step="0.001" 
+                        className="w-full border border-gray-300 rounded-md p-2 text-sm pr-8 focus:border-indigo-500 outline-none" 
+                        placeholder="0.00" 
+                        value={ing.quantity}
+                        onChange={e => updateIngredient(idx, 'quantity', e.target.value)}
+                        required 
+                      />
+                      {/* Подсказка единицы измерения (кг, шт) внутри инпута */}
+                      <span className="absolute right-2 top-2 text-xs text-gray-400 font-bold pointer-events-none">
+                        {getUnitLabel(ing.product_id)}
+                      </span>
+                  </div>
 
-                <button 
-                  type="button" 
-                  onClick={() => removeRow(idx)}
-                  className="text-gray-400 hover:text-red-500 p-1 rounded"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+                  <button 
+                    type="button" 
+                    onClick={() => removeRow(idx)}
+                    className="text-gray-400 hover:text-red-500 p-2"
+                    title="Удалить строку"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* ИТОГИ по строке (Цена и Калории) */}
+                {getIngredientSummary(ing)}
               </div>
             ))}
           </div>
@@ -188,7 +215,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
           <button 
             type="button" 
             onClick={addRow}
-            className="mt-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1"
+            className="mt-3 text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
