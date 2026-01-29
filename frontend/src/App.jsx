@@ -6,7 +6,8 @@ import ProductsPage from './pages/ProductsPage';
 import RecipesPage from './pages/RecipesPage';
 import ShoppingListPage from './pages/ShoppingListPage';
 import TodayPage from './pages/TodayPage';
-import AdminPage from './pages/AdminPage'; // <-- Импорт
+import AdminPage from './pages/AdminPage';
+import AboutPage from './pages/AboutPage'; // <-- Import
 
 function App() {
   return (
@@ -20,7 +21,8 @@ function App() {
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/recipes" element={<RecipesPage />} />
             <Route path="/shopping-list" element={<ShoppingListPage />} />
-            <Route path="/admin" element={<AdminPage />} /> {/* <-- Новый роут */}
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/about" element={<AboutPage />} /> {/* <-- New Route */}
           </Routes>
         </main>
       </div>

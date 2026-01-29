@@ -7,24 +7,24 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const [ingredients, setIngredients] = useState([]);
   const [products, setProducts] = useState([]);
 
-  // Загружаем продукты при монтировании компонента
   useEffect(() => {
     fetch('/api/products/')
       .then(res => res.json())
-      .then(data => setProducts(data))
+      .then(data => {
+          if(Array.isArray(data)) setProducts(data);
+          else setProducts([]);
+      })
       .catch(err => console.error(err));
   }, []);
 
-  // Если передали initialData (режим редактирования), заполняем форму
   useEffect(() => {
     if (initialData) {
       setTitle(initialData.title);
       setDescription(initialData.description || '');
-      // Преобразуем ингредиенты в формат формы
-      const mapped = initialData.ingredients.map(i => ({
+      const mapped = (initialData.ingredients || []).map(i => ({
         product_id: i.product ? i.product.id : '',
         quantity: i.quantity,
-        tempId: Date.now() + Math.random() // Уникальный ID для ключа в React
+        tempId: Date.now() + Math.random()
       }));
       setIngredients(mapped);
     } else {
@@ -85,28 +85,26 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         if (!initialData) resetForm();
         if (onRecipeCreated) onRecipeCreated();
       }
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
-  // Функция для расчета и отображения цены и калорий конкретного ингредиента
   const getIngredientSummary = (ing) => {
+    // 1. Защита от отсутствия данных
+    if (!products || products.length === 0) return null;
     const product = products.find(p => p.id === parseInt(ing.product_id));
     const qty = parseFloat(ing.quantity);
     
     if (!product || !qty) return null;
 
+    // 2. Расчет ЦЕНЫ (по весу упаковки)
     const packAmount = product.amount || 1;
-    
-    // Цена
     const pricePerUnit = product.price / packAmount;
     const totalCost = (pricePerUnit * qty).toFixed(2);
 
-    // Калории
-    const prodCals = product.calories || 0;
-    const calsPerUnit = prodCals / packAmount;
-    const totalCals = Math.round(calsPerUnit * qty);
+    // 3. Расчет КАЛОРИЙ (на 100г)
+    const calsPer100g = product.calories || 0;
+    // Формула: (Ккал на 100г / 100) * Кол-во грамм
+    const totalCals = Math.round((calsPer100g / 100) * qty);
 
     return (
       <div className="text-xs text-gray-500 mt-1 ml-1 flex gap-3 select-none">
@@ -174,13 +172,10 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                   type="button"
                   onClick={() => removeIngredient(idx)}
                   className="text-red-500 hover:text-red-700 font-bold px-2 text-xl leading-none"
-                  title="Удалить ингредиент"
                 >
                   ×
                 </button>
               </div>
-              
-              {/* Вывод подсказки с ценой и калориями */}
               {getIngredientSummary(ing)}
             </div>
           ))}
@@ -194,18 +189,11 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         </div>
 
         <div className="flex gap-3 pt-4 border-t border-gray-100">
-            <button 
-                type="submit" 
-                className="flex-1 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition font-medium shadow-sm"
-            >
+            <button type="submit" className="flex-1 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition font-medium shadow-sm">
                 {initialData ? 'Сохранить изменения' : 'Создать рецепт'}
             </button>
             {initialData && (
-                <button 
-                    type="button" 
-                    onClick={onCancel}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
-                >
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">
                     Отмена
                 </button>
             )}

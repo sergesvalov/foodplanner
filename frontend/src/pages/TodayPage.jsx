@@ -24,7 +24,7 @@ const TodayPage = () => {
     fetch('/api/plan/')
       .then(res => res.json())
       .then(data => {
-        const filtered = data.filter(item => item.day_of_week === todayName);
+        const filtered = (Array.isArray(data) ? data : []).filter(item => item.day_of_week === todayName);
         setTodayItems(filtered);
         setLoading(false);
       })
@@ -32,18 +32,15 @@ const TodayPage = () => {
   }, [todayName]);
 
   const getItemForMeal = (mealId) => todayItems.find(item => item.meal_type === mealId);
-
-  // --- ПОДСЧЕТ ИТОГОВ ---
   const totalCost = todayItems.reduce((sum, i) => sum + (i.recipe?.total_cost || 0), 0);
   const totalCalories = todayItems.reduce((sum, i) => sum + (i.recipe?.total_calories || 0), 0);
-  // ----------------------
 
   if (loading) return <div className="p-10 text-center text-gray-500">Загрузка плана...</div>;
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-gray-100 overflow-hidden">
       
-      {/* Левая панель: детали рецепта */}
+      {/* ЛЕВАЯ КОЛОНКА */}
       <div className="w-1/3 min-w-[350px] bg-white border-r border-gray-200 flex flex-col shadow-xl z-10">
         {selectedRecipe ? (
           <div className="h-full flex flex-col">
@@ -56,13 +53,13 @@ const TodayPage = () => {
               </h2>
               <div className="flex flex-wrap gap-2">
                  <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-bold border border-green-200">
-                    €{selectedRecipe.total_cost.toFixed(2)}
+                    €{(selectedRecipe.total_cost || 0).toFixed(2)}
                  </span>
                  <span className="inline-flex items-center px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-bold border border-orange-200">
-                    {selectedRecipe.total_calories} ккал
+                    {selectedRecipe.total_calories || 0} ккал
                  </span>
                  <span className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold border border-blue-200">
-                    {selectedRecipe.ingredients.length} инг.
+                    {selectedRecipe.ingredients ? selectedRecipe.ingredients.length : 0} инг.
                  </span>
               </div>
             </div>
@@ -75,16 +72,20 @@ const TodayPage = () => {
 
               <h3 className="font-bold text-gray-800 text-lg mb-3 border-b pb-2">Ингредиенты</h3>
               <ul className="space-y-3">
-                {selectedRecipe.ingredients.map(ing => {
-                    const packAmount = ing.product?.amount || 1;
-                    const prodCals = ing.product?.calories || 0;
-                    const itemCals = Math.round((prodCals / packAmount) * ing.quantity);
+                {(selectedRecipe.ingredients || []).map(ing => {
+                    // Расчет для отображения в списке
+                    const calsPer100g = ing.product?.calories || 0;
+                    const itemCals = Math.round((calsPer100g / 100) * ing.quantity);
 
                     return (
                         <li key={ing.id} className="flex justify-between items-center text-gray-700 bg-gray-50 p-2 rounded">
                             <div className="flex flex-col">
                                 <span className="font-medium">{ing.product?.name || "Неизвестный продукт"}</span>
-                                <span className="text-[10px] text-gray-400 font-bold">{itemCals} ккал</span>
+                                <span className="text-[10px] text-gray-400 font-bold">
+                                    {itemCals} ккал
+                                    {/* Подсказка, сколько ккал в 100г продукта */}
+                                    <span className="font-normal opacity-70 ml-1">({calsPer100g}/100г)</span>
+                                </span>
                             </div>
                             <span className="font-mono bg-white px-2 py-0.5 rounded border text-sm">
                                 {ing.quantity} {ing.product?.unit}
@@ -104,24 +105,18 @@ const TodayPage = () => {
         )}
       </div>
 
-      {/* Правая панель: Меню на сегодня */}
+      {/* ПРАВАЯ КОЛОНКА */}
       <div className="flex-1 overflow-y-auto p-8 bg-gray-100">
-        
-        {/* Заголовок с итогами дня */}
         <div className="flex justify-between items-end mb-8 max-w-4xl">
           <div>
             <h1 className="text-4xl font-extrabold text-gray-800 tracking-tight">Сегодня</h1>
             <p className="text-gray-500 text-lg mt-1 font-medium">{todayName}</p>
           </div>
-          
           <div className="flex gap-4">
-              {/* Блок калорий */}
               <div className="text-right bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
                 <div className="text-xs text-gray-400 uppercase font-bold tracking-wider">Калории</div>
                 <div className="text-2xl font-bold text-orange-600">{totalCalories} ккал</div>
               </div>
-
-              {/* Блок цены */}
               <div className="text-right bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
                 <div className="text-xs text-gray-400 uppercase font-bold tracking-wider">Бюджет</div>
                 <div className="text-2xl font-bold text-green-600">€{totalCost.toFixed(2)}</div>
@@ -161,8 +156,8 @@ const TodayPage = () => {
                             </div>
                             
                             <div className="flex gap-4 text-sm text-gray-500 mt-2">
-                                <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">💶 €{item.recipe.total_cost.toFixed(2)}</span>
-                                <span className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded text-orange-700 font-medium">🔥 {item.recipe.total_calories} ккал</span>
+                                <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">💶 €{(item.recipe.total_cost || 0).toFixed(2)}</span>
+                                <span className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded text-orange-700 font-medium">🔥 {item.recipe.total_calories || 0} ккал</span>
                             </div>
                         </div>
                     </div>

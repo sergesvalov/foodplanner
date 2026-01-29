@@ -5,24 +5,20 @@ const ProductSelect = ({ products, value, onChange }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef(null);
 
-  // Закрытие выпадающего списка при клике вне его области
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setIsOpen(false);
-        setSearchTerm(''); // Сброс поиска при закрытии
+        setSearchTerm('');
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Находим выбранный продукт, чтобы показать его имя
-  // value приходит как ID (иногда строка, иногда число), приводим к числу
-  const selectedProduct = products.find(p => p.id === parseInt(value));
+  const selectedProduct = (products || []).find(p => p.id === parseInt(value));
 
-  // Фильтрация списка по введенному тексту
-  const filteredProducts = products.filter(p =>
+  const filteredProducts = (products || []).filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -34,7 +30,6 @@ const ProductSelect = ({ products, value, onChange }) => {
 
   return (
     <div className="relative w-full" ref={wrapperRef}>
-       {/* Поле ввода / Отображение выбранного */}
        <div
          className={`
             border rounded p-2 w-full cursor-text flex justify-between items-center bg-white transition-shadow
@@ -58,13 +53,11 @@ const ProductSelect = ({ products, value, onChange }) => {
            </span>
          )}
          
-         {/* Стрелочка */}
          <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
          </svg>
        </div>
 
-       {/* Выпадающий список */}
        {isOpen && (
          <ul className="absolute z-50 w-full bg-white border border-gray-200 mt-1 max-h-60 overflow-y-auto rounded-md shadow-lg animate-fadeIn">
            {filteredProducts.length === 0 ? (
@@ -83,11 +76,10 @@ const ProductSelect = ({ products, value, onChange }) => {
                >
                  <span className="font-medium">{product.name}</span>
                  
-                 {/* Подсказка справа (калории и цена за упаковку) */}
                  <span className="text-xs text-gray-400 flex flex-col items-end">
                     <span>{product.amount} {product.unit}</span>
-                    <span className="text-[10px]">
-                        {product.calories > 0 ? `${product.calories} ккал` : ''}
+                    <span className="text-[10px] text-orange-500">
+                        {product.calories > 0 ? `${product.calories} ккал/100г` : ''}
                     </span>
                  </span>
                </li>

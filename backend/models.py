@@ -9,9 +9,9 @@ class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     price = Column(Float, default=0.0)
-    unit = Column(String, default="шт")
-    amount = Column(Float, default=1.0)
-    calories = Column(Float, default=0.0)
+    unit = Column(String, default="шт")     # Рекомендуется использовать 'г' или 'мл'
+    amount = Column(Float, default=1.0)     # Вес всей упаковки (например 1000)
+    calories = Column(Float, default=0.0)   # Ккал на 100 г
 
 class Recipe(Base):
     __tablename__ = "recipes"
@@ -25,6 +25,7 @@ class Recipe(Base):
 
     @property
     def total_cost(self):
+        """Считает цену на основе веса упаковки (amount)"""
         total = 0.0
         for item in self.ingredients:
             if item.product:
@@ -35,12 +36,17 @@ class Recipe(Base):
 
     @property
     def total_calories(self):
+        """
+        Считает калории по стандарту 'на 100г'.
+        Формула: (Ккал продукта / 100) * Вес в рецепте
+        """
         total = 0.0
         for item in self.ingredients:
             if item.product:
-                pack_amount = item.product.amount if item.product.amount > 0 else 1.0
-                cals_per_unit = item.product.calories / pack_amount
-                total += item.quantity * cals_per_unit
+                # Калорийность на 1 единицу веса (грамм)
+                cals_per_gram = item.product.calories / 100.0
+                # Умножаем на количество в рецепте
+                total += item.quantity * cals_per_gram
         return round(total)
 
 class RecipeIngredient(Base):
@@ -64,19 +70,13 @@ class WeeklyPlanEntry(Base):
 
     recipe = relationship("Recipe")
 
-# --- НОВЫЕ МОДЕЛИ ДЛЯ АДМИНКИ И ТЕЛЕГРАММА ---
-
 class AppSetting(Base):
-    """Таблица для хранения настроек (ключ-значение)"""
     __tablename__ = "app_settings"
-
-    key = Column(String, primary_key=True, index=True) # например, "bot_token"
+    key = Column(String, primary_key=True, index=True)
     value = Column(String)
 
 class TelegramUser(Base):
-    """Список пользователей, которым бот может писать"""
     __tablename__ = "telegram_users"
-
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)          # Имя для удобства (напр. "Я", "Жена")
-    chat_id = Column(String, unique=True) # ID чата в Telegram
+    name = Column(String)
+    chat_id = Column(String, unique=True)
