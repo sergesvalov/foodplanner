@@ -9,17 +9,17 @@ import models
 import schemas
 from database import SessionLocal, engine
 
-# Создаем таблицы в БД
+# Создаем таблицы в базе данных
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Menu Planner API")
 
-# Пути к файлам для экспорта/импорта (внутри контейнера)
-# На сервере они будут лежать в папке /opt/foodplanner/ (благодаря volume)
+# Пути к файлам экспорта (внутри Docker-контейнера).
+# На физическом сервере они будут лежать в /opt/foodplanner/ (благодаря volume)
 PRODUCTS_EXPORT_PATH = "/app/data/products.json"
 RECIPES_EXPORT_PATH = "/app/data/recipes.json"
 
-# Настройка CORS
+# Настройка CORS (разрешаем запросы с фронтенда)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -59,6 +59,7 @@ def update_product(product_id: int, product: schemas.ProductCreate, db: Session 
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     
+    # Обновляем поля
     db_product.name = product.name
     db_product.price = product.price
     db_product.unit = product.unit
@@ -101,7 +102,6 @@ def export_products_to_server(db: Session = Depends(get_db)):
         return {"message": f"Успешно сохранено {len(data)} товаров в {PRODUCTS_EXPORT_PATH}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка записи файла: {str(e)}")
-
 
 @app.post("/products/import")
 def import_products_from_server(db: Session = Depends(get_db)):
@@ -188,11 +188,11 @@ def update_recipe(recipe_id: int, recipe: schemas.RecipeCreate, db: Session = De
     if not db_recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
-    # Обновляем заголовок и описание
+    # Обновляем данные
     db_recipe.title = recipe.title
     db_recipe.description = recipe.description
 
-    # Удаляем старые ингредиенты и записываем новые
+    # Перезаписываем ингредиенты
     db.query(models.RecipeIngredient).filter(models.RecipeIngredient.recipe_id == recipe_id).delete()
     
     for item in recipe.ingredients:
@@ -238,10 +238,9 @@ def export_recipes_to_server(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка записи: {str(e)}")
 
-
 @app.post("/recipes/import")
 def import_recipes_from_server(db: Session = Depends(get_db)):
-    """Загрузить рецепты из JSON. Обновляет описание по названию, или создает новый."""
+    """Загрузить рецепты из JSON. Обновляет описание по названию или создает новый."""
     if not os.path.exists(RECIPES_EXPORT_PATH):
         raise HTTPException(status_code=404, detail="Файл recipes.json не найден на сервере")
 
@@ -269,7 +268,7 @@ def import_recipes_from_server(db: Session = Depends(get_db)):
             db.add(new_recipe)
             created_count += 1
         else:
-            # Обновляем описание если отличается
+            # Обновляем описание
             if db_recipe.description != description:
                 db_recipe.description = description
                 updated_count += 1
@@ -314,3 +313,64 @@ def delete_from_plan(item_id: int, db: Session = Depends(get_db)):
         db.delete(item)
         db.commit()
     return {"ok": True}
+
+
+# ===========================
+# API СПИСКА ПОКУПОК
+# ===========================
+
+@app.get("/shopping-list/")
+def get_shopping_list(db: Session = Depends(get_db)):
+    """
+    Генерирует список покупок на основе меню на неделю.
+    Суммирует вес/количество одинаковых продуктов.
+    """
+    plan_items = db.query(models.WeeklyPlanEntry).all()
+    
+    # Словарь: { product_id: { product_obj, quantity } }
+    shopping_dict = {}
+
+    for plan_item in plan_items:
+        # Если рецепт существует
+        if not plan_item.recipe:
+            continue
+            
+        for ingredient in plan_item.recipe.ingredients:
+            if not ingredient.product:
+                continue
+                
+            p_id = ingredient.product_id
+            
+            if p_id not in shopping_dict:
+                shopping_dict[p_id] = {
+                    "product": ingredient.product,
+                    "quantity": 0.0
+                }
+            
+            # Суммируем
+            shopping_dict[p_id]["quantity"] += ingredient.quantity
+
+    # Формируем список для ответа
+    result = []
+    for p_id, data in shopping_dict.items():
+        product = data["product"]
+        total_qty = data["quantity"]
+        
+        # Считаем цену: (Цена уп / Вес уп) * Необходимый вес
+        pack_amount = product.amount if product.amount > 0 else 1.0
+        price_per_unit = product.price / pack_amount
+        estimated_cost = total_qty * price_per_unit
+
+        result.append({
+            "id": product.id,
+            "name": product.name,
+            "total_quantity": round(total_qty, 3),
+            "unit": product.unit,
+            "estimated_cost": round(estimated_cost, 2),
+            "packs_needed": round(total_qty / pack_amount, 1)
+        })
+    
+    # Сортировка по алфавиту
+    result.sort(key=lambda x: x["name"])
+    
+    return result

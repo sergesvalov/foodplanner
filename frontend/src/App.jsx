@@ -1,24 +1,26 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
+import ProductsPage from './pages/ProductsPage';
 import RecipesPage from './pages/RecipesPage';
-import ProductsPage from './pages/ProductsPage'; // Импорт
+import ShoppingListPage from './pages/ShoppingListPage'; // <-- Импорт
 
 function App() {
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-gray-100 font-sans text-gray-900">
+    <Router>
+      <div className="flex flex-col min-h-screen bg-gray-100">
         <Navbar />
-        <main className="container mx-auto px-4 py-4 pb-20">
+        <main className="flex-grow">
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/products" element={<ProductsPage />} />
             <Route path="/recipes" element={<RecipesPage />} />
-            <Route path="/products" element={<ProductsPage />} /> {/* Новый роут */}
+            <Route path="/shopping-list" element={<ShoppingListPage />} /> {/* <-- Роут */}
           </Routes>
         </main>
       </div>
-    </BrowserRouter>
+    </Router>
   );
 }
 
