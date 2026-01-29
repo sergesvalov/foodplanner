@@ -4,7 +4,9 @@ const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Чет�
 const EXTRA_KEY = 'Вкусняшки';
 const EXTRA_MEAL_TYPE = 'yummy';
 
+// ОБНОВЛЕННЫЙ СПИСОК (Добавлено "Взять с собой" в начало)
 const MEALS = [
+  { id: 'takeaway', label: '🎒 Взять с собой', color: 'bg-teal-50 border-teal-100', isSnack: true },
   { id: 'pre_breakfast', label: 'Ранний старт', color: 'bg-orange-50 border-orange-100', isSnack: true },
   { id: 'breakfast', label: 'Завтрак', color: 'bg-yellow-50 border-yellow-100', isSnack: false },
   { id: 'morning_snack', label: '2-й завтрак', color: 'bg-purple-50 border-purple-100', isSnack: true },
@@ -17,6 +19,8 @@ const MEALS = [
 const WeeklyGrid = () => {
   const [plan, setPlan] = useState([]);
   const [users, setUsers] = useState([]);
+  
+  // Состояние для модального окна выбора пользователя
   const [pendingDrop, setPendingDrop] = useState(null);
 
   const fetchPlan = () => {
@@ -25,15 +29,20 @@ const WeeklyGrid = () => {
       .then(data => { if (Array.isArray(data)) setPlan(data); else setPlan([]); })
       .catch(err => { console.error(err); setPlan([]); });
   };
+
   const fetchUsers = () => {
       fetch('/api/admin/family').then(res => res.json()).then(setUsers).catch(console.error);
   };
 
-  useEffect(() => { fetchPlan(); fetchUsers(); }, []);
+  useEffect(() => {
+    fetchPlan();
+    fetchUsers();
+  }, []);
 
   const handleDragOver = (e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-indigo-300', 'bg-white'); };
   const handleDragLeave = (e) => { e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white'); };
 
+  // DROP
   const handleDrop = (e, day, mealType) => {
     e.preventDefault();
     e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white');
@@ -41,7 +50,7 @@ const WeeklyGrid = () => {
     if (!data) return;
     const recipe = JSON.parse(data);
     
-    // Если пользователей нет, добавляем без привязки
+    // Если пользователей нет, сохраняем без ID, иначе открываем модалку
     if (users.length === 0) confirmAdd(day, mealType, recipe.id, null);
     else setPendingDrop({ day, mealType, recipeId: recipe.id });
   };
@@ -107,7 +116,6 @@ const WeeklyGrid = () => {
                               <span className="font-medium text-gray-700">{u.name}</span>
                           </button>
                       ))}
-                      {/* Опция без пользователя */}
                       <button onClick={() => confirmAdd(pendingDrop.day, pendingDrop.mealType, pendingDrop.recipeId, null)}
                         className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-gray-300 hover:bg-gray-50 text-left">
                           <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-bold">?</div>
@@ -175,7 +183,6 @@ const WeeklyGrid = () => {
   );
 };
 
-// --- КАРТОЧКА БЛЮДА С БЕЙДЖЕМ ПОЛЬЗОВАТЕЛЯ ---
 const PlanItemCard = ({ item, onRemove, onPortionChange, calculateStats }) => {
     if (!item.recipe) return null;
     const stats = calculateStats(item);

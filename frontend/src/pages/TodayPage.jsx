@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 
 const DAYS_MAP = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+
+// ОБНОВЛЕННЫЙ СПИСОК
 const MEALS_ORDER = [
+  { id: 'takeaway', label: '🎒 Взять с собой' }, // <-- НОВОЕ
   { id: 'pre_breakfast', label: 'Ранний старт' },
   { id: 'breakfast', label: 'Завтрак' },
   { id: 'morning_snack', label: 'Второй завтрак' },
@@ -63,6 +66,7 @@ const TodayPage = () => {
               const stats = calculateItemStats(currentPlanItem);
               const ratio = stats.ratio;
               const hasIngredients = selectedRecipe.ingredients && selectedRecipe.ingredients.length > 0;
+              const member = currentPlanItem?.family_member;
 
               return (
                   <div className="h-full flex flex-col">
@@ -70,9 +74,16 @@ const TodayPage = () => {
                       <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-2 block">
                         Выбранное блюдо
                       </span>
-                      <h2 className="text-3xl font-bold text-gray-800 leading-tight mb-4">
+                      <h2 className="text-3xl font-bold text-gray-800 leading-tight mb-2">
                         {selectedRecipe.title}
                       </h2>
+                      
+                      {member && (
+                          <div className={`inline-block mb-3 px-2 py-0.5 rounded text-xs font-bold text-white bg-${member.color}-500`}>
+                              Для: {member.name}
+                          </div>
+                      )}
+
                       <div className="flex flex-wrap gap-2">
                          <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-bold border border-green-200">
                             €{stats.cost.toFixed(2)}
@@ -178,6 +189,7 @@ const TodayPage = () => {
 
                 const isActive = selectedRecipe?.id === item.recipe.id;
                 const stats = calculateItemStats(item);
+                const member = item.family_member;
 
                 return (
                     <div key={meal.id} className="flex gap-6 items-stretch group">
@@ -196,6 +208,12 @@ const TodayPage = () => {
                                 {isActive && <span className="text-indigo-500 text-2xl animate-pulse">●</span>}
                             </div>
                             
+                            {member && (
+                                <div className={`inline-block mb-2 px-2 py-0.5 rounded text-xs font-bold text-white bg-${member.color}-500`}>
+                                    {member.name}
+                                </div>
+                            )}
+
                             <div className="flex gap-4 text-sm text-gray-500 mt-2">
                                 <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">💶 €{stats.cost.toFixed(2)}</span>
                                 <span className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded text-orange-700 font-medium">🔥 {stats.cals} ккал</span>
