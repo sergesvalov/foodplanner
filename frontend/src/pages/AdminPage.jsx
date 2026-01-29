@@ -23,7 +23,6 @@ const AdminPage = () => {
       if (res.ok) {
         setIsAuthenticated(true);
         setError('');
-        // Сразу загружаем настройки телеграма после входа
         fetchTelegramSettings();
       } else {
         setError('Неверный пароль');
@@ -33,22 +32,18 @@ const AdminPage = () => {
     }
   };
 
-  // --- ЗАГРУЗКА ДАННЫХ ---
   const fetchTelegramSettings = () => {
-    // Получаем токен
     fetch('/api/admin/telegram/token')
       .then(res => res.json())
       .then(data => setBotToken(data.token))
       .catch(console.error);
     
-    // Получаем пользователей
     fetch('/api/admin/telegram/users')
       .then(res => res.json())
       .then(data => setTgUsers(data))
       .catch(console.error);
   };
 
-  // --- СОХРАНЕНИЕ ТОКЕНА ---
   const saveToken = async () => {
     try {
       const res = await fetch('/api/admin/telegram/token', {
@@ -60,7 +55,6 @@ const AdminPage = () => {
     } catch (e) { alert("Ошибка сохранения"); }
   };
 
-  // --- ДОБАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯ ---
   const addUser = async (e) => {
     e.preventDefault();
     if (!newUser.name || !newUser.chat_id) return;
@@ -82,14 +76,13 @@ const AdminPage = () => {
     } catch (e) { alert("Ошибка сети"); }
   };
 
-  // --- УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ ---
   const deleteUser = async (id) => {
     if(!window.confirm("Удалить этого пользователя из рассылки?")) return;
     await fetch(`/api/admin/telegram/users/${id}`, { method: 'DELETE' });
     fetchTelegramSettings();
   };
 
-  // --- УПРАВЛЕНИЕ БЭКАПАМИ (старые функции) ---
+  // --- УНИВЕРСАЛЬНЫЕ ФУНКЦИИ ЭКСПОРТА/ИМПОРТА ---
   const triggerExport = async (endpoint, name) => {
     if(!window.confirm(`Сохранить ${name} в файл на сервере?`)) return;
     try {
@@ -101,12 +94,16 @@ const AdminPage = () => {
   };
 
   const triggerImport = async (endpoint, name) => {
-    if(!window.confirm(`Загрузить ${name}? ЭТО ПЕРЕЗАПИШЕТ ДАННЫЕ!`)) return;
+    if(!window.confirm(`Загрузить ${name}? ЭТО ПЕРЕЗАПИШЕТ ТЕКУЩИЕ ДАННЫЕ!`)) return;
     try {
         const res = await fetch(endpoint, { method: 'POST' });
         const data = await res.json();
-        if (res.ok) alert(`✅ Импорт завершен: ${JSON.stringify(data)}`);
-        else alert("❌ " + data.detail);
+        if (res.ok) {
+            alert(`✅ Импорт завершен: ${JSON.stringify(data)}`);
+            // Если импортировали настройки, обновим их на экране
+            if (name === 'настройки') fetchTelegramSettings();
+        }
+        else alert("❌ Ошибка: " + data.detail);
     } catch(e) { alert("Ошибка сети"); }
   };
 
@@ -138,7 +135,6 @@ const AdminPage = () => {
     );
   }
 
-  // --- ПАНЕЛЬ УПРАВЛЕНИЯ ---
   return (
     <div className="container mx-auto max-w-5xl p-8 pb-20">
       <div className="flex justify-between items-center mb-10 border-b pb-4">
@@ -156,7 +152,7 @@ const AdminPage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
-        {/* === НОВЫЙ БЛОК: TELEGRAM === */}
+        {/* БЛОК TELEGRAM */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-indigo-100 lg:col-span-2">
             <div className="flex items-center gap-3 mb-6">
                 <div className="bg-indigo-100 p-2 rounded-lg text-2xl">🤖</div>
@@ -164,7 +160,7 @@ const AdminPage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* 1. Токен */}
+                {/* Токен */}
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Bot Token</label>
                     <div className="flex gap-2">
@@ -184,11 +180,10 @@ const AdminPage = () => {
                     </p>
                 </div>
 
-                {/* 2. Пользователи */}
+                {/* Пользователи */}
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Список пользователей</label>
                     
-                    {/* Список */}
                     <ul className="mb-4 space-y-2 max-h-40 overflow-y-auto border border-gray-100 rounded p-2 bg-gray-50">
                         {tgUsers.length === 0 && <li className="text-gray-400 text-xs italic text-center py-2">Список пуст</li>}
                         {tgUsers.map(u => (
@@ -202,10 +197,9 @@ const AdminPage = () => {
                         ))}
                     </ul>
 
-                    {/* Форма добавления */}
                     <form onSubmit={addUser} className="flex gap-2 bg-gray-100 p-2 rounded">
                         <input 
-                            type="text" placeholder="Имя (напр. Я)" 
+                            type="text" placeholder="Имя" 
                             className="w-1/3 border border-gray-300 rounded p-1 text-sm outline-none"
                             value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})}
                         />
@@ -223,7 +217,7 @@ const AdminPage = () => {
             </div>
         </div>
 
-        {/* === БЛОК: ПРОДУКТЫ === */}
+        {/* БЛОК ПРОДУКТЫ */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center gap-3 mb-4">
             <div className="bg-blue-100 p-2 rounded-lg text-2xl">📦</div>
@@ -235,7 +229,7 @@ const AdminPage = () => {
           </div>
         </div>
 
-        {/* === БЛОК: РЕЦЕПТЫ === */}
+        {/* БЛОК РЕЦЕПТЫ */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center gap-3 mb-4">
             <div className="bg-orange-100 p-2 rounded-lg text-2xl">🍳</div>
@@ -244,6 +238,25 @@ const AdminPage = () => {
           <div className="space-y-3">
             <button onClick={() => triggerExport('/api/recipes/export', 'рецептов')} className="w-full py-2 bg-orange-50 text-orange-700 border border-orange-200 rounded hover:bg-orange-100 font-medium flex justify-center gap-2"><span>💾</span> Экспорт JSON</button>
             <button onClick={() => triggerImport('/api/recipes/import', 'рецептов')} className="w-full py-2 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 font-medium flex justify-center gap-2"><span>📂</span> Импорт JSON</button>
+          </div>
+        </div>
+
+        {/* БЛОК СИСТЕМНЫЕ НАСТРОЙКИ (Новый) */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 lg:col-span-2">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-gray-200 p-2 rounded-lg text-2xl">⚙️</div>
+            <h3 className="text-xl font-bold text-gray-800">Параметры и Пользователи</h3>
+          </div>
+          <p className="text-gray-500 text-sm mb-4">
+             Сохранение токена бота и списка пользователей в файл <code>settings.json</code>. Полезно для переноса конфигурации.
+          </p>
+          <div className="flex gap-4">
+            <button onClick={() => triggerExport('/api/admin/settings/export', 'настройки')} className="flex-1 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded hover:bg-gray-200 font-medium flex justify-center gap-2">
+                <span>💾</span> Сохранить параметры в файл
+            </button>
+            <button onClick={() => triggerImport('/api/admin/settings/import', 'настройки')} className="flex-1 py-2 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 font-medium flex justify-center gap-2">
+                <span>📂</span> Восстановить параметры из файла
+            </button>
           </div>
         </div>
 
