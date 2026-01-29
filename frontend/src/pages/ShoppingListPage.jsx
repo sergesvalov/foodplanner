@@ -3,16 +3,29 @@ import React, { useEffect, useState } from 'react';
 const ShoppingListPage = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Состояние галочек (куплено / не куплено)
   const [checkedItems, setCheckedItems] = useState({});
 
+  // Telegram state
+  const [tgUsers, setTgUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState('');
+  const [sending, setSending] = useState(false);
+
   useEffect(() => {
+    // 1. Загружаем список покупок
     fetch('/api/shopping-list/')
       .then(res => res.json())
       .then(data => {
         setItems(data);
         setLoading(false);
+      })
+      .catch(err => console.error(err));
+
+    // 2. Загружаем пользователей Telegram (для выпадающего списка)
+    fetch('/api/admin/telegram/users')
+      .then(res => res.json())
+      .then(data => {
+        setTgUsers(data);
+        if (data.length > 0) setSelectedUser(data[0].chat_id);
       })
       .catch(err => console.error(err));
   }, []);
@@ -24,16 +37,37 @@ const ShoppingListPage = () => {
     }));
   };
 
-  const totalCost = items.reduce((sum, item) => {
-     // Если товар отмечен как купленный, можно его не считать (или считать, по желанию)
-     // Сейчас считаем общую сумму всего списка
-     return sum + item.estimated_cost;
-  }, 0);
+  const handleSendTelegram = async () => {
+    if (!selectedUser) {
+        alert("Выберите получателя");
+        return;
+    }
+    
+    setSending(true);
+    try {
+        const res = await fetch('/api/shopping-list/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: selectedUser })
+        });
+        const data = await res.json();
+        
+        if (res.ok) alert("✅ " + data.message);
+        else alert("❌ Ошибка: " + data.detail);
+        
+    } catch (e) {
+        alert("Ошибка сети");
+    } finally {
+        setSending(false);
+    }
+  };
+
+  const totalCost = items.reduce((sum, item) => sum + item.estimated_cost, 0);
 
   if (loading) return <div className="p-10 text-center text-gray-500">Загрузка списка...</div>;
 
   return (
-    <div className="container mx-auto max-w-4xl p-4">
+    <div className="container mx-auto max-w-4xl p-4 pb-20">
       <div className="flex justify-between items-end mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Список покупок</h1>
         <div className="text-right">
@@ -92,13 +126,51 @@ const ShoppingListPage = () => {
         </div>
       )}
 
-      <div className="mt-6 flex justify-end">
+      {/* ПАНЕЛЬ ДЕЙСТВИЙ (ПЕЧАТЬ И TELEGRAM) */}
+      <div className="mt-6 bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+        
+        {/* Кнопка печати (слева) */}
         <button 
             onClick={() => window.print()}
-            className="px-4 py-2 bg-gray-800 text-white rounded shadow hover:bg-black transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200 transition-colors flex items-center gap-2 font-medium w-full md:w-auto justify-center"
         >
             <span>🖨</span> Печать / PDF
         </button>
+
+        {/* Блок Telegram (справа) */}
+        <div className="flex items-center gap-2 w-full md:w-auto">
+            {tgUsers.length === 0 ? (
+                <span className="text-xs text-gray-400">Добавьте пользователей в Админке для отправки</span>
+            ) : (
+                <>
+                    <select 
+                        className="border border-gray-300 rounded px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200"
+                        value={selectedUser}
+                        onChange={e => setSelectedUser(e.target.value)}
+                    >
+                        {tgUsers.map(u => (
+                            <option key={u.id} value={u.chat_id}>{u.name}</option>
+                        ))}
+                    </select>
+
+                    <button 
+                        onClick={handleSendTelegram}
+                        disabled={sending}
+                        className={`
+                            px-4 py-2 text-white rounded shadow transition-colors flex items-center gap-2 font-bold
+                            ${sending ? 'bg-blue-400 cursor-wait' : 'bg-blue-500 hover:bg-blue-600'}
+                        `}
+                    >
+                        {sending ? 'Отправка...' : (
+                            <>
+                                <span>✈️</span> Отправить
+                            </>
+                        )}
+                    </button>
+                </>
+            )}
+        </div>
+
       </div>
     </div>
   );
