@@ -1,6 +1,5 @@
 import json
 import os
-import schemas
 from typing import List
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
@@ -16,7 +15,7 @@ router = APIRouter(
 )
 
 CONFIG_PATH = "/app/data/config.json"
-SETTINGS_BACKUP_PATH = "/app/data/settings.json" # Путь к файлу бэкапа настроек
+SETTINGS_BACKUP_PATH = "/app/data/settings.json"
 
 class LoginRequest(BaseModel):
     password: str
@@ -91,23 +90,18 @@ def delete_telegram_user(user_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
-# --- НОВЫЕ ЭНДПОИНТЫ: ЭКСПОРТ И ИМПОРТ НАСТРОЕК ---
-
+# --- ЭКСПОРТ И ИМПОРТ НАСТРОЕК ---
 @router.get("/settings/export")
 def export_settings(db: Session = Depends(get_db)):
-    """Сохраняет настройки и пользователей в settings.json"""
     try:
-        # 1. Читаем данные из БД
         settings_data = db.query(models.AppSetting).all()
         users_data = db.query(models.TelegramUser).all()
 
-        # 2. Формируем словарь
         export_data = {
             "app_settings": [{"key": s.key, "value": s.value} for s in settings_data],
             "telegram_users": [{"name": u.name, "chat_id": u.chat_id} for u in users_data]
         }
 
-        # 3. Пишем в файл
         with open(SETTINGS_BACKUP_PATH, "w", encoding="utf-8") as f:
             json.dump(export_data, f, indent=2, ensure_ascii=False)
             
@@ -115,4 +109,26 @@ def export_settings(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка экспорта: {str(e)}")
 
-@router.post
+@router.post("/settings/import")
+def import_settings(db: Session = Depends(get_db)):
+    if not os.path.exists(SETTINGS_BACKUP_PATH):
+        raise HTTPException(status_code=404, detail="Файл settings.json не найден")
+
+    try:
+        with open(SETTINGS_BACKUP_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        db.query(models.AppSetting).delete()
+        db.query(models.TelegramUser).delete()
+        
+        for s in data.get("app_settings", []):
+            db.add(models.AppSetting(key=s["key"], value=s["value"]))
+            
+        for u in data.get("telegram_users", []):
+            db.add(models.TelegramUser(name=u["name"], chat_id=u["chat_id"]))
+            
+        db.commit()
+        return {"status": "ok", "message": "Настройки восстановлены"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Ошибка импорта: {str(e)}")
