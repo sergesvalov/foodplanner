@@ -36,6 +36,7 @@ class IngredientResponse(BaseModel):
 class RecipeBase(BaseModel):
     title: str
     description: Optional[str] = None
+    portions: int = 1 # НОВОЕ ПОЛЕ
 
 class RecipeCreate(RecipeBase):
     ingredients: List[IngredientCreate] = []
@@ -53,9 +54,14 @@ class PlanItemBase(BaseModel):
     day_of_week: str
     meal_type: str
     recipe_id: int
+    portions: int = 1 # НОВОЕ ПОЛЕ
 
 class PlanItemCreate(PlanItemBase):
     pass
+
+# Схема для обновления (PATCH)
+class PlanItemUpdate(BaseModel):
+    portions: int
 
 class PlanItemResponse(PlanItemBase):
     id: int
@@ -63,8 +69,7 @@ class PlanItemResponse(PlanItemBase):
     class Config:
         from_attributes = True
 
-# --- НОВЫЕ СХЕМЫ: Telegram ---
-
+# --- Telegram ---
 class TelegramUserBase(BaseModel):
     name: str
     chat_id: str

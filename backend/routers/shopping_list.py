@@ -12,28 +12,32 @@ router = APIRouter(
     tags=["Shopping List"]
 )
 
-# Схема для получения chat_id от фронтенда
 class TelegramSendRequest(BaseModel):
     chat_id: str
 
-# --- Вспомогательная функция (расчет списка) ---
 def calculate_shopping_list(db: Session):
-    """
-    Внутренняя логика подсчета продуктов.
-    Возвращает список словарей.
-    """
     plan_items = db.query(models.WeeklyPlanEntry).all()
     shopping_dict = {}
 
     for plan_item in plan_items:
         if not plan_item.recipe: continue
+        
+        # --- МАСШТАБИРОВАНИЕ ---
+        base_portions = plan_item.recipe.portions if plan_item.recipe.portions > 0 else 1
+        target_portions = plan_item.portions if plan_item.portions > 0 else 1
+        
+        # Коэффициент умножения ингредиентов
+        ratio = target_portions / base_portions
+
         for ingredient in plan_item.recipe.ingredients:
             if not ingredient.product: continue
             
             p_id = ingredient.product_id
             if p_id not in shopping_dict:
                 shopping_dict[p_id] = {"product": ingredient.product, "quantity": 0.0}
-            shopping_dict[p_id]["quantity"] += ingredient.quantity
+            
+            # Умножаем на коэффициент
+            shopping_dict[p_id]["quantity"] += (ingredient.quantity * ratio)
 
     result = []
     for p_id, data in shopping_dict.items():
@@ -56,32 +60,26 @@ def calculate_shopping_list(db: Session):
     result.sort(key=lambda x: x["name"])
     return result
 
-# --- Основной GET (использует функцию выше) ---
 @router.get("/")
 def get_shopping_list_api(db: Session = Depends(get_db)):
     return calculate_shopping_list(db)
 
-# --- НОВЫЙ ENDPOINT: Отправка в Telegram ---
 @router.post("/send")
 def send_shopping_list_telegram(body: TelegramSendRequest, db: Session = Depends(get_db)):
-    # 1. Получаем токен
     setting = db.query(models.AppSetting).filter(models.AppSetting.key == "bot_token").first()
     if not setting or not setting.value:
         raise HTTPException(status_code=400, detail="Токен бота не настроен в админке")
     
     bot_token = setting.value
-
-    # 2. Считаем список
     items = calculate_shopping_list(db)
+    
     if not items:
         raise HTTPException(status_code=400, detail="Список покупок пуст")
 
-    # 3. Формируем красивый текст сообщения
     total_cost = sum(i["estimated_cost"] for i in items)
     
     message_lines = ["🛒 *Список покупок*", ""]
     for i, item in enumerate(items, 1):
-        # Формат: 1. Молоко — 2.0 л
         line = f"{i}. {item['name']} — *{item['total_quantity']} {item['unit']}*"
         message_lines.append(line)
     
@@ -89,8 +87,6 @@ def send_shopping_list_telegram(body: TelegramSendRequest, db: Session = Depends
     message_lines.append(f"💰 *Примерно:* €{total_cost:.2f}")
     
     message_text = "\n".join(message_lines)
-
-    # 4. Отправляем запрос в Telegram API
     telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     
     try:
@@ -99,10 +95,8 @@ def send_shopping_list_telegram(body: TelegramSendRequest, db: Session = Depends
             "text": message_text,
             "parse_mode": "Markdown"
         })
-        
         if resp.status_code != 200:
             raise HTTPException(status_code=500, detail=f"Telegram Error: {resp.text}")
-            
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Connection Error: {str(e)}")
 
