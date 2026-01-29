@@ -32,7 +32,11 @@ const TodayPage = () => {
   }, [todayName]);
 
   const getItemForMeal = (mealId) => todayItems.find(item => item.meal_type === mealId);
+
+  // --- ПОДСЧЕТ ИТОГОВ ---
   const totalCost = todayItems.reduce((sum, i) => sum + (i.recipe?.total_cost || 0), 0);
+  const totalCalories = todayItems.reduce((sum, i) => sum + (i.recipe?.total_calories || 0), 0);
+  // ----------------------
 
   if (loading) return <div className="p-10 text-center text-gray-500">Загрузка плана...</div>;
 
@@ -54,7 +58,6 @@ const TodayPage = () => {
                  <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-bold border border-green-200">
                     €{selectedRecipe.total_cost.toFixed(2)}
                  </span>
-                 {/* Общие калории */}
                  <span className="inline-flex items-center px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-bold border border-orange-200">
                     {selectedRecipe.total_calories} ккал
                  </span>
@@ -75,7 +78,6 @@ const TodayPage = () => {
                 {selectedRecipe.ingredients.map(ing => {
                     const packAmount = ing.product?.amount || 1;
                     const prodCals = ing.product?.calories || 0;
-                    // Считаем калории для конкретного кол-ва ингредиента
                     const itemCals = Math.round((prodCals / packAmount) * ing.quantity);
 
                     return (
@@ -104,14 +106,26 @@ const TodayPage = () => {
 
       {/* Правая панель: Меню на сегодня */}
       <div className="flex-1 overflow-y-auto p-8 bg-gray-100">
+        
+        {/* Заголовок с итогами дня */}
         <div className="flex justify-between items-end mb-8 max-w-4xl">
           <div>
             <h1 className="text-4xl font-extrabold text-gray-800 tracking-tight">Сегодня</h1>
             <p className="text-gray-500 text-lg mt-1 font-medium">{todayName}</p>
           </div>
-          <div className="text-right bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
-             <div className="text-xs text-gray-400 uppercase font-bold tracking-wider">Бюджет на день</div>
-             <div className="text-2xl font-bold text-green-600">€{totalCost.toFixed(2)}</div>
+          
+          <div className="flex gap-4">
+              {/* Блок калорий */}
+              <div className="text-right bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
+                <div className="text-xs text-gray-400 uppercase font-bold tracking-wider">Калории</div>
+                <div className="text-2xl font-bold text-orange-600">{totalCalories} ккал</div>
+              </div>
+
+              {/* Блок цены */}
+              <div className="text-right bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
+                <div className="text-xs text-gray-400 uppercase font-bold tracking-wider">Бюджет</div>
+                <div className="text-2xl font-bold text-green-600">€{totalCost.toFixed(2)}</div>
+              </div>
           </div>
         </div>
 

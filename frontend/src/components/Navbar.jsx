@@ -18,7 +18,6 @@ const Navbar = () => {
             </Link>
             
             <div className="ml-10 flex items-baseline space-x-4">
-              {/* НОВАЯ КНОПКА */}
               <Link to="/today" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/today')}`}>
                 ☀️ Сегодня
               </Link>
@@ -37,6 +36,15 @@ const Navbar = () => {
               
               <Link to="/recipes" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/recipes')}`}>
                 🍳 Рецепты
+              </Link>
+
+              {/* Ссылка на Админку */}
+              <Link 
+                to="/admin" 
+                className={`ml-4 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/admin')}`} 
+                title="Администрирование"
+              >
+                ⚙️
               </Link>
             </div>
           </div>

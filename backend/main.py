@@ -3,10 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import models
 from database import engine
 
-# Импортируем наши новые роутеры
-from routers import products, recipes, plan, shopping_list
+# Импортируем все роутеры из папки routers
+from routers import products, recipes, plan, shopping_list, admin
 
-# Создаем таблицы (если нет)
+# Создаем таблицы в БД (если их нет)
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Menu Planner API")
@@ -20,13 +20,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Подключаем модули
+# Подключаем модули (роутеры)
 app.include_router(products.router)
 app.include_router(recipes.router)
 app.include_router(plan.router)
 app.include_router(shopping_list.router)
+app.include_router(admin.router) # <-- Админка подключена
 
-# Корневой маршрут (для проверки работоспособности)
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "FoodPlanner API is running"}

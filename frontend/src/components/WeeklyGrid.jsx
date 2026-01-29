@@ -26,12 +26,6 @@ const WeeklyGrid = () => {
     fetchPlan();
   }, []);
 
-  const calculateDayCost = (day) => {
-    const dayItems = plan.filter(p => p.day_of_week === day);
-    const total = dayItems.reduce((sum, item) => sum + (item.recipe?.total_cost || 0), 0);
-    return total.toFixed(2);
-  };
-
   const handleDragOver = (e) => {
     e.preventDefault();
     e.currentTarget.classList.add('ring-2', 'ring-indigo-300', 'bg-white');
@@ -71,36 +65,46 @@ const WeeklyGrid = () => {
   };
 
   return (
-    // Внешний контейнер: занимает всю высоту родителя.
-    // overflow-x-auto дает горизонтальный скролл всей недели
     <div className="h-full w-full overflow-x-auto overflow-y-hidden bg-gray-100 rounded-lg border border-gray-300 flex flex-col">
       
-      {/* Grid container: 
-          min-w-[1050px] гарантирует, что колонки не сожмутся в кашу (по 150px на день)
-          h-full растягивает его на всю высоту
-      */}
       <div className="grid grid-cols-7 h-full min-w-[1050px] divide-x divide-gray-300">
         
         {DAYS.map((day) => {
-          const dayCost = calculateDayCost(day);
-          const hasCost = parseFloat(dayCost) > 0;
+          // 1. Фильтруем блюда для текущего дня
+          const dayItems = plan.filter(p => p.day_of_week === day);
+          
+          // 2. Считаем общую стоимость
+          const dayCost = dayItems.reduce((sum, item) => sum + (item.recipe?.total_cost || 0), 0);
+          
+          // 3. Считаем общие калории (НОВОЕ)
+          const dayCals = dayItems.reduce((sum, item) => sum + (item.recipe?.total_calories || 0), 0);
+
+          const hasData = dayItems.length > 0;
 
           return (
-            // Колонка дня: flex-col + h-full, чтобы вложенный список мог скроллиться
             <div key={day} className="flex flex-col h-full bg-white relative group min-w-0">
               
-              {/* Шапка дня (фиксированная) */}
-              <div className="bg-gray-800 text-white py-2 flex flex-col items-center justify-center shadow-md z-10 shrink-0 border-b border-gray-600">
+              {/* Шапка дня */}
+              <div className="bg-gray-800 text-white py-2 flex flex-col items-center justify-center shadow-md z-10 shrink-0 border-b border-gray-600 gap-1">
                 <span className="font-bold text-xs uppercase tracking-wider">{day}</span>
-                <div className={`text-[10px] mt-1 px-2 py-0.5 rounded-full font-mono font-bold ${
-                    hasCost ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-400'
-                }`}>
-                  €{dayCost}
+                
+                {/* Бейджи с итоговой информацией */}
+                <div className="flex gap-1">
+                    <div className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                        hasData ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400'
+                    }`}>
+                      €{dayCost.toFixed(0)}
+                    </div>
+                    
+                    {/* Бейдж калорий */}
+                    <div className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                        hasData ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-400'
+                    }`}>
+                      {dayCals} ккал
+                    </div>
                 </div>
               </div>
 
-              {/* Список слотов (Скроллится по вертикали) */}
-              {/* min-h-0 важен для вложенных flex-контейнеров, чтобы скролл работал корректно */}
               <div className="flex-1 overflow-y-auto p-1 space-y-1 scrollbar-thin scrollbar-thumb-gray-300 min-h-0">
                 {MEALS.map((meal) => {
                     const itemsInSlot = plan.filter(p => p.day_of_week === day && p.meal_type === meal.id);
@@ -140,14 +144,19 @@ const WeeklyGrid = () => {
                                           ×
                                       </button>
                                       
-                                      {/* break-words для переноса длинных названий */}
                                       <span className="text-[11px] text-gray-800 font-medium leading-tight line-clamp-3 break-words" title={item.recipe.title}>
                                           {item.recipe.title}
                                       </span>
                                       
-                                      <span className="text-[9px] text-green-600 mt-0.5 font-mono">
-                                          €{item.recipe.total_cost.toFixed(2)}
-                                      </span>
+                                      <div className="flex justify-between items-end mt-1">
+                                          <span className="text-[9px] text-green-600 font-mono leading-none">
+                                              €{item.recipe.total_cost.toFixed(0)}
+                                          </span>
+                                          {/* Вывод калорий в карточке */}
+                                          <span className="text-[9px] text-orange-600 font-mono leading-none">
+                                              {item.recipe.total_calories} ккал
+                                          </span>
+                                      </div>
                                   </div>
                               ))}
                           </div>
