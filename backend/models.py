@@ -39,7 +39,6 @@ class Recipe(Base):
         total = 0.0
         for item in self.ingredients:
             if item.product:
-                # ОПРЕДЕЛЕНИЕ ТИПА ЕДИНИЦ
                 unit_lower = (item.product.unit or "").lower()
                 is_pieces = unit_lower in ["шт", "шт.", "pcs", "piece", "stk"]
 
@@ -50,7 +49,6 @@ class Recipe(Base):
                     # Если вес/объем: (Калории / 100) * Количество
                     cals_per_gram = item.product.calories / 100.0
                     total += item.quantity * cals_per_gram
-                    
         return round(total)
 
 class RecipeIngredient(Base):
@@ -85,3 +83,11 @@ class TelegramUser(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
     chat_id = Column(String, unique=True)
+
+# НОВАЯ ТАБЛИЦА
+class FamilyMember(Base):
+    __tablename__ = "family_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    color = Column(String, default="blue")

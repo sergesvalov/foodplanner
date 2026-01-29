@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
-# --- Продукты ---
+# --- ПРОДУКТЫ ---
 class ProductBase(BaseModel):
     name: str
     price: float
@@ -17,7 +17,7 @@ class ProductResponse(ProductBase):
     class Config:
         from_attributes = True
 
-# --- Ингредиенты ---
+# --- ИНГРЕДИЕНТЫ ---
 class IngredientBase(BaseModel):
     product_id: int
     quantity: float
@@ -32,11 +32,11 @@ class IngredientResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# --- Рецепты ---
+# --- РЕЦЕПТЫ ---
 class RecipeBase(BaseModel):
     title: str
     description: Optional[str] = None
-    portions: int = 1 # НОВОЕ ПОЛЕ
+    portions: int = 1
 
 class RecipeCreate(RecipeBase):
     ingredients: List[IngredientCreate] = []
@@ -49,17 +49,16 @@ class RecipeResponse(RecipeBase):
     class Config:
         from_attributes = True
 
-# --- План ---
+# --- ПЛАН ПИТАНИЯ ---
 class PlanItemBase(BaseModel):
     day_of_week: str
     meal_type: str
     recipe_id: int
-    portions: int = 1 # НОВОЕ ПОЛЕ
+    portions: int = 1
 
 class PlanItemCreate(PlanItemBase):
     pass
 
-# Схема для обновления (PATCH)
 class PlanItemUpdate(BaseModel):
     portions: int
 
@@ -69,7 +68,7 @@ class PlanItemResponse(PlanItemBase):
     class Config:
         from_attributes = True
 
-# --- Telegram ---
+# --- TELEGRAM ---
 class TelegramUserBase(BaseModel):
     name: str
     chat_id: str
@@ -84,3 +83,16 @@ class TelegramUserResponse(TelegramUserBase):
 
 class TokenUpdate(BaseModel):
     token: str
+
+# --- ЧЛЕНЫ СЕМЬИ (НОВОЕ) ---
+class FamilyMemberBase(BaseModel):
+    name: str
+    color: str 
+
+class FamilyMemberCreate(FamilyMemberBase):
+    pass
+
+class FamilyMemberResponse(FamilyMemberBase):
+    id: int
+    class Config:
+        from_attributes = True
