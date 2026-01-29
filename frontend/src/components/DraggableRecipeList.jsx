@@ -7,12 +7,22 @@ const DraggableRecipeList = () => {
   useEffect(() => {
     fetch('/api/recipes/')
       .then(res => res.json())
-      .then(data => setRecipes(data))
-      .catch(err => console.error(err));
+      .then(data => {
+        // ЗАЩИТА: Проверяем, что это массив
+        if (Array.isArray(data)) setRecipes(data);
+        else setRecipes([]);
+      })
+      .catch(err => {
+          console.error(err);
+          setRecipes([]);
+      });
   }, []);
 
-  const filteredRecipes = recipes.filter(recipe => 
-    recipe.title.toLowerCase().includes(searchTerm.toLowerCase())
+  // ЗАЩИТА: Проверяем наличие массива перед фильтрацией
+  const safeRecipes = Array.isArray(recipes) ? recipes : [];
+
+  const filteredRecipes = safeRecipes.filter(recipe => 
+    (recipe.title || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleDragStart = (e, recipe) => {
@@ -21,12 +31,8 @@ const DraggableRecipeList = () => {
   };
 
   return (
-    // ИЗМЕНЕНИЯ:
-    // 1. Убрали 'h-full', добавили 'min-h-full' (чтобы фон тянулся до низа, если правая часть длиннее)
-    // 2. Убрали фиксированную высоту, теперь высота зависит от контента
     <div className="flex flex-col bg-white border-r border-gray-200 w-80 shadow-sm z-20 min-h-full">
       
-      {/* Шапка (Sticky - прилипает к верху экрана при скролле страницы) */}
       <div className="p-4 border-b border-gray-200 bg-gray-50 sticky top-0 z-30 shadow-sm">
         <h2 className="font-bold text-gray-700 text-lg mb-3 flex items-center gap-2">
           <span>🍽</span> Блюда
@@ -58,13 +64,11 @@ const DraggableRecipeList = () => {
         </div>
       </div>
 
-      {/* Список рецептов */}
-      {/* ИЗМЕНЕНИЯ: Убрали overflow-y-auto и flex-1. Теперь div просто растягивается. */}
       <div className="p-3 space-y-2 bg-gray-50/50">
         {filteredRecipes.length === 0 ? (
             <div className="text-center text-gray-400 text-sm mt-6 flex flex-col items-center">
                 <span className="text-2xl mb-2">🔍</span>
-                Ничего не найдено
+                {safeRecipes.length === 0 ? "Список рецептов пуст" : "Ничего не найдено"}
             </div>
         ) : (
             filteredRecipes.map((recipe) => (
@@ -79,12 +83,13 @@ const DraggableRecipeList = () => {
                         {recipe.title}
                     </span>
                     <span className="text-xs font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100 whitespace-nowrap shrink-0">
-                        €{recipe.total_cost.toFixed(2)}
+                        €{(recipe.total_cost || 0).toFixed(2)}
                     </span>
                 </div>
                 
                 <div className="text-[10px] text-gray-400 mt-1 flex justify-between items-center">
-                    <span>{recipe.ingredients.length} инг.</span>
+                    <span>{recipe.ingredients ? recipe.ingredients.length : 0} инг.</span>
+                    <span className="text-orange-400 font-bold">{recipe.total_calories || 0} ккал</span>
                 </div>
               </div>
             ))
