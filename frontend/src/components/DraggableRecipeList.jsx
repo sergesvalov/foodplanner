@@ -21,11 +21,13 @@ const DraggableRecipeList = () => {
   };
 
   return (
-    // Добавили w-80 (фиксированная ширина) и flex-col
-    <div className="h-full flex flex-col bg-white border-r border-gray-200 w-80 shadow-sm z-20">
+    // ИЗМЕНЕНИЯ:
+    // 1. Убрали 'h-full', добавили 'min-h-full' (чтобы фон тянулся до низа, если правая часть длиннее)
+    // 2. Убрали фиксированную высоту, теперь высота зависит от контента
+    <div className="flex flex-col bg-white border-r border-gray-200 w-80 shadow-sm z-20 min-h-full">
       
-      {/* Шапка */}
-      <div className="p-4 border-b border-gray-200 bg-gray-50 shrink-0">
+      {/* Шапка (Sticky - прилипает к верху экрана при скролле страницы) */}
+      <div className="p-4 border-b border-gray-200 bg-gray-50 sticky top-0 z-30 shadow-sm">
         <h2 className="font-bold text-gray-700 text-lg mb-3 flex items-center gap-2">
           <span>🍽</span> Блюда
           <span className="text-xs font-normal text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full ml-auto">
@@ -57,8 +59,8 @@ const DraggableRecipeList = () => {
       </div>
 
       {/* Список рецептов */}
-      {/* overflow-x-hidden убирает горизонтальную полосу, break-words переносит текст */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-2 bg-gray-50/50">
+      {/* ИЗМЕНЕНИЯ: Убрали overflow-y-auto и flex-1. Теперь div просто растягивается. */}
+      <div className="p-3 space-y-2 bg-gray-50/50">
         {filteredRecipes.length === 0 ? (
             <div className="text-center text-gray-400 text-sm mt-6 flex flex-col items-center">
                 <span className="text-2xl mb-2">🔍</span>
@@ -73,7 +75,6 @@ const DraggableRecipeList = () => {
                 className="p-3 bg-white border border-gray-200 rounded shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all hover:border-indigo-300 group select-none w-full"
               >
                 <div className="flex justify-between items-start mb-1 gap-2">
-                    {/* break-words заставляет длинный текст переноситься, а не расширять блок */}
                     <span className="font-semibold text-gray-800 text-sm leading-tight break-words">
                         {recipe.title}
                     </span>
