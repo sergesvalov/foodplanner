@@ -44,8 +44,7 @@ class RecipeResponse(RecipeBase):
     id: int
     ingredients: List[IngredientResponse] = []
     total_cost: float
-    total_calories: float  # Новое поле
-    
+    total_calories: float
     class Config:
         from_attributes = True
 
@@ -63,3 +62,20 @@ class PlanItemResponse(PlanItemBase):
     recipe: Optional[RecipeResponse]
     class Config:
         from_attributes = True
+
+# --- НОВЫЕ СХЕМЫ: Telegram ---
+
+class TelegramUserBase(BaseModel):
+    name: str
+    chat_id: str
+
+class TelegramUserCreate(TelegramUserBase):
+    pass
+
+class TelegramUserResponse(TelegramUserBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class TokenUpdate(BaseModel):
+    token: str

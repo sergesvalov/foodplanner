@@ -10,9 +10,7 @@ class Product(Base):
     name = Column(String, index=True)
     price = Column(Float, default=0.0)
     unit = Column(String, default="шт")
-    # Вес упаковки (например, 1000 для кг, 10 для десятка яиц)
     amount = Column(Float, default=1.0)
-    # Калории на всю упаковку/единицу
     calories = Column(Float, default=0.0)
 
 class Recipe(Base):
@@ -27,11 +25,9 @@ class Recipe(Base):
 
     @property
     def total_cost(self):
-        """Считает стоимость рецепта"""
         total = 0.0
         for item in self.ingredients:
             if item.product:
-                # Защита от деления на ноль
                 pack_amount = item.product.amount if item.product.amount > 0 else 1.0
                 price_per_unit = item.product.price / pack_amount
                 total += item.quantity * price_per_unit
@@ -39,14 +35,11 @@ class Recipe(Base):
 
     @property
     def total_calories(self):
-        """Считает калории рецепта"""
         total = 0.0
         for item in self.ingredients:
             if item.product:
                 pack_amount = item.product.amount if item.product.amount > 0 else 1.0
-                # Калории на единицу веса
                 cals_per_unit = item.product.calories / pack_amount
-                # Умножаем на количество в рецепте
                 total += item.quantity * cals_per_unit
         return round(total)
 
@@ -70,3 +63,20 @@ class WeeklyPlanEntry(Base):
     recipe_id = Column(Integer, ForeignKey("recipes.id"))
 
     recipe = relationship("Recipe")
+
+# --- НОВЫЕ МОДЕЛИ ДЛЯ АДМИНКИ И ТЕЛЕГРАММА ---
+
+class AppSetting(Base):
+    """Таблица для хранения настроек (ключ-значение)"""
+    __tablename__ = "app_settings"
+
+    key = Column(String, primary_key=True, index=True) # например, "bot_token"
+    value = Column(String)
+
+class TelegramUser(Base):
+    """Список пользователей, которым бот может писать"""
+    __tablename__ = "telegram_users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)          # Имя для удобства (напр. "Я", "Жена")
+    chat_id = Column(String, unique=True) # ID чата в Telegram
