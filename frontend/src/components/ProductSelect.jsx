@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 
 const ProductSelect = ({ products, value, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,9 +18,12 @@ const ProductSelect = ({ products, value, onChange }) => {
 
   const selectedProduct = (products || []).find(p => p.id === parseInt(value));
 
-  const filteredProducts = (products || []).filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // ОПТИМИЗАЦИЯ: Фильтрация происходит только при изменении products или searchTerm
+  const filteredProducts = useMemo(() => {
+    return (products || []).filter(p =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [products, searchTerm]);
 
   const handleSelect = (id) => {
     onChange(id);

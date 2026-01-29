@@ -57,13 +57,21 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Валидация перед отправкой
+    const validIngredients = ingredients.map(i => ({
+        product_id: parseInt(i.product_id),
+        quantity: parseFloat(i.quantity)
+    })).filter(i => i.product_id && i.quantity > 0);
+
+    if (validIngredients.length === 0) {
+        alert("Добавьте хотя бы один ингредиент с положительным количеством.");
+        return;
+    }
+    
     const payload = {
       title,
       description,
-      ingredients: ingredients.map(i => ({
-        product_id: parseInt(i.product_id),
-        quantity: parseFloat(i.quantity)
-      }))
+      ingredients: validIngredients
     };
 
     try {
@@ -85,25 +93,23 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         if (!initialData) resetForm();
         if (onRecipeCreated) onRecipeCreated();
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const getIngredientSummary = (ing) => {
-    // 1. Защита от отсутствия данных
     if (!products || products.length === 0) return null;
     const product = products.find(p => p.id === parseInt(ing.product_id));
     const qty = parseFloat(ing.quantity);
     
     if (!product || !qty) return null;
 
-    // 2. Расчет ЦЕНЫ (по весу упаковки)
     const packAmount = product.amount || 1;
     const pricePerUnit = product.price / packAmount;
     const totalCost = (pricePerUnit * qty).toFixed(2);
 
-    // 3. Расчет КАЛОРИЙ (на 100г)
     const calsPer100g = product.calories || 0;
-    // Формула: (Ккал на 100г / 100) * Кол-во грамм
     const totalCals = Math.round((calsPer100g / 100) * qty);
 
     return (
@@ -161,21 +167,28 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                   />
                 </div>
                 <div className="w-24">
+                  {/* ВАЛИДАЦИЯ: min="0" и проверка в onChange */}
                   <input 
-                    type="number" step="0.001" required placeholder="Кол-во"
+                    type="number" step="0.001" min="0" required placeholder="Кол-во"
                     className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-200 outline-none"
                     value={ing.quantity}
-                    onChange={(e) => updateIngredient(idx, 'quantity', e.target.value)}
+                    onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (val < 0) return; // Игнорируем отрицательные
+                        updateIngredient(idx, 'quantity', e.target.value)
+                    }}
                   />
                 </div>
                 <button 
                   type="button"
                   onClick={() => removeIngredient(idx)}
                   className="text-red-500 hover:text-red-700 font-bold px-2 text-xl leading-none"
+                  title="Удалить ингредиент"
                 >
                   ×
                 </button>
               </div>
+              
               {getIngredientSummary(ing)}
             </div>
           ))}
@@ -189,11 +202,18 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         </div>
 
         <div className="flex gap-3 pt-4 border-t border-gray-100">
-            <button type="submit" className="flex-1 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition font-medium shadow-sm">
+            <button 
+                type="submit" 
+                className="flex-1 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition font-medium shadow-sm"
+            >
                 {initialData ? 'Сохранить изменения' : 'Создать рецепт'}
             </button>
             {initialData && (
-                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">
+                <button 
+                    type="button" 
+                    onClick={onCancel}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
+                >
                     Отмена
                 </button>
             )}

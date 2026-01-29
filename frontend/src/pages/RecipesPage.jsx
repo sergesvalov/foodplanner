@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import RecipeBuilder from '../components/RecipeBuilder';
 
 const RecipesPage = () => {
-  // Инициализируем пустым массивом, чтобы не было ошибок при первом рендере
   const [recipes, setRecipes] = useState([]);
   const [editingRecipe, setEditingRecipe] = useState(null);
 
@@ -10,7 +9,6 @@ const RecipesPage = () => {
     fetch('/api/recipes/')
       .then(res => res.json())
       .then(data => {
-        // ЗАЩИТА: Проверяем, что пришел именно массив
         if (Array.isArray(data)) {
             setRecipes(data);
         } else {
@@ -66,9 +64,10 @@ const RecipesPage = () => {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl h-[calc(100vh-100px)]">
+    // ИСПРАВЛЕНИЕ: h-full вместо calc(...) + pb-4 для отступа снизу
+    <div className="container mx-auto max-w-6xl h-full flex flex-col p-4 pb-6">
       
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 shrink-0">
         <h2 className="text-2xl font-bold text-gray-800">Управление рецептами</h2>
         <div className="flex gap-2">
           <button onClick={handleServerExport} className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 border border-blue-200 font-medium text-sm flex items-center gap-2 transition-colors">
@@ -80,8 +79,9 @@ const RecipesPage = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-full pb-10">
-        <div className="overflow-y-auto">
+      {/* Контейнер грида занимает оставшееся место и не скроллит страницу, скролл внутри колонок */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-1 overflow-hidden min-h-0">
+        <div className="overflow-y-auto pr-2">
           <RecipeBuilder 
             onRecipeCreated={handleRecipeSaved} 
             initialData={editingRecipe}
@@ -89,13 +89,12 @@ const RecipesPage = () => {
           />
         </div>
 
-        <div className="bg-white rounded-lg shadow border border-gray-200 flex flex-col overflow-hidden h-[600px] md:h-auto">
-          <div className="p-4 border-b bg-gray-50 font-bold text-gray-700">
+        <div className="bg-white rounded-lg shadow border border-gray-200 flex flex-col overflow-hidden h-full">
+          <div className="p-4 border-b bg-gray-50 font-bold text-gray-700 shrink-0">
             Каталог блюд ({recipes.length})
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {/* ЗАЩИТА: Проверяем, что recipes - это массив, перед вызовом map */}
             {Array.isArray(recipes) && recipes.map(recipe => (
               <div 
                 key={recipe.id} 
@@ -110,7 +109,6 @@ const RecipesPage = () => {
                     <h4 className="font-bold text-gray-800">{recipe.title}</h4>
                     <div className="flex gap-2">
                         <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">
-                          {/* ЗАЩИТА: (recipe.total_cost || 0), чтобы toFixed не падал */}
                           €{(recipe.total_cost || 0).toFixed(2)}
                         </span>
                         <span className="text-xs font-bold bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-100">
@@ -130,7 +128,7 @@ const RecipesPage = () => {
 
                 <div className="flex justify-end gap-2 border-t pt-2 border-gray-100">
                   <button 
-                    onClick={() => { setEditingRecipe(recipe); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    onClick={() => { setEditingRecipe(recipe); }}
                     className="text-sm px-3 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 font-medium transition"
                   >
                     Изменить
