@@ -9,9 +9,9 @@ class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     price = Column(Float, default=0.0)
-    unit = Column(String, default="шт")     # Рекомендуется использовать 'г' или 'мл'
-    amount = Column(Float, default=1.0)     # Вес всей упаковки (например 1000)
-    calories = Column(Float, default=0.0)   # Ккал на 100 г
+    unit = Column(String, default="шт")
+    amount = Column(Float, default=1.0)
+    calories = Column(Float, default=0.0)
 
 class Recipe(Base):
     __tablename__ = "recipes"
@@ -20,12 +20,14 @@ class Recipe(Base):
     title = Column(String, index=True)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    
+    # НОВОЕ ПОЛЕ: Базовое количество порций
+    portions = Column(Integer, default=1)
 
     ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan")
 
     @property
     def total_cost(self):
-        """Считает цену на основе веса упаковки (amount)"""
         total = 0.0
         for item in self.ingredients:
             if item.product:
@@ -36,16 +38,10 @@ class Recipe(Base):
 
     @property
     def total_calories(self):
-        """
-        Считает калории по стандарту 'на 100г'.
-        Формула: (Ккал продукта / 100) * Вес в рецепте
-        """
         total = 0.0
         for item in self.ingredients:
             if item.product:
-                # Калорийность на 1 единицу веса (грамм)
                 cals_per_gram = item.product.calories / 100.0
-                # Умножаем на количество в рецепте
                 total += item.quantity * cals_per_gram
         return round(total)
 
@@ -67,6 +63,9 @@ class WeeklyPlanEntry(Base):
     day_of_week = Column(String)
     meal_type = Column(String)
     recipe_id = Column(Integer, ForeignKey("recipes.id"))
+    
+    # НОВОЕ ПОЛЕ: Целевое количество порций в плане
+    portions = Column(Integer, default=1)
 
     recipe = relationship("Recipe")
 

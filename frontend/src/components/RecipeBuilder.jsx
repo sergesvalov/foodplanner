@@ -6,6 +6,8 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const [description, setDescription] = useState('');
   const [ingredients, setIngredients] = useState([]);
   const [products, setProducts] = useState([]);
+  // НОВОЕ ПОЛЕ
+  const [portions, setPortions] = useState(1);
 
   useEffect(() => {
     fetch('/api/products/')
@@ -21,6 +23,9 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     if (initialData) {
       setTitle(initialData.title);
       setDescription(initialData.description || '');
+      // Загружаем порции
+      setPortions(initialData.portions || 1);
+      
       const mapped = (initialData.ingredients || []).map(i => ({
         product_id: i.product ? i.product.id : '',
         quantity: i.quantity,
@@ -36,6 +41,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     setTitle('');
     setDescription('');
     setIngredients([]);
+    setPortions(1);
   };
 
   const addIngredient = () => {
@@ -57,7 +63,6 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Валидация перед отправкой
     const validIngredients = ingredients.map(i => ({
         product_id: parseInt(i.product_id),
         quantity: parseFloat(i.quantity)
@@ -71,6 +76,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     const payload = {
       title,
       description,
+      portions: parseInt(portions), // Отправляем порции
       ingredients: validIngredients
     };
 
@@ -133,15 +139,28 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         {initialData ? 'Редактировать рецепт' : 'Создать рецепт'}
       </h3>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Название блюда</label>
-          <input 
-            type="text" required
-            className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
-            placeholder="Напр. Борщ"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-          />
+        
+        {/* РЯД: Название + Порции */}
+        <div className="flex gap-4">
+            <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700">Название блюда</label>
+                <input 
+                    type="text" required
+                    className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                    placeholder="Напр. Борщ"
+                    value={title}
+                    onChange={e => setTitle(e.target.value)}
+                />
+            </div>
+            <div className="w-24">
+                <label className="block text-sm font-medium text-gray-700">Порций</label>
+                <input 
+                    type="number" min="1" max="10" required
+                    className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none text-center"
+                    value={portions}
+                    onChange={e => setPortions(e.target.value)}
+                />
+            </div>
         </div>
 
         <div>
@@ -167,14 +186,13 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                   />
                 </div>
                 <div className="w-24">
-                  {/* ВАЛИДАЦИЯ: min="0" и проверка в onChange */}
                   <input 
                     type="number" step="0.001" min="0" required placeholder="Кол-во"
                     className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-200 outline-none"
                     value={ing.quantity}
                     onChange={(e) => {
                         const val = parseFloat(e.target.value);
-                        if (val < 0) return; // Игнорируем отрицательные
+                        if (val < 0) return;
                         updateIngredient(idx, 'quantity', e.target.value)
                     }}
                   />
@@ -183,12 +201,10 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                   type="button"
                   onClick={() => removeIngredient(idx)}
                   className="text-red-500 hover:text-red-700 font-bold px-2 text-xl leading-none"
-                  title="Удалить ингредиент"
                 >
                   ×
                 </button>
               </div>
-              
               {getIngredientSummary(ing)}
             </div>
           ))}
