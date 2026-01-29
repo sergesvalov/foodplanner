@@ -2,14 +2,26 @@ import React, { useState, useEffect } from 'react';
 import RecipeBuilder from '../components/RecipeBuilder';
 
 const RecipesPage = () => {
+  // Инициализируем пустым массивом, чтобы не было ошибок при первом рендере
   const [recipes, setRecipes] = useState([]);
   const [editingRecipe, setEditingRecipe] = useState(null);
 
   const fetchRecipes = () => {
     fetch('/api/recipes/')
       .then(res => res.json())
-      .then(data => setRecipes(data))
-      .catch(err => console.error(err));
+      .then(data => {
+        // ЗАЩИТА: Проверяем, что пришел именно массив
+        if (Array.isArray(data)) {
+            setRecipes(data);
+        } else {
+            console.error("API вернул не массив:", data);
+            setRecipes([]);
+        }
+      })
+      .catch(err => {
+          console.error(err);
+          setRecipes([]);
+      });
   };
 
   useEffect(() => {
@@ -83,7 +95,8 @@ const RecipesPage = () => {
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {recipes.map(recipe => (
+            {/* ЗАЩИТА: Проверяем, что recipes - это массив, перед вызовом map */}
+            {Array.isArray(recipes) && recipes.map(recipe => (
               <div 
                 key={recipe.id} 
                 className={`p-4 rounded-lg border transition-all ${
@@ -97,17 +110,17 @@ const RecipesPage = () => {
                     <h4 className="font-bold text-gray-800">{recipe.title}</h4>
                     <div className="flex gap-2">
                         <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">
-                          €{recipe.total_cost.toFixed(2)}
+                          {/* ЗАЩИТА: (recipe.total_cost || 0), чтобы toFixed не падал */}
+                          €{(recipe.total_cost || 0).toFixed(2)}
                         </span>
-                        {/* Вывод калорий рецепта */}
                         <span className="text-xs font-bold bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-100">
-                          {recipe.total_calories} ккал
+                          {recipe.total_calories || 0} ккал
                         </span>
                     </div>
                   </div>
                   
                   <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full border border-gray-200">
-                    {recipe.ingredients.length} инг.
+                    {recipe.ingredients ? recipe.ingredients.length : 0} инг.
                   </span>
                 </div>
                 
@@ -131,7 +144,10 @@ const RecipesPage = () => {
                 </div>
               </div>
             ))}
-            {recipes.length === 0 && <div className="text-center text-gray-400 mt-10">Список рецептов пуст</div>}
+            
+            {(!Array.isArray(recipes) || recipes.length === 0) && (
+                <div className="text-center text-gray-400 mt-10">Список рецептов пуст</div>
+            )}
           </div>
         </div>
       </div>
