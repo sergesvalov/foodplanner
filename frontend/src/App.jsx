@@ -4,7 +4,8 @@ import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
 import RecipesPage from './pages/RecipesPage';
-import ShoppingListPage from './pages/ShoppingListPage'; // <-- Импорт
+import ShoppingListPage from './pages/ShoppingListPage';
+import TodayPage from './pages/TodayPage'; // <-- Импорт новой страницы
 
 function App() {
   return (
@@ -14,9 +15,10 @@ function App() {
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/today" element={<TodayPage />} /> {/* <-- Новый роут */}
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/recipes" element={<RecipesPage />} />
-            <Route path="/shopping-list" element={<ShoppingListPage />} /> {/* <-- Роут */}
+            <Route path="/shopping-list" element={<ShoppingListPage />} />
           </Routes>
         </main>
       </div>

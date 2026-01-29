@@ -9,7 +9,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-gray-800 shadow-lg">
+    <nav className="bg-gray-800 shadow-lg sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
@@ -18,6 +18,11 @@ const Navbar = () => {
             </Link>
             
             <div className="ml-10 flex items-baseline space-x-4">
+              {/* НОВАЯ КНОПКА */}
+              <Link to="/today" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/today')}`}>
+                ☀️ Сегодня
+              </Link>
+
               <Link to="/" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/')}`}>
                 План на неделю
               </Link>
