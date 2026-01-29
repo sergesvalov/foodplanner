@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
 const DAYS_MAP = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
-
 const MEALS_ORDER = [
   { id: 'pre_breakfast', label: 'Ранний старт' },
   { id: 'breakfast', label: 'Завтрак' },
@@ -33,10 +32,9 @@ const TodayPage = () => {
 
   const getItemForMeal = (mealId) => todayItems.find(item => item.meal_type === mealId);
 
-  // ФУНКЦИЯ ПЕРЕСЧЕТА
   const calculateItemStats = (item) => {
       const recipe = item?.recipe;
-      if (!recipe) return { cost: 0, cals: 0 };
+      if (!recipe) return { cost: 0, cals: 0, ratio: 1 };
       
       const basePortions = recipe.portions || 1;
       const targetPortions = item.portions || 1;
@@ -60,11 +58,11 @@ const TodayPage = () => {
       {/* ЛЕВАЯ ПАНЕЛЬ */}
       <div className="w-1/3 min-w-[350px] bg-white border-r border-gray-200 flex flex-col shadow-xl z-10">
         {selectedRecipe ? (
-          // Находим item, соответствующий выбранному рецепту, чтобы узнать порции
           (() => {
               const currentPlanItem = todayItems.find(i => i.recipe.id === selectedRecipe.id);
               const stats = calculateItemStats(currentPlanItem);
               const ratio = stats.ratio;
+              const hasIngredients = selectedRecipe.ingredients && selectedRecipe.ingredients.length > 0;
 
               return (
                   <div className="h-full flex flex-col">
@@ -94,30 +92,45 @@ const TodayPage = () => {
                         {selectedRecipe.description || "Описание приготовления отсутствует."}
                       </p>
 
-                      <h3 className="font-bold text-gray-800 text-lg mb-3 border-b pb-2">Ингредиенты (на {currentPlanItem?.portions} порц.)</h3>
-                      <ul className="space-y-3">
-                        {(selectedRecipe.ingredients || []).map(ing => {
-                            // Пересчитываем кол-во ингредиентов
-                            const scaledQty = ing.quantity * ratio;
-                            const calsPer100g = ing.product?.calories || 0;
-                            const itemCals = Math.round((calsPer100g / 100) * scaledQty);
+                      <h3 className="font-bold text-gray-800 text-lg mb-3 border-b pb-2">
+                        Ингредиенты (на {currentPlanItem?.portions} порц.)
+                      </h3>
+                      
+                      {!hasIngredients ? (
+                          <div className="text-gray-400 italic text-sm">В этом рецепте нет ингредиентов.</div>
+                      ) : (
+                          <ul className="space-y-3">
+                            {selectedRecipe.ingredients.map(ing => {
+                                const scaledQty = ing.quantity * ratio;
+                                const calsRaw = ing.product?.calories || 0;
+                                const isPieces = ['шт', 'шт.', 'pcs'].includes((ing.product?.unit || '').toLowerCase());
+                                
+                                let itemCals = 0;
+                                if (isPieces) {
+                                    itemCals = Math.round(calsRaw * scaledQty);
+                                } else {
+                                    itemCals = Math.round((calsRaw / 100) * scaledQty);
+                                }
 
-                            return (
-                                <li key={ing.id} className="flex justify-between items-center text-gray-700 bg-gray-50 p-2 rounded">
-                                    <div className="flex flex-col">
-                                        <span className="font-medium">{ing.product?.name}</span>
-                                        <span className="text-[10px] text-gray-400 font-bold">
-                                            {itemCals} ккал
-                                            <span className="font-normal opacity-70 ml-1">({calsPer100g}/100г)</span>
+                                return (
+                                    <li key={ing.id} className="flex justify-between items-center text-gray-700 bg-gray-50 p-2 rounded">
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{ing.product?.name}</span>
+                                            <span className="text-[10px] text-gray-400 font-bold">
+                                                {itemCals} ккал
+                                                <span className="font-normal opacity-70 ml-1">
+                                                    ({calsRaw} ккал/{isPieces ? 'шт' : '100г'})
+                                                </span>
+                                            </span>
+                                        </div>
+                                        <span className="font-mono bg-white px-2 py-0.5 rounded border text-sm">
+                                            {parseFloat(scaledQty.toFixed(2))} {ing.product?.unit}
                                         </span>
-                                    </div>
-                                    <span className="font-mono bg-white px-2 py-0.5 rounded border text-sm">
-                                        {parseFloat(scaledQty.toFixed(2))} {ing.product?.unit}
-                                    </span>
-                                </li>
-                            );
-                        })}
-                      </ul>
+                                    </li>
+                                );
+                            })}
+                          </ul>
+                      )}
                     </div>
                   </div>
               );
@@ -192,14 +205,6 @@ const TodayPage = () => {
                     </div>
                 );
             })}
-            
-            {todayItems.length === 0 && (
-                <div className="text-center py-24 bg-white rounded-xl border border-dashed border-gray-300">
-                    <div className="text-6xl mb-4">☕️</div>
-                    <h3 className="text-2xl text-gray-800 font-bold">День свободен</h3>
-                    <p className="text-gray-500 mt-2">На сегодня пока ничего не запланировано.</p>
-                </div>
-            )}
         </div>
       </div>
     </div>

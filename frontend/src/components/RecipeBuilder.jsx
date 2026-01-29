@@ -6,7 +6,6 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const [description, setDescription] = useState('');
   const [ingredients, setIngredients] = useState([]);
   const [products, setProducts] = useState([]);
-  // НОВОЕ ПОЛЕ
   const [portions, setPortions] = useState(1);
 
   useEffect(() => {
@@ -23,7 +22,6 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     if (initialData) {
       setTitle(initialData.title);
       setDescription(initialData.description || '');
-      // Загружаем порции
       setPortions(initialData.portions || 1);
       
       const mapped = (initialData.ingredients || []).map(i => ({
@@ -63,20 +61,18 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    const validIngredients = ingredients.map(i => ({
-        product_id: parseInt(i.product_id),
-        quantity: parseFloat(i.quantity)
-    })).filter(i => i.product_id && i.quantity > 0);
-
-    if (validIngredients.length === 0) {
-        alert("Добавьте хотя бы один ингредиент с положительным количеством.");
-        return;
-    }
+    // Фильтруем пустые строки, но не запрещаем пустой список
+    const validIngredients = ingredients
+        .map(i => ({
+            product_id: parseInt(i.product_id),
+            quantity: parseFloat(i.quantity)
+        }))
+        .filter(i => i.product_id && i.quantity > 0);
     
     const payload = {
       title,
       description,
-      portions: parseInt(portions), // Отправляем порции
+      portions: parseInt(portions),
       ingredients: validIngredients
     };
 
@@ -99,9 +95,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         if (!initialData) resetForm();
         if (onRecipeCreated) onRecipeCreated();
       }
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const getIngredientSummary = (ing) => {
@@ -111,12 +105,21 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     
     if (!product || !qty) return null;
 
+    // 1. Цена
     const packAmount = product.amount || 1;
     const pricePerUnit = product.price / packAmount;
     const totalCost = (pricePerUnit * qty).toFixed(2);
 
-    const calsPer100g = product.calories || 0;
-    const totalCals = Math.round((calsPer100g / 100) * qty);
+    // 2. Калории (Штуки vs Вес)
+    const prodCals = product.calories || 0;
+    const isPieces = ['шт', 'шт.', 'pcs', 'piece'].includes((product.unit || '').toLowerCase());
+    
+    let totalCals = 0;
+    if (isPieces) {
+        totalCals = Math.round(prodCals * qty);
+    } else {
+        totalCals = Math.round((prodCals / 100) * qty);
+    }
 
     return (
       <div className="text-xs text-gray-500 mt-1 ml-1 flex gap-3 select-none">
@@ -140,14 +143,13 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       </h3>
       <form onSubmit={handleSubmit} className="space-y-4">
         
-        {/* РЯД: Название + Порции */}
         <div className="flex gap-4">
             <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700">Название блюда</label>
                 <input 
                     type="text" required
                     className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
-                    placeholder="Напр. Борщ"
+                    placeholder="Напр. Вода"
                     value={title}
                     onChange={e => setTitle(e.target.value)}
                 />

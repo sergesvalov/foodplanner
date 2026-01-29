@@ -20,8 +20,6 @@ class Recipe(Base):
     title = Column(String, index=True)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    
-    # НОВОЕ ПОЛЕ: Базовое количество порций
     portions = Column(Integer, default=1)
 
     ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan")
@@ -41,8 +39,18 @@ class Recipe(Base):
         total = 0.0
         for item in self.ingredients:
             if item.product:
-                cals_per_gram = item.product.calories / 100.0
-                total += item.quantity * cals_per_gram
+                # ОПРЕДЕЛЕНИЕ ТИПА ЕДИНИЦ
+                unit_lower = (item.product.unit or "").lower()
+                is_pieces = unit_lower in ["шт", "шт.", "pcs", "piece", "stk"]
+
+                if is_pieces:
+                    # Если штуки: Калории * Количество
+                    total += item.product.calories * item.quantity
+                else:
+                    # Если вес/объем: (Калории / 100) * Количество
+                    cals_per_gram = item.product.calories / 100.0
+                    total += item.quantity * cals_per_gram
+                    
         return round(total)
 
 class RecipeIngredient(Base):
@@ -63,8 +71,6 @@ class WeeklyPlanEntry(Base):
     day_of_week = Column(String)
     meal_type = Column(String)
     recipe_id = Column(Integer, ForeignKey("recipes.id"))
-    
-    # НОВОЕ ПОЛЕ: Целевое количество порций в плане
     portions = Column(Integer, default=1)
 
     recipe = relationship("Recipe")

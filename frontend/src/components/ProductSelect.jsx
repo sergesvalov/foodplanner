@@ -18,7 +18,6 @@ const ProductSelect = ({ products, value, onChange }) => {
 
   const selectedProduct = (products || []).find(p => p.id === parseInt(value));
 
-  // ОПТИМИЗАЦИЯ: Фильтрация происходит только при изменении products или searchTerm
   const filteredProducts = useMemo(() => {
     return (products || []).filter(p =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -68,25 +67,28 @@ const ProductSelect = ({ products, value, onChange }) => {
                Ничего не найдено
              </li>
            ) : (
-             filteredProducts.map(product => (
-               <li
-                 key={product.id}
-                 className={`
-                    p-2 px-3 cursor-pointer text-sm flex justify-between items-center border-b border-gray-50 last:border-0
-                    ${product.id === parseInt(value) ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-50 text-gray-700'}
-                 `}
-                 onClick={() => handleSelect(product.id)}
-               >
-                 <span className="font-medium">{product.name}</span>
-                 
-                 <span className="text-xs text-gray-400 flex flex-col items-end">
-                    <span>{product.amount} {product.unit}</span>
-                    <span className="text-[10px] text-orange-500">
-                        {product.calories > 0 ? `${product.calories} ккал/100г` : ''}
-                    </span>
-                 </span>
-               </li>
-             ))
+             filteredProducts.map(product => {
+               const isPieces = ['шт', 'шт.', 'pcs'].includes((product.unit || '').toLowerCase());
+               return (
+                 <li
+                   key={product.id}
+                   className={`
+                      p-2 px-3 cursor-pointer text-sm flex justify-between items-center border-b border-gray-50 last:border-0
+                      ${product.id === parseInt(value) ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-50 text-gray-700'}
+                   `}
+                   onClick={() => handleSelect(product.id)}
+                 >
+                   <span className="font-medium">{product.name}</span>
+                   
+                   <span className="text-xs text-gray-400 flex flex-col items-end">
+                      <span>{product.amount} {product.unit}</span>
+                      <span className="text-[10px] text-orange-500">
+                          {product.calories > 0 ? `${product.calories} ккал/${isPieces ? 'шт' : '100г'}` : ''}
+                      </span>
+                   </span>
+                 </li>
+               );
+             })
            )}
          </ul>
        )}
