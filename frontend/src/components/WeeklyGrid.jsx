@@ -70,13 +70,10 @@ const WeeklyGrid = () => {
       <div className="grid grid-cols-7 h-full min-w-[1050px] divide-x divide-gray-300">
         
         {DAYS.map((day) => {
-          // 1. Фильтруем блюда для текущего дня
           const dayItems = plan.filter(p => p.day_of_week === day);
           
-          // 2. Считаем общую стоимость
+          // Считаем общую стоимость и калории
           const dayCost = dayItems.reduce((sum, item) => sum + (item.recipe?.total_cost || 0), 0);
-          
-          // 3. Считаем общие калории (НОВОЕ)
           const dayCals = dayItems.reduce((sum, item) => sum + (item.recipe?.total_calories || 0), 0);
 
           const hasData = dayItems.length > 0;
@@ -88,15 +85,14 @@ const WeeklyGrid = () => {
               <div className="bg-gray-800 text-white py-2 flex flex-col items-center justify-center shadow-md z-10 shrink-0 border-b border-gray-600 gap-1">
                 <span className="font-bold text-xs uppercase tracking-wider">{day}</span>
                 
-                {/* Бейджи с итоговой информацией */}
                 <div className="flex gap-1">
+                    {/* ИСПРАВЛЕНО: toFixed(2) для цены в шапке дня */}
                     <div className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
                         hasData ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400'
                     }`}>
-                      €{dayCost.toFixed(0)}
+                      €{dayCost.toFixed(2)}
                     </div>
                     
-                    {/* Бейдж калорий */}
                     <div className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
                         hasData ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-400'
                     }`}>
@@ -149,10 +145,10 @@ const WeeklyGrid = () => {
                                       </span>
                                       
                                       <div className="flex justify-between items-end mt-1">
-                                          <span className="text-[9px] text-green-600 font-mono leading-none">
-                                              €{item.recipe.total_cost.toFixed(0)}
+                                          {/* ИСПРАВЛЕНО: toFixed(2) для цены блюда */}
+                                          <span className="text-[9px] text-green-600 font-mono leading-none font-bold">
+                                              €{item.recipe.total_cost.toFixed(2)}
                                           </span>
-                                          {/* Вывод калорий в карточке */}
                                           <span className="text-[9px] text-orange-600 font-mono leading-none">
                                               {item.recipe.total_calories} ккал
                                           </span>
