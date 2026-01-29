@@ -5,7 +5,6 @@ from database import Base
 
 class Product(Base):
     __tablename__ = "products"
-
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     price = Column(Float, default=0.0)
@@ -15,13 +14,11 @@ class Product(Base):
 
 class Recipe(Base):
     __tablename__ = "recipes"
-
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     portions = Column(Integer, default=1)
-
     ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan")
 
     @property
@@ -41,37 +38,42 @@ class Recipe(Base):
             if item.product:
                 unit_lower = (item.product.unit or "").lower()
                 is_pieces = unit_lower in ["шт", "шт.", "pcs", "piece", "stk"]
-
                 if is_pieces:
-                    # Если штуки: Калории * Количество
                     total += item.product.calories * item.quantity
                 else:
-                    # Если вес/объем: (Калории / 100) * Количество
                     cals_per_gram = item.product.calories / 100.0
                     total += item.quantity * cals_per_gram
         return round(total)
 
 class RecipeIngredient(Base):
     __tablename__ = "recipe_ingredients"
-
     id = Column(Integer, primary_key=True, index=True)
     recipe_id = Column(Integer, ForeignKey("recipes.id"))
     product_id = Column(Integer, ForeignKey("products.id"))
     quantity = Column(Float)
-
     recipe = relationship("Recipe", back_populates="ingredients")
     product = relationship("Product")
 
+# НОВАЯ ТАБЛИЦА
+class FamilyMember(Base):
+    __tablename__ = "family_members"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    color = Column(String, default="blue")
+
 class WeeklyPlanEntry(Base):
     __tablename__ = "weekly_plan"
-
     id = Column(Integer, primary_key=True, index=True)
     day_of_week = Column(String)
     meal_type = Column(String)
     recipe_id = Column(Integer, ForeignKey("recipes.id"))
     portions = Column(Integer, default=1)
+    
+    # СВЯЗЬ С ПОЛЬЗОВАТЕЛЕМ
+    family_member_id = Column(Integer, ForeignKey("family_members.id"), nullable=True)
 
     recipe = relationship("Recipe")
+    family_member = relationship("FamilyMember")
 
 class AppSetting(Base):
     __tablename__ = "app_settings"
@@ -83,11 +85,3 @@ class TelegramUser(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
     chat_id = Column(String, unique=True)
-
-# НОВАЯ ТАБЛИЦА
-class FamilyMember(Base):
-    __tablename__ = "family_members"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    color = Column(String, default="blue")
