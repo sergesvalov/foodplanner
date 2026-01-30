@@ -15,7 +15,8 @@ const MEALS_ORDER = [
 
 const TodayPage = () => {
   const [todayItems, setTodayItems] = useState([]);
-  const [selectedRecipe, setSelectedRecipe] = useState(null);
+  // Изменили логику: храним ID конкретной записи плана, а не рецепта
+  const [selectedItemId, setSelectedItemId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const todayIndex = new Date().getDay();
@@ -31,8 +32,6 @@ const TodayPage = () => {
       })
       .catch(err => console.error(err));
   }, [todayName]);
-
-  const getItemForMeal = (mealId) => todayItems.find(item => item.meal_type === mealId);
 
   const calculateItemStats = (item) => {
       const recipe = item?.recipe;
@@ -52,7 +51,7 @@ const TodayPage = () => {
   const totalCost = todayItems.reduce((sum, i) => sum + calculateItemStats(i).cost, 0);
   const totalCalories = todayItems.reduce((sum, i) => sum + calculateItemStats(i).cals, 0);
 
-  // --- РАСЧЕТ СТАТИСТИКИ ПО ПОЛЬЗОВАТЕЛЯМ ---
+  // Статистика по пользователям
   const userStats = useMemo(() => {
     const statsMap = {};
     todayItems.forEach(item => {
@@ -69,17 +68,21 @@ const TodayPage = () => {
     });
     return Object.values(statsMap);
   }, [todayItems]);
-  // ------------------------------------------
+
+  // Находим выбранный элемент плана для отображения слева
+  const selectedPlanItem = useMemo(() => {
+      return todayItems.find(i => i.id === selectedItemId) || null;
+  }, [todayItems, selectedItemId]);
 
   if (loading) return <div className="p-10 text-center text-gray-500">Загрузка плана...</div>;
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-gray-100 overflow-hidden">
       
-      {/* ЛЕВАЯ ПАНЕЛЬ: СТАТИСТИКА + ДЕТАЛИ РЕЦЕПТА */}
+      {/* ЛЕВАЯ ПАНЕЛЬ: СТАТИСТИКА + ДЕТАЛИ */}
       <div className="w-1/3 min-w-[350px] bg-white border-r border-gray-200 flex flex-col shadow-xl z-10">
         
-        {/* БЛОК СТАТИСТИКИ ПО СЕМЬЕ (ВСЕГДА ВИДЕН СВЕРХУ) */}
+        {/* СТАТИСТИКА СЕМЬИ (Фиксирована сверху) */}
         <div className="p-4 bg-gray-50 border-b border-gray-200 shrink-0">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Статистика по семье</h3>
             {userStats.length === 0 ? (
@@ -105,87 +108,87 @@ const TodayPage = () => {
             )}
         </div>
 
-        {/* БЛОК ДЕТАЛЕЙ РЕЦЕПТА (ЗАНИМАЕТ ОСТАВШЕЕСЯ МЕСТО) */}
+        {/* ДЕТАЛИ ВЫБРАННОГО БЛЮДА */}
         <div className="flex-1 overflow-y-auto relative bg-white">
-            {selectedRecipe ? (
+            {selectedPlanItem ? (
             (() => {
-                const currentPlanItem = todayItems.find(i => i.recipe.id === selectedRecipe.id);
-                const stats = calculateItemStats(currentPlanItem);
+                const recipe = selectedPlanItem.recipe;
+                const stats = calculateItemStats(selectedPlanItem);
                 const ratio = stats.ratio;
-                const hasIngredients = selectedRecipe.ingredients && selectedRecipe.ingredients.length > 0;
-                const member = currentPlanItem?.family_member;
+                const hasIngredients = recipe.ingredients && recipe.ingredients.length > 0;
+                const member = selectedPlanItem.family_member;
 
                 return (
                     <div className="h-full flex flex-col">
                         <div className="p-6 border-b border-gray-100 shrink-0">
-                        <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-2 block">
-                            Выбранное блюдо
-                        </span>
-                        <h2 className="text-2xl font-bold text-gray-800 leading-tight mb-2">
-                            {selectedRecipe.title}
-                        </h2>
-                        
-                        {member && (
-                            <div className={`inline-block mb-3 px-2 py-0.5 rounded text-xs font-bold text-white bg-${member.color}-500`}>
-                                Для: {member.name}
-                            </div>
-                        )}
+                            <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-2 block">
+                                Выбранное блюдо
+                            </span>
+                            <h2 className="text-2xl font-bold text-gray-800 leading-tight mb-2">
+                                {recipe.title}
+                            </h2>
+                            
+                            {member && (
+                                <div className={`inline-block mb-3 px-2 py-0.5 rounded text-xs font-bold text-white bg-${member.color}-500`}>
+                                    Для: {member.name}
+                                </div>
+                            )}
 
-                        <div className="flex flex-wrap gap-2">
-                            <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold border border-green-200">
-                                €{stats.cost.toFixed(2)}
-                            </span>
-                            <span className="inline-flex items-center px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold border border-orange-200">
-                                {stats.cals} ккал
-                            </span>
-                            <span className="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold border border-indigo-200">
-                                {currentPlanItem?.portions} порц.
-                            </span>
-                        </div>
+                            <div className="flex flex-wrap gap-2">
+                                <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold border border-green-200">
+                                    €{stats.cost.toFixed(2)}
+                                </span>
+                                <span className="inline-flex items-center px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold border border-orange-200">
+                                    {stats.cals} ккал
+                                </span>
+                                <span className="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold border border-indigo-200">
+                                    {selectedPlanItem.portions} порц.
+                                </span>
+                            </div>
                         </div>
                         
                         <div className="flex-1 p-6">
-                        <h3 className="font-bold text-gray-800 text-sm mb-2 border-b pb-1">Способ приготовления</h3>
-                        <p className="text-gray-600 whitespace-pre-wrap leading-relaxed text-sm mb-6">
-                            {selectedRecipe.description || "Описание приготовления отсутствует."}
-                        </p>
+                            <h3 className="font-bold text-gray-800 text-sm mb-2 border-b pb-1">Способ приготовления</h3>
+                            <p className="text-gray-600 whitespace-pre-wrap leading-relaxed text-sm mb-6">
+                                {recipe.description || "Описание приготовления отсутствует."}
+                            </p>
 
-                        <h3 className="font-bold text-gray-800 text-sm mb-2 border-b pb-1">
-                            Ингредиенты (на {currentPlanItem?.portions} порц.)
-                        </h3>
-                        
-                        {!hasIngredients ? (
-                            <div className="text-gray-400 italic text-sm">В этом рецепте нет ингредиентов.</div>
-                        ) : (
-                            <ul className="space-y-2">
-                                {selectedRecipe.ingredients.map(ing => {
-                                    const scaledQty = ing.quantity * ratio;
-                                    const calsRaw = ing.product?.calories || 0;
-                                    const isPieces = ['шт', 'шт.', 'pcs'].includes((ing.product?.unit || '').toLowerCase());
-                                    
-                                    let itemCals = 0;
-                                    if (isPieces) {
-                                        itemCals = Math.round(calsRaw * scaledQty);
-                                    } else {
-                                        itemCals = Math.round((calsRaw / 100) * scaledQty);
-                                    }
+                            <h3 className="font-bold text-gray-800 text-sm mb-2 border-b pb-1">
+                                Ингредиенты (на {selectedPlanItem.portions} порц.)
+                            </h3>
+                            
+                            {!hasIngredients ? (
+                                <div className="text-gray-400 italic text-sm">В этом рецепте нет ингредиентов.</div>
+                            ) : (
+                                <ul className="space-y-2">
+                                    {recipe.ingredients.map(ing => {
+                                        const scaledQty = ing.quantity * ratio;
+                                        const calsRaw = ing.product?.calories || 0;
+                                        const isPieces = ['шт', 'шт.', 'pcs'].includes((ing.product?.unit || '').toLowerCase());
+                                        
+                                        let itemCals = 0;
+                                        if (isPieces) {
+                                            itemCals = Math.round(calsRaw * scaledQty);
+                                        } else {
+                                            itemCals = Math.round((calsRaw / 100) * scaledQty);
+                                        }
 
-                                    return (
-                                        <li key={ing.id} className="flex justify-between items-center text-gray-700 bg-gray-50 p-2 rounded text-sm">
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">{ing.product?.name}</span>
-                                                <span className="text-[10px] text-gray-400 font-bold">
-                                                    {itemCals} ккал
+                                        return (
+                                            <li key={ing.id} className="flex justify-between items-center text-gray-700 bg-gray-50 p-2 rounded text-sm">
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{ing.product?.name}</span>
+                                                    <span className="text-[10px] text-gray-400 font-bold">
+                                                        {itemCals} ккал
+                                                    </span>
+                                                </div>
+                                                <span className="font-mono bg-white px-2 py-0.5 rounded border text-xs">
+                                                    {parseFloat(scaledQty.toFixed(2))} {ing.product?.unit}
                                                 </span>
-                                            </div>
-                                            <span className="font-mono bg-white px-2 py-0.5 rounded border text-xs">
-                                                {parseFloat(scaledQty.toFixed(2))} {ing.product?.unit}
-                                            </span>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
                         </div>
                     </div>
                 );
@@ -220,9 +223,10 @@ const TodayPage = () => {
 
         <div className="space-y-4 max-w-4xl pb-10">
             {MEALS_ORDER.map((meal) => {
-                const item = getItemForMeal(meal.id);
+                // ИЗМЕНЕНИЕ: Теперь мы ищем ВСЕ блюда этого типа, а не одно
+                const items = todayItems.filter(item => item.meal_type === meal.id);
                 
-                if (!item) {
+                if (items.length === 0) {
                     return (
                         <div key={meal.id} className="flex gap-4 items-center opacity-30 hover:opacity-60 transition-opacity select-none group">
                              <div className="w-32 text-right text-xs font-bold text-gray-500 uppercase tracking-wider py-2 group-hover:text-gray-700">{meal.label}</div>
@@ -231,38 +235,45 @@ const TodayPage = () => {
                     );
                 }
 
-                const isActive = selectedRecipe?.id === item.recipe.id;
-                const stats = calculateItemStats(item);
-                const member = item.family_member;
-
                 return (
                     <div key={meal.id} className="flex gap-6 items-stretch group">
                         <div className="w-32 text-right pt-6 shrink-0">
-                            <div className={`text-xs font-bold uppercase tracking-wider transition-colors ${isActive ? 'text-indigo-600 scale-105' : 'text-gray-500 group-hover:text-gray-700'}`}>
+                            <div className="text-xs font-bold uppercase tracking-wider text-indigo-600 scale-105">
                                 {meal.label}
                             </div>
                         </div>
 
-                        <div 
-                            onClick={() => setSelectedRecipe(item.recipe)}
-                            className={`flex-1 rounded-xl p-5 cursor-pointer border-2 transition-all duration-200 ${isActive ? 'bg-white border-indigo-500 ring-4 ring-indigo-50 shadow-xl scale-[1.01]' : 'bg-white border-transparent hover:border-indigo-200 hover:shadow-md shadow-sm'}`}
-                        >
-                            <div className="flex justify-between items-start">
-                                <h3 className={`text-xl font-bold mb-2 ${isActive ? 'text-indigo-700' : 'text-gray-800'}`}>{item.recipe.title}</h3>
-                                {isActive && <span className="text-indigo-500 text-xl animate-pulse">●</span>}
-                            </div>
-                            
-                            {member && (
-                                <div className={`inline-block mb-2 px-2 py-0.5 rounded text-xs font-bold text-white bg-${member.color}-500`}>
-                                    {member.name}
-                                </div>
-                            )}
+                        <div className="flex-1 flex flex-col gap-3">
+                            {items.map(item => {
+                                const isActive = selectedItemId === item.id;
+                                const stats = calculateItemStats(item);
+                                const member = item.family_member;
 
-                            <div className="flex gap-3 text-sm text-gray-500 mt-2">
-                                <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">💶 €{stats.cost.toFixed(2)}</span>
-                                <span className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded text-orange-700 font-medium">🔥 {stats.cals} ккал</span>
-                                <span className="flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded text-indigo-700 text-xs">🍽 {item.portions} порц.</span>
-                            </div>
+                                return (
+                                    <div 
+                                        key={item.id}
+                                        onClick={() => setSelectedItemId(item.id)}
+                                        className={`rounded-xl p-5 cursor-pointer border-2 transition-all duration-200 ${isActive ? 'bg-white border-indigo-500 ring-4 ring-indigo-50 shadow-xl scale-[1.01]' : 'bg-white border-transparent hover:border-indigo-200 hover:shadow-md shadow-sm'}`}
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <h3 className={`text-xl font-bold mb-2 ${isActive ? 'text-indigo-700' : 'text-gray-800'}`}>{item.recipe.title}</h3>
+                                            {isActive && <span className="text-indigo-500 text-xl animate-pulse">●</span>}
+                                        </div>
+                                        
+                                        {member && (
+                                            <div className={`inline-block mb-2 px-2 py-0.5 rounded text-xs font-bold text-white bg-${member.color}-500`}>
+                                                {member.name}
+                                            </div>
+                                        )}
+
+                                        <div className="flex gap-3 text-sm text-gray-500 mt-2">
+                                            <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">💶 €{stats.cost.toFixed(2)}</span>
+                                            <span className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded text-orange-700 font-medium">🔥 {stats.cals} ккал</span>
+                                            <span className="flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded text-indigo-700 text-xs">🍽 {item.portions} порц.</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 );
