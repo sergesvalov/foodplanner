@@ -13,16 +13,16 @@ import StatisticsPage from './pages/StatisticsPage';
 function App() {
   return (
     <Router>
-      {/* h-screen фиксирует высоту приложения по высоте окна браузера */}
-      <div className="flex flex-col h-screen bg-gray-100 overflow-hidden">
+      {/* ИЗМЕНЕНИЕ: min-h-screen вместо h-screen, чтобы страница могла расти */}
+      <div className="flex flex-col min-h-screen bg-gray-100">
         
-        {/* Navbar всегда сверху и не сжимается */}
-        <div className="shrink-0 z-50">
+        {/* Navbar sticky, чтобы он оставался сверху при скролле */}
+        <div className="shrink-0 z-50 sticky top-0">
           <Navbar />
         </div>
 
-        {/* Main занимает все оставшееся место и скрывает вылезающий контент */}
-        <main className="flex-1 overflow-hidden relative flex flex-col">
+        {/* ИЗМЕНЕНИЕ: Убрали overflow-hidden, теперь контент растягивает страницу */}
+        <main className="flex-1 relative flex flex-col">
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/today" element={<TodayPage />} />

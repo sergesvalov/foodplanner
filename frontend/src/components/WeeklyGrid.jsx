@@ -96,10 +96,11 @@ const WeeklyGrid = () => {
   const ALL_COLUMNS = [...DAYS, EXTRA_KEY];
 
   return (
-    <div className="h-full w-full flex flex-col bg-gray-100 rounded-lg border border-gray-300 relative">
+    // ИЗМЕНЕНИЕ: Убрали фиксированную высоту. h-auto позволяет расти.
+    <div className="w-full flex flex-col bg-gray-100 rounded-lg border border-gray-300 relative h-auto shadow-sm">
       
       {pendingDrop && (
-          <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center backdrop-blur-sm animate-fadeIn">
+          <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center backdrop-blur-sm animate-fadeIn">
               <div className="bg-white rounded-xl shadow-2xl p-6 w-80">
                   <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">Кто будет это есть?</h3>
                   <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto">
@@ -122,7 +123,7 @@ const WeeklyGrid = () => {
       )}
 
       {/* HEADER */}
-      <div className="bg-white p-3 border-b border-gray-200 flex justify-between items-center shadow-sm z-20 shrink-0">
+      <div className="bg-white p-3 border-b border-gray-200 flex justify-between items-center shadow-sm z-20 rounded-t-lg">
           <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2">📅 План питания <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{plan.length} блюд</span></h2>
           <div className="flex gap-4">
               <div className="flex flex-col items-end"><span className="text-[10px] text-gray-400 uppercase font-bold">Бюджет</span><span className="text-lg font-bold text-green-600 leading-none">€{weeklyStats.cost.toFixed(2)}</span></div>
@@ -131,17 +132,21 @@ const WeeklyGrid = () => {
       </div>
 
       {/* GRID */}
-      {/* ИСПРАВЛЕНИЕ: добавлен min-h-0, чтобы flex-контейнер не растягивался за пределы родителя */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden min-h-0">
-        <div className="grid grid-cols-8 h-full min-w-[1200px] divide-x divide-gray-300">
+      {/* ИЗМЕНЕНИЕ: overflow-visible, чтобы контент рос вниз */}
+      <div className="overflow-x-auto overflow-y-visible">
+        {/* min-w-[1200px] обеспечивает горизонтальный скролл на мобильных, но вертикальный будет у всей страницы */}
+        <div className="grid grid-cols-8 divide-x divide-gray-300 min-w-[1200px]">
             {ALL_COLUMNS.map((col) => {
             const isExtra = col === EXTRA_KEY;
             const items = plan.filter(p => p.day_of_week === col);
             const stats = items.reduce((acc, i) => { const s = calculateItemStats(i); return { cost: acc.cost + s.cost, cals: acc.cals + s.cals }; }, { cost: 0, cals: 0 });
 
             return (
-                <div key={col} className={`flex flex-col h-full relative group min-w-0 ${isExtra ? 'bg-indigo-50/30' : 'bg-white'}`}>
-                <div className={`py-2 flex flex-col items-center justify-center shadow-md z-10 shrink-0 border-b border-gray-600 gap-1 ${isExtra ? 'bg-indigo-700' : 'bg-gray-800'}`}>
+                // ИЗМЕНЕНИЕ: h-auto вместо h-full
+                <div key={col} className={`flex flex-col h-auto relative group min-w-0 ${isExtra ? 'bg-indigo-50/30' : 'bg-white'}`}>
+                
+                {/* Заголовок колонки */}
+                <div className={`py-2 flex flex-col items-center justify-center border-b border-gray-600 gap-1 ${isExtra ? 'bg-indigo-700' : 'bg-gray-800'}`}>
                     <span className="font-bold text-xs uppercase tracking-wider text-white">{isExtra ? '🍪 Вкусняшки' : col}</span>
                     <div className="flex gap-1">
                         <div className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${items.length>0 ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400'}`}>€{stats.cost.toFixed(2)}</div>
@@ -149,10 +154,10 @@ const WeeklyGrid = () => {
                     </div>
                 </div>
                 
-                {/* min-h-0 здесь уже был, но он работает только если родитель ограничен */}
-                <div className="flex-1 overflow-y-auto p-1 space-y-1 scrollbar-thin scrollbar-thumb-gray-300 min-h-0">
+                {/* Тело колонки. ИЗМЕНЕНИЕ: Убрали overflow-y-auto. Теперь это просто div, который растягивается */}
+                <div className="p-1 space-y-1 h-full">
                     {isExtra ? (
-                        <div className="h-full min-h-[200px] border-2 border-dashed border-indigo-200 rounded-lg bg-indigo-50/50 flex flex-col p-2 gap-2 hover:bg-indigo-100/50"
+                        <div className="min-h-[300px] h-full border-2 border-dashed border-indigo-200 rounded-lg bg-indigo-50/50 flex flex-col p-2 gap-2 hover:bg-indigo-100/50"
                             onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, col, EXTRA_MEAL_TYPE)}>
                             {items.map(item => <PlanItemCard key={item.id} item={item} onRemove={handleRemove} onPortionChange={handlePortionChange} calculateStats={calculateItemStats} />)}
                         </div>
@@ -161,7 +166,7 @@ const WeeklyGrid = () => {
                             const slotItems = plan.filter(p => p.day_of_week === col && p.meal_type === meal.id);
                             const isCompact = meal.isSnack && slotItems.length === 0;
                             return (
-                            <div key={meal.id} className={`relative rounded border ${meal.color} ${isCompact ? 'h-6 opacity-50 hover:opacity-100 hover:h-auto border-dashed flex items-center justify-center' : 'min-h-[60px] pb-1 shadow-sm'}`}
+                            <div key={meal.id} className={`relative rounded border ${meal.color} ${isCompact ? 'h-8 opacity-50 hover:opacity-100 hover:h-auto border-dashed flex items-center justify-center' : 'min-h-[80px] pb-1 shadow-sm'}`}
                                 onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, col, meal.id)}>
                                 {isCompact ? <span className="text-[9px] text-gray-400 uppercase font-bold">+ {meal.label}</span> : <div className="text-[9px] font-bold uppercase px-1.5 py-1 text-gray-500/80 mb-0.5">{meal.label}</div>}
                                 {!isCompact && <div className="px-1 space-y-1">{slotItems.map(item => <PlanItemCard key={item.id} item={item} onRemove={handleRemove} onPortionChange={handlePortionChange} calculateStats={calculateItemStats} />)}</div>}
@@ -169,7 +174,8 @@ const WeeklyGrid = () => {
                             );
                         })
                     )}
-                    <div className="h-8"></div>
+                    {/* Отступ снизу для удобства перетаскивания */}
+                    <div className="h-10"></div>
                 </div>
                 </div>
             );

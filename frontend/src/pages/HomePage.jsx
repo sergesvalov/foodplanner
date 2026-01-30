@@ -4,16 +4,18 @@ import DraggableRecipeList from '../components/DraggableRecipeList';
 
 const HomePage = () => {
   return (
-    // Добавил min-h-0 (хотя flex-1 overflow-hidden должно работать, но так надежнее)
-    <div className="flex flex-row items-stretch h-full bg-gray-100">
+    <div className="flex flex-row items-start bg-gray-100 relative">
       
-      {/* Левая колонка */}
-      <div className="shrink-0 h-full">
+      {/* Левая колонка - STICKY */}
+      {/* top-16 компенсирует высоту Navbar (64px) */}
+      {/* h-[calc(100vh-64px)] ограничивает высоту списка, чтобы внутри него был свой скролл, если рецептов много */}
+      <div className="shrink-0 w-80 sticky top-16 h-[calc(100vh-64px)] overflow-y-auto border-r border-gray-200 bg-white z-30">
         <DraggableRecipeList />
       </div>
 
-      {/* Правая колонка */}
-      <div className="flex-1 p-4 overflow-hidden h-full min-h-0">
+      {/* Правая колонка - Таблица */}
+      {/* Теперь она просто занимает оставшееся место и растет в высоту */}
+      <div className="flex-1 p-4 min-w-0">
          <WeeklyGrid />
       </div>
 
