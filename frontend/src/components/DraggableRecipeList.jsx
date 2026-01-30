@@ -1,98 +1,115 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 const DraggableRecipeList = () => {
   const [recipes, setRecipes] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Порядок и названия категорий
+  const CATEGORIES_ORDER = [
+    { id: 'breakfast', label: '🍳 Завтрак' },
+    { id: 'soup', label: '🍲 Первое' },
+    { id: 'main', label: '🍗 Второе' },
+    { id: 'side', label: '🍚 Гарнир' },
+    { id: 'snack', label: '🥪 Перекус' },
+    { id: 'yummy', label: '🍪 Вкусняшки' },
+    { id: 'other', label: '📦 Другое' }
+  ];
+
   useEffect(() => {
     fetch('/api/recipes/')
       .then(res => res.json())
       .then(data => {
-        // ЗАЩИТА: Проверяем, что это массив
         if (Array.isArray(data)) setRecipes(data);
-        else setRecipes([]);
       })
-      .catch(err => {
-          console.error(err);
-          setRecipes([]);
-      });
+      .catch(err => console.error(err));
   }, []);
-
-  // ЗАЩИТА: Проверяем наличие массива перед фильтрацией
-  const safeRecipes = Array.isArray(recipes) ? recipes : [];
-
-  const filteredRecipes = safeRecipes.filter(recipe => 
-    (recipe.title || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const handleDragStart = (e, recipe) => {
     e.dataTransfer.setData('recipeData', JSON.stringify(recipe));
     e.dataTransfer.effectAllowed = 'copy';
   };
 
-  return (
-    <div className="flex flex-col bg-white border-r border-gray-200 w-80 shadow-sm z-20 min-h-full">
-      
-      <div className="p-4 border-b border-gray-200 bg-gray-50 sticky top-0 z-30 shadow-sm">
-        <h2 className="font-bold text-gray-700 text-lg mb-3 flex items-center gap-2">
-          <span>🍽</span> Блюда
-          <span className="text-xs font-normal text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full ml-auto">
-            {filteredRecipes.length}
-          </span>
-        </h2>
+  // 1. Сначала фильтруем по поиску
+  const filteredRecipes = useMemo(() => {
+    return recipes.filter(r => 
+      r.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [recipes, searchTerm]);
 
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Найти..."
-            className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-3 top-2.5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          
-          {searchTerm && (
-            <button 
-                onClick={() => setSearchTerm('')}
-                className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
-            >
-                ✕
-            </button>
-          )}
-        </div>
+  return (
+    <div className="flex flex-col h-full bg-white">
+      {/* Поиск */}
+      <div className="p-3 border-b border-gray-200 shrink-0 sticky top-0 bg-white z-10">
+        <input 
+          type="text"
+          className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-200 outline-none bg-gray-50 focus:bg-white transition-colors"
+          placeholder="🔍 Найти рецепт..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+        />
       </div>
 
-      <div className="p-3 space-y-2 bg-gray-50/50">
+      {/* Список с категориями */}
+      <div className="flex-1 overflow-y-auto p-2 space-y-4">
         {filteredRecipes.length === 0 ? (
-            <div className="text-center text-gray-400 text-sm mt-6 flex flex-col items-center">
-                <span className="text-2xl mb-2">🔍</span>
-                {safeRecipes.length === 0 ? "Список рецептов пуст" : "Ничего не найдено"}
-            </div>
+           <div className="text-center text-gray-400 py-8 text-sm">
+             Ничего не найдено
+           </div>
         ) : (
-            filteredRecipes.map((recipe) => (
-              <div
-                key={recipe.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, recipe)}
-                className="p-3 bg-white border border-gray-200 rounded shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all hover:border-indigo-300 group select-none w-full"
-              >
-                <div className="flex justify-between items-start mb-1 gap-2">
-                    <span className="font-semibold text-gray-800 text-sm leading-tight break-words">
-                        {recipe.title}
-                    </span>
-                    <span className="text-xs font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100 whitespace-nowrap shrink-0">
-                        €{(recipe.total_cost || 0).toFixed(2)}
-                    </span>
-                </div>
+          CATEGORIES_ORDER.map(category => {
+            // Фильтруем рецепты для текущей категории
+            const categoryRecipes = filteredRecipes.filter(r => {
+                const rCat = r.category || 'other'; // Если категории нет, считаем 'other'
                 
-                <div className="text-[10px] text-gray-400 mt-1 flex justify-between items-center">
-                    <span>{recipe.ingredients ? recipe.ingredients.length : 0} инг.</span>
-                    <span className="text-orange-400 font-bold">{recipe.total_calories || 0} ккал</span>
+                // Если это категория 'other', собираем все, что помечено как 'other' ИЛИ имеет неизвестную категорию
+                if (category.id === 'other') {
+                    const knownIds = CATEGORIES_ORDER.map(c => c.id).filter(id => id !== 'other');
+                    return rCat === 'other' || !knownIds.includes(rCat);
+                }
+                
+                return rCat === category.id;
+            });
+
+            // Если категория пуста (после поиска), не рендерим её
+            if (categoryRecipes.length === 0) return null;
+
+            return (
+              <div key={category.id} className="animate-fadeIn">
+                {/* Заголовок категории */}
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1 sticky top-0 bg-white/95 backdrop-blur py-1 z-10 border-b border-transparent">
+                  {category.label} <span className="text-gray-300 font-normal">({categoryRecipes.length})</span>
+                </h3>
+                
+                <div className="space-y-2">
+                  {categoryRecipes.map(recipe => (
+                    <div 
+                      key={recipe.id}
+                      draggable 
+                      onDragStart={(e) => handleDragStart(e, recipe)}
+                      className="p-3 bg-white border border-gray-200 rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:border-indigo-400 hover:shadow-md transition-all group"
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-medium text-gray-800 text-sm leading-tight group-hover:text-indigo-700">
+                            {recipe.title}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center mt-2">
+                         <div className="flex gap-2 text-[10px] text-gray-500 font-mono">
+                            <span className="bg-gray-100 px-1.5 py-0.5 rounded">
+                                {recipe.calories_per_100g > 0 ? `${recipe.calories_per_100g} ккал/100г` : `${recipe.total_calories} ккал`}
+                            </span>
+                         </div>
+                         <span className="text-[10px] text-gray-400 bg-gray-50 px-1.5 rounded border border-gray-100">
+                             id: {recipe.id}
+                         </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))
+            );
+          })
         )}
       </div>
     </div>
