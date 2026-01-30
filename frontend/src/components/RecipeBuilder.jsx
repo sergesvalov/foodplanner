@@ -31,15 +31,11 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       setPortions(initialData.portions || 1);
       
       const mapped = (initialData.ingredients || []).map(i => {
-        // При редактировании мы не знаем, была ли это ложка изначально, 
-        // поэтому устанавливаем базовую единицу измерения продукта (если продукт найден)
-        // или оставляем пустой, если продукта нет (редкий кейс).
-        // Логика восстановления "ложек" сложна без изменения БД, поэтому показываем в базовых единицах.
         const prod = i.product; 
         return {
             product_id: prod ? prod.id : '',
             quantity: i.quantity,
-            unit: prod ? prod.unit : '', // Используем базовую единицу
+            unit: prod ? prod.unit : '',
             tempId: Date.now() + Math.random()
         };
       });
@@ -71,7 +67,6 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     const item = newList[index];
 
     if (field === 'product_id') {
-        // При смене продукта сбрасываем единицу измерения на "родную"
         const prod = products.find(p => p.id === parseInt(value));
         item.unit = prod ? prod.unit : '';
         item.product_id = value;
@@ -82,21 +77,16 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     setIngredients(newList);
   };
 
-  // Функция нормализации: переводит введенное кол-во (в ложках или базе) в базовые единицы продукта
   const getNormalizedQuantity = (qty, currentUnit, product) => {
     if (!product || !qty) return 0;
     
-    // Если единица совпадает с родной - конвертация не нужна
     if (currentUnit === product.unit) return parseFloat(qty);
 
     const spoon = SPOON_UNITS.find(s => s.label === currentUnit);
     if (spoon) {
-        // Определяем, "большая" ли единица измерения у продукта (л, кг)
         const baseUnitLower = (product.unit || '').toLowerCase();
         const isBigUnit = ['л', 'кг', 'l', 'kg'].includes(baseUnitLower);
         
-        // Если продукт в Литрах/КГ, то ложки (15мл) делим на 1000 -> 0.015
-        // Если продукт в Мл/Г, то ложки (15мл) остаются 15
         const factor = isBigUnit ? spoon.value / 1000 : spoon.value;
         return parseFloat(qty) * factor;
     }
@@ -107,7 +97,6 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Подготавливаем данные: конвертируем всё в базовые единицы
     const validIngredients = ingredients
         .map(i => {
             const product = products.find(p => p.id === parseInt(i.product_id));
@@ -153,17 +142,14 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     if (!products || products.length === 0) return null;
     const product = products.find(p => p.id === parseInt(ing.product_id));
     
-    // Используем нормализованное значение для расчетов
     const normalizedQty = getNormalizedQuantity(ing.quantity, ing.unit, product);
     
     if (!product || !normalizedQty) return null;
 
-    // 1. Цена
     const packAmount = product.amount || 1;
     const pricePerUnit = product.price / packAmount;
     const totalCost = (pricePerUnit * normalizedQty).toFixed(2);
 
-    // 2. Калории (Штуки vs Вес)
     const prodCals = product.calories || 0;
     const isPieces = ['шт', 'шт.', 'pcs', 'piece'].includes((product.unit || '').toLowerCase());
     
@@ -174,8 +160,6 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         totalCals = Math.round((prodCals / 100) * normalizedQty);
     }
 
-    // Форматирование отображения количества (убираем лишние нули)
-    // Например, 0.0150000 -> 0.015
     const displayQty = parseFloat(normalizedQty.toFixed(4));
 
     return (
@@ -237,12 +221,21 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
           {ingredients.map((ing, idx) => {
             const product = products.find(p => p.id === parseInt(ing.product_id));
             const baseUnit = product ? product.unit : '';
+            const baseUnitLower = (baseUnit || '').toLowerCase();
+            
+            // Проверка: является ли товар штучным
+            const isPieces = ['шт', 'шт.', 'pcs', 'piece', 'stk'].includes(baseUnitLower);
 
-            // Список доступных единиц: Базовая + Ложки (если не штучный товар)
-            // Для штучных (яйца) ложки обычно не применяют, но можно и оставить
-            const availableUnits = [baseUnit, ...SPOON_UNITS.map(s => s.label)].filter(Boolean);
-            // Удаляем дубликаты (если базовая вдруг "ст. л")
-            const uniqueUnits = [...new Set(availableUnits)];
+            // Собираем доступные единицы
+            let availableUnits = [baseUnit];
+            
+            // Если НЕ штучный товар — добавляем ложки
+            if (!isPieces) {
+                availableUnits = [...availableUnits, ...SPOON_UNITS.map(s => s.label)];
+            }
+            
+            // Убираем пустые и дубликаты
+            const uniqueUnits = [...new Set(availableUnits.filter(Boolean))];
 
             return (
                 <div key={ing.tempId} className="mb-3 p-3 bg-gray-50 rounded border border-gray-200">
