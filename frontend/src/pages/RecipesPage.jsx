@@ -1,6 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import RecipeBuilder from '../components/RecipeBuilder';
 
+// Словарь для отображения (дублируем, либо можно вынести в отдельный файл констант)
+const CATEGORY_LABELS = {
+    breakfast: 'Завтрак',
+    soup: 'Суп',
+    main: 'Горячее',
+    salad: 'Салат',
+    snack: 'Перекус',
+    dessert: 'Десерт',
+    drink: 'Напиток',
+    other: 'Другое'
+};
+
+const CATEGORY_COLORS = {
+    breakfast: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    soup: 'bg-red-100 text-red-800 border-red-200',
+    main: 'bg-orange-100 text-orange-800 border-orange-200',
+    salad: 'bg-green-100 text-green-800 border-green-200',
+    snack: 'bg-purple-100 text-purple-800 border-purple-200',
+    dessert: 'bg-pink-100 text-pink-800 border-pink-200',
+    drink: 'bg-blue-100 text-blue-800 border-blue-200',
+    other: 'bg-gray-100 text-gray-800 border-gray-200',
+};
+
 const RecipesPage = () => {
   const [recipes, setRecipes] = useState([]);
   const [editingRecipe, setEditingRecipe] = useState(null);
@@ -103,24 +126,27 @@ const RecipesPage = () => {
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
-                  <div className="flex flex-col gap-1">
-                    <h4 className="font-bold text-gray-800">{recipe.title}</h4>
+                  <div className="flex flex-col gap-1 w-full">
                     
-                    {/* БЛОК С ЦЕНОЙ И КАЛОРИЯМИ */}
+                    {/* Заголовок и Категория */}
+                    <div className="flex justify-between items-start">
+                        <h4 className="font-bold text-gray-800 text-lg leading-tight">{recipe.title}</h4>
+                        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ml-2 ${CATEGORY_COLORS[recipe.category] || CATEGORY_COLORS.other}`}>
+                            {CATEGORY_LABELS[recipe.category] || 'Другое'}
+                        </span>
+                    </div>
+
                     <div className="flex flex-wrap gap-2 mt-1">
-                        {/* Цена */}
                         <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">
                           €{(recipe.total_cost || 0).toFixed(2)}
                         </span>
                         
-                        {/* Калории на 100г */}
                         {recipe.calories_per_100g > 0 && (
                             <span className="text-xs font-bold bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-100">
                                 {recipe.calories_per_100g} ккал/100г
                             </span>
                         )}
 
-                        {/* Калории на порцию */}
                         {recipe.portions > 0 && (
                             <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">
                                 {recipe.calories_per_portion} ккал/порц ({recipe.weight_per_portion}г)
@@ -128,36 +154,31 @@ const RecipesPage = () => {
                         )}
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col items-end gap-1">
-                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full border border-gray-200 whitespace-nowrap">
-                        {recipe.ingredients ? recipe.ingredients.length : 0} инг.
-                      </span>
-                      {recipe.portions > 1 && (
-                          <span className="text-[10px] text-gray-400 font-medium">
-                              {recipe.portions} порц.
-                          </span>
-                      )}
-                  </div>
                 </div>
                 
                 <p className="text-sm text-gray-500 line-clamp-2 mb-3 min-h-[1.25rem]">
                   {recipe.description || "Нет описания"}
                 </p>
 
-                <div className="flex justify-end gap-2 border-t pt-2 border-gray-100">
-                  <button 
-                    onClick={() => { setEditingRecipe(recipe); }}
-                    className="text-sm px-3 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 font-medium transition"
-                  >
-                    Изменить
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(recipe.id)}
-                    className="text-sm px-3 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100 font-medium transition"
-                  >
-                    Удалить
-                  </button>
+                <div className="flex justify-between items-center border-t pt-2 border-gray-100">
+                  <span className="text-xs text-gray-400">
+                    {recipe.ingredients ? recipe.ingredients.length : 0} ингредиентов
+                  </span>
+
+                  <div className="flex gap-2">
+                    <button 
+                        onClick={() => { setEditingRecipe(recipe); }}
+                        className="text-sm px-3 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 font-medium transition"
+                    >
+                        Изменить
+                    </button>
+                    <button 
+                        onClick={() => handleDelete(recipe.id)}
+                        className="text-sm px-3 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100 font-medium transition"
+                    >
+                        Удалить
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

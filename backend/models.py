@@ -19,6 +19,10 @@ class Recipe(Base):
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     portions = Column(Integer, default=1)
+    
+    # НОВОЕ ПОЛЕ
+    category = Column(String, default="other") 
+
     ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan")
 
     @property
@@ -47,7 +51,6 @@ class Recipe(Base):
 
     @property
     def total_weight(self):
-        """Общий вес рецепта в граммах"""
         weight = 0.0
         for item in self.ingredients:
             if item.product:
@@ -67,21 +70,17 @@ class Recipe(Base):
             return round((cals / weight) * 100)
         return 0
 
-    # --- НОВЫЕ СВОЙСТВА ДЛЯ ПОРЦИЙ ---
     @property
     def calories_per_portion(self):
-        """Калорийность одной порции"""
         if self.portions > 0:
             return round(self.total_calories / self.portions)
         return 0
 
     @property
     def weight_per_portion(self):
-        """Вес одной порции в граммах"""
         if self.portions > 0:
             return round(self.total_weight / self.portions)
         return 0
-    # ---------------------------------
 
 class RecipeIngredient(Base):
     __tablename__ = "recipe_ingredients"

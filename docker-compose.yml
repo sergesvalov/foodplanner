@@ -7,6 +7,10 @@ services:
     volumes:
       # База данных сохраняется в папку foodplanner на сервере
       - ./foodplanner:/app/data
+    
+    # ВАЖНО: Эта команда сначала применяет миграции, потом запускает сервер
+    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    
     expose:
       - "8000" 
       # Можно убрать ports: "8000:8000", если не нужен прямой доступ к API снаружи.

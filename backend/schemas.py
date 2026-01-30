@@ -26,6 +26,9 @@ class RecipeBase(BaseModel):
     title: str
     description: Optional[str] = None
     portions: int = 1
+    # НОВОЕ ПОЛЕ В СХЕМЕ
+    category: str = "other" 
+
 class RecipeCreate(RecipeBase):
     ingredients: List[IngredientCreate] = []
 class RecipeResponse(RecipeBase):
@@ -34,7 +37,6 @@ class RecipeResponse(RecipeBase):
     total_cost: float
     total_calories: float
     calories_per_100g: float
-    # Новые поля
     calories_per_portion: float
     weight_per_portion: float
     class Config: from_attributes = True

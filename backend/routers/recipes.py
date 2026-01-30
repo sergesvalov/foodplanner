@@ -20,11 +20,11 @@ def read_recipes(db: Session = Depends(get_db)):
 
 @router.post("/", response_model=schemas.RecipeResponse)
 def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
-    # ИСПРАВЛЕНО: добавлено поле portions
     db_recipe = models.Recipe(
         title=recipe.title, 
         description=recipe.description,
-        portions=recipe.portions
+        portions=recipe.portions,
+        category=recipe.category # <-- Сохраняем категорию
     )
     db.add(db_recipe)
     db.commit()
@@ -47,10 +47,9 @@ def update_recipe(recipe_id: int, recipe: schemas.RecipeCreate, db: Session = De
 
     db_recipe.title = recipe.title
     db_recipe.description = recipe.description
-    # ИСПРАВЛЕНО: обновляем поле portions
     db_recipe.portions = recipe.portions
+    db_recipe.category = recipe.category # <-- Обновляем категорию
     
-    # Удаляем старые ингредиенты и добавляем новые
     db.query(models.RecipeIngredient).filter(models.RecipeIngredient.recipe_id == recipe_id).delete()
     for item in recipe.ingredients:
         db_ingredient = models.RecipeIngredient(
@@ -76,11 +75,12 @@ def delete_recipe(recipe_id: int, db: Session = Depends(get_db)):
 @router.get("/export")
 def export_recipes(db: Session = Depends(get_db)):
     recipes = db.query(models.Recipe).all()
-    # Добавим portions и в экспорт, чтобы не терять данные при переносе
+    # Добавляем category в экспорт
     data = [{
         "title": r.title, 
         "description": r.description,
-        "portions": r.portions
+        "portions": r.portions,
+        "category": r.category 
     } for r in recipes]
     try:
         with open(EXPORT_PATH, "w", encoding="utf-8") as f:
@@ -103,24 +103,31 @@ def import_recipes(db: Session = Depends(get_db)):
     for item in data:
         title = item.get("title")
         description = item.get("description", "")
-        portions = item.get("portions", 1) # Читаем порции из файла (по дефолту 1)
+        portions = item.get("portions", 1)
+        category = item.get("category", "other") # Читаем категорию
         
         if not title: continue
         
         db_recipe = db.query(models.Recipe).filter(models.Recipe.title == title).first()
         if not db_recipe:
-            new_recipe = models.Recipe(title=title, description=description, portions=portions)
+            new_recipe = models.Recipe(
+                title=title, 
+                description=description, 
+                portions=portions,
+                category=category
+            )
             db.add(new_recipe)
             created += 1
         else:
-            # Обновляем описание и порции, если изменились
             updated_flag = False
             if db_recipe.description != description:
                 db_recipe.description = description
                 updated_flag = True
-            
             if db_recipe.portions != portions:
                 db_recipe.portions = portions
+                updated_flag = True
+            if db_recipe.category != category:
+                db_recipe.category = category
                 updated_flag = True
             
             if updated_flag:

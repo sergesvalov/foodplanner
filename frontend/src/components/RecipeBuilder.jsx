@@ -7,8 +7,20 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const [ingredients, setIngredients] = useState([]);
   const [products, setProducts] = useState([]);
   const [portions, setPortions] = useState(1);
+  const [category, setCategory] = useState('other'); // <-- Состояние категории
 
-  // Константы для ложек (в мл/г)
+  // Список категорий
+  const CATEGORIES = [
+      { id: 'breakfast', label: 'Завтрак' },
+      { id: 'soup', label: 'Суп / Первое' },
+      { id: 'main', label: 'Второе / Горячее' },
+      { id: 'salad', label: 'Салат' },
+      { id: 'snack', label: 'Перекус' },
+      { id: 'dessert', label: 'Десерт' },
+      { id: 'drink', label: 'Напиток' },
+      { id: 'other', label: 'Другое' },
+  ];
+
   const SPOON_UNITS = [
     { label: 'ст. л', value: 15 },
     { label: 'ч. л', value: 5 }
@@ -29,6 +41,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       setTitle(initialData.title);
       setDescription(initialData.description || '');
       setPortions(initialData.portions || 1);
+      setCategory(initialData.category || 'other'); // <-- Загружаем категорию
       
       const mapped = (initialData.ingredients || []).map(i => {
         const prod = i.product; 
@@ -50,6 +63,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     setDescription('');
     setIngredients([]);
     setPortions(1);
+    setCategory('other');
   };
 
   const addIngredient = () => {
@@ -113,6 +127,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       title,
       description,
       portions: parseInt(portions),
+      category, // <-- Отправляем категорию
       ingredients: validIngredients
     };
 
@@ -195,6 +210,22 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                     onChange={e => setTitle(e.target.value)}
                 />
             </div>
+        </div>
+
+        {/* НОВЫЙ РЯД: Категория и Порции */}
+        <div className="flex gap-4">
+            <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700">Категория</label>
+                <select 
+                    className="mt-1 w-full border rounded p-2 bg-white focus:ring-2 focus:ring-indigo-200 outline-none"
+                    value={category}
+                    onChange={e => setCategory(e.target.value)}
+                >
+                    {CATEGORIES.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.label}</option>
+                    ))}
+                </select>
+            </div>
             <div className="w-24">
                 <label className="block text-sm font-medium text-gray-700">Порций</label>
                 <input 
@@ -222,19 +253,12 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
             const product = products.find(p => p.id === parseInt(ing.product_id));
             const baseUnit = product ? product.unit : '';
             const baseUnitLower = (baseUnit || '').toLowerCase();
-            
-            // Проверка: является ли товар штучным
             const isPieces = ['шт', 'шт.', 'pcs', 'piece', 'stk'].includes(baseUnitLower);
 
-            // Собираем доступные единицы
             let availableUnits = [baseUnit];
-            
-            // Если НЕ штучный товар — добавляем ложки
             if (!isPieces) {
                 availableUnits = [...availableUnits, ...SPOON_UNITS.map(s => s.label)];
             }
-            
-            // Убираем пустые и дубликаты
             const uniqueUnits = [...new Set(availableUnits.filter(Boolean))];
 
             return (
