@@ -7,17 +7,17 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const [ingredients, setIngredients] = useState([]);
   const [products, setProducts] = useState([]);
   const [portions, setPortions] = useState(1);
-  const [category, setCategory] = useState('other'); // <-- Состояние категории
+  // ИЗМЕНЕНИЕ: По умолчанию 'other'
+  const [category, setCategory] = useState('other'); 
 
-  // Список категорий
+  // ИЗМЕНЕНИЕ: Добавлена категория 'Другое'
   const CATEGORIES = [
       { id: 'breakfast', label: 'Завтрак' },
-      { id: 'soup', label: 'Суп / Первое' },
-      { id: 'main', label: 'Второе / Горячее' },
-      { id: 'salad', label: 'Салат' },
       { id: 'snack', label: 'Перекус' },
-      { id: 'dessert', label: 'Десерт' },
-      { id: 'drink', label: 'Напиток' },
+      { id: 'main', label: 'Второе' },
+      { id: 'soup', label: 'Первое' },
+      { id: 'side', label: 'Гарнир' },
+      { id: 'yummy', label: 'Вкусняшки' },
       { id: 'other', label: 'Другое' },
   ];
 
@@ -41,7 +41,8 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       setTitle(initialData.title);
       setDescription(initialData.description || '');
       setPortions(initialData.portions || 1);
-      setCategory(initialData.category || 'other'); // <-- Загружаем категорию
+      // Если у редактируемого рецепта нет категории, ставим 'other'
+      setCategory(initialData.category || 'other'); 
       
       const mapped = (initialData.ingredients || []).map(i => {
         const prod = i.product; 
@@ -63,6 +64,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     setDescription('');
     setIngredients([]);
     setPortions(1);
+    // Сброс на 'other'
     setCategory('other');
   };
 
@@ -127,7 +129,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       title,
       description,
       portions: parseInt(portions),
-      category, // <-- Отправляем категорию
+      category, 
       ingredients: validIngredients
     };
 
@@ -212,7 +214,6 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
             </div>
         </div>
 
-        {/* НОВЫЙ РЯД: Категория и Порции */}
         <div className="flex gap-4">
             <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700">Категория</label>

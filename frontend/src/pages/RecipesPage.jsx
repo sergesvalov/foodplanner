@@ -1,27 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import RecipeBuilder from '../components/RecipeBuilder';
 
-// Словарь для отображения (дублируем, либо можно вынести в отдельный файл констант)
 const CATEGORY_LABELS = {
     breakfast: 'Завтрак',
-    soup: 'Суп',
-    main: 'Горячее',
-    salad: 'Салат',
     snack: 'Перекус',
-    dessert: 'Десерт',
-    drink: 'Напиток',
-    other: 'Другое'
+    main: 'Второе',
+    soup: 'Первое',
+    side: 'Гарнир',
+    yummy: 'Вкусняшки',
+    other: 'Другое' // Добавлено явно
 };
 
 const CATEGORY_COLORS = {
     breakfast: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    soup: 'bg-red-100 text-red-800 border-red-200',
-    main: 'bg-orange-100 text-orange-800 border-orange-200',
-    salad: 'bg-green-100 text-green-800 border-green-200',
     snack: 'bg-purple-100 text-purple-800 border-purple-200',
-    dessert: 'bg-pink-100 text-pink-800 border-pink-200',
-    drink: 'bg-blue-100 text-blue-800 border-blue-200',
-    other: 'bg-gray-100 text-gray-800 border-gray-200',
+    main: 'bg-orange-100 text-orange-800 border-orange-200',
+    soup: 'bg-red-100 text-red-800 border-red-200',
+    side: 'bg-green-100 text-green-800 border-green-200',
+    yummy: 'bg-pink-100 text-pink-800 border-pink-200',
+    other: 'bg-gray-100 text-gray-800 border-gray-200' 
 };
 
 const RecipesPage = () => {
@@ -132,7 +129,7 @@ const RecipesPage = () => {
                     <div className="flex justify-between items-start">
                         <h4 className="font-bold text-gray-800 text-lg leading-tight">{recipe.title}</h4>
                         <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ml-2 ${CATEGORY_COLORS[recipe.category] || CATEGORY_COLORS.other}`}>
-                            {CATEGORY_LABELS[recipe.category] || 'Другое'}
+                            {CATEGORY_LABELS[recipe.category] || CATEGORY_LABELS.other}
                         </span>
                     </div>
 
