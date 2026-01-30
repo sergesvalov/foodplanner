@@ -4,7 +4,6 @@ const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Чет�
 const EXTRA_KEY = 'Вкусняшки';
 const EXTRA_MEAL_TYPE = 'yummy';
 
-// ОБНОВЛЕННЫЙ СПИСОК (Добавлено "Взять с собой" в начало)
 const MEALS = [
   { id: 'takeaway', label: '🎒 Взять с собой', color: 'bg-teal-50 border-teal-100', isSnack: true },
   { id: 'pre_breakfast', label: 'Ранний старт', color: 'bg-orange-50 border-orange-100', isSnack: true },
@@ -19,8 +18,6 @@ const MEALS = [
 const WeeklyGrid = () => {
   const [plan, setPlan] = useState([]);
   const [users, setUsers] = useState([]);
-  
-  // Состояние для модального окна выбора пользователя
   const [pendingDrop, setPendingDrop] = useState(null);
 
   const fetchPlan = () => {
@@ -42,7 +39,6 @@ const WeeklyGrid = () => {
   const handleDragOver = (e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-indigo-300', 'bg-white'); };
   const handleDragLeave = (e) => { e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white'); };
 
-  // DROP
   const handleDrop = (e, day, mealType) => {
     e.preventDefault();
     e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white');
@@ -50,7 +46,6 @@ const WeeklyGrid = () => {
     if (!data) return;
     const recipe = JSON.parse(data);
     
-    // Если пользователей нет, сохраняем без ID, иначе открываем модалку
     if (users.length === 0) confirmAdd(day, mealType, recipe.id, null);
     else setPendingDrop({ day, mealType, recipeId: recipe.id });
   };
@@ -103,7 +98,6 @@ const WeeklyGrid = () => {
   return (
     <div className="h-full w-full flex flex-col bg-gray-100 rounded-lg border border-gray-300 relative">
       
-      {/* МОДАЛКА ВЫБОРА ПОЛЬЗОВАТЕЛЯ */}
       {pendingDrop && (
           <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center backdrop-blur-sm animate-fadeIn">
               <div className="bg-white rounded-xl shadow-2xl p-6 w-80">
@@ -128,7 +122,7 @@ const WeeklyGrid = () => {
       )}
 
       {/* HEADER */}
-      <div className="bg-white p-3 border-b border-gray-200 flex justify-between items-center shadow-sm z-20">
+      <div className="bg-white p-3 border-b border-gray-200 flex justify-between items-center shadow-sm z-20 shrink-0">
           <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2">📅 План питания <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{plan.length} блюд</span></h2>
           <div className="flex gap-4">
               <div className="flex flex-col items-end"><span className="text-[10px] text-gray-400 uppercase font-bold">Бюджет</span><span className="text-lg font-bold text-green-600 leading-none">€{weeklyStats.cost.toFixed(2)}</span></div>
@@ -137,7 +131,8 @@ const WeeklyGrid = () => {
       </div>
 
       {/* GRID */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden">
+      {/* ИСПРАВЛЕНИЕ: добавлен min-h-0, чтобы flex-контейнер не растягивался за пределы родителя */}
+      <div className="flex-1 overflow-x-auto overflow-y-hidden min-h-0">
         <div className="grid grid-cols-8 h-full min-w-[1200px] divide-x divide-gray-300">
             {ALL_COLUMNS.map((col) => {
             const isExtra = col === EXTRA_KEY;
@@ -153,6 +148,8 @@ const WeeklyGrid = () => {
                         <div className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${items.length>0 ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-400'}`}>{stats.cals}</div>
                     </div>
                 </div>
+                
+                {/* min-h-0 здесь уже был, но он работает только если родитель ограничен */}
                 <div className="flex-1 overflow-y-auto p-1 space-y-1 scrollbar-thin scrollbar-thumb-gray-300 min-h-0">
                     {isExtra ? (
                         <div className="h-full min-h-[200px] border-2 border-dashed border-indigo-200 rounded-lg bg-indigo-50/50 flex flex-col p-2 gap-2 hover:bg-indigo-100/50"
