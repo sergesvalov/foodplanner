@@ -74,7 +74,8 @@ const WeeklyGrid = () => {
   };
 
   const handlePortionChange = async (itemId, newPortions) => {
-    if (newPortions < 1 || newPortions > 10) return;
+    // ИЗМЕНЕНИЕ: Лимит увеличен до 20
+    if (newPortions < 1 || newPortions > 20) return;
     setPlan(plan.map(item => item.id === itemId ? { ...item, portions: parseInt(newPortions) } : item));
     try {
         await fetch(`/api/plan/${itemId}`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ portions: parseInt(newPortions) }) });
@@ -96,7 +97,6 @@ const WeeklyGrid = () => {
   const ALL_COLUMNS = [...DAYS, EXTRA_KEY];
 
   return (
-    // ИЗМЕНЕНИЕ: Убрали фиксированную высоту. h-auto позволяет расти.
     <div className="w-full flex flex-col bg-gray-100 rounded-lg border border-gray-300 relative h-auto shadow-sm">
       
       {pendingDrop && (
@@ -132,9 +132,7 @@ const WeeklyGrid = () => {
       </div>
 
       {/* GRID */}
-      {/* ИЗМЕНЕНИЕ: overflow-visible, чтобы контент рос вниз */}
       <div className="overflow-x-auto overflow-y-visible">
-        {/* min-w-[1200px] обеспечивает горизонтальный скролл на мобильных, но вертикальный будет у всей страницы */}
         <div className="grid grid-cols-8 divide-x divide-gray-300 min-w-[1200px]">
             {ALL_COLUMNS.map((col) => {
             const isExtra = col === EXTRA_KEY;
@@ -142,10 +140,8 @@ const WeeklyGrid = () => {
             const stats = items.reduce((acc, i) => { const s = calculateItemStats(i); return { cost: acc.cost + s.cost, cals: acc.cals + s.cals }; }, { cost: 0, cals: 0 });
 
             return (
-                // ИЗМЕНЕНИЕ: h-auto вместо h-full
                 <div key={col} className={`flex flex-col h-auto relative group min-w-0 ${isExtra ? 'bg-indigo-50/30' : 'bg-white'}`}>
                 
-                {/* Заголовок колонки */}
                 <div className={`py-2 flex flex-col items-center justify-center border-b border-gray-600 gap-1 ${isExtra ? 'bg-indigo-700' : 'bg-gray-800'}`}>
                     <span className="font-bold text-xs uppercase tracking-wider text-white">{isExtra ? '🍪 Вкусняшки' : col}</span>
                     <div className="flex gap-1">
@@ -154,7 +150,6 @@ const WeeklyGrid = () => {
                     </div>
                 </div>
                 
-                {/* Тело колонки. ИЗМЕНЕНИЕ: Убрали overflow-y-auto. Теперь это просто div, который растягивается */}
                 <div className="p-1 space-y-1 h-full">
                     {isExtra ? (
                         <div className="min-h-[300px] h-full border-2 border-dashed border-indigo-200 rounded-lg bg-indigo-50/50 flex flex-col p-2 gap-2 hover:bg-indigo-100/50"
@@ -174,7 +169,6 @@ const WeeklyGrid = () => {
                             );
                         })
                     )}
-                    {/* Отступ снизу для удобства перетаскивания */}
                     <div className="h-10"></div>
                 </div>
                 </div>
@@ -198,7 +192,11 @@ const PlanItemCard = ({ item, onRemove, onPortionChange, calculateStats }) => {
             <span className="text-[11px] text-gray-800 font-medium leading-tight line-clamp-2" title={item.recipe.title}>{item.recipe.title}</span>
             {u && <div className={`text-[9px] px-1 rounded-sm inline-block mt-0.5 font-bold text-white bg-${u.color}-500 self-start`}>{u.name}</div>}
             <div className="flex items-center gap-1 mt-1 bg-gray-50 rounded px-1 py-0.5 justify-between">
-                <div className="flex items-center gap-1"><span className="text-[9px] text-gray-400">Порц:</span><input type="number" min="1" max="10" className="w-6 h-4 text-[10px] font-bold text-center border rounded" value={item.portions || 1} onClick={(e)=>e.stopPropagation()} onChange={(e)=>onPortionChange(item.id, e.target.value)} /></div>
+                <div className="flex items-center gap-1">
+                    <span className="text-[9px] text-gray-400">Порц:</span>
+                    {/* ИЗМЕНЕНИЕ: max="20" */}
+                    <input type="number" min="1" max="20" className="w-6 h-4 text-[10px] font-bold text-center border rounded" value={item.portions || 1} onClick={(e)=>e.stopPropagation()} onChange={(e)=>onPortionChange(item.id, e.target.value)} />
+                </div>
                 {base > 1 && <span className="text-[8px] text-gray-400">(из {base})</span>}
             </div>
             <div className="flex justify-between items-end mt-1"><span className="text-[9px] text-green-600 font-bold">€{stats.cost.toFixed(2)}</span><span className="text-[9px] text-orange-600">{stats.cals}</span></div>
