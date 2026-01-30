@@ -4,13 +4,13 @@ const ProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [editingId, setEditingId] = useState(null);
 
-  // --- НОВОЕ: Состояние сортировки ---
-  // key: 'name' | 'price' | 'amount' | null
-  // direction: 'ascending' | 'descending'
+  // --- Состояние сортировки ---
+  // key: 'name' | 'price' | 'amount' | 'calories' | null
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
 
+  // ИЗМЕНЕНИЕ 1: По умолчанию 'г' вместо 'шт'
   const [form, setForm] = useState({
-    name: '', price: '', amount: '1', unit: 'шт', calories: ''
+    name: '', price: '', amount: '1', unit: 'г', calories: ''
   });
 
   const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'упак'];
@@ -34,7 +34,6 @@ const ProductsPage = () => {
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
 
-        // Если сортируем по имени — приводим к нижнему регистру для корректного сравнения
         if (sortConfig.key === 'name') {
             aValue = aValue.toLowerCase();
             bValue = bValue.toLowerCase();
@@ -54,23 +53,20 @@ const ProductsPage = () => {
 
   const requestSort = (key) => {
     let direction = 'ascending';
-    // Если кликнули по той же колонке, меняем направление
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
     }
     setSortConfig({ key, direction });
   };
 
-  // Визуальная стрелочка в заголовке
   const getSortIndicator = (name) => {
     if (sortConfig.key === name) {
         return sortConfig.direction === 'ascending' ? ' ▲' : ' ▼';
     }
-    return ''; // Или можно вернуть серенький значок сортировки ' ⇅'
+    return ''; 
   };
   // -------------------------
 
-  // --- ЛОГИКА ЭКСПОРТА / ИМПОРТА (СЕРВЕР) ---
   const handleServerExport = async () => {
     if(!window.confirm("Сохранить текущую базу в файл на сервере?")) return;
     try {
@@ -128,7 +124,8 @@ const ProductsPage = () => {
   };
 
   const resetForm = () => {
-    setForm({ name: '', price: '', amount: '1', unit: 'шт', calories: '' });
+    // ИЗМЕНЕНИЕ 2: Сброс тоже на 'г'
+    setForm({ name: '', price: '', amount: '1', unit: 'г', calories: '' });
     setEditingId(null);
   };
 
@@ -265,7 +262,6 @@ const ProductsPage = () => {
             <table className="w-full text-left text-sm text-gray-600">
               <thead className="bg-gray-50 text-gray-800 font-bold uppercase text-xs">
                 <tr>
-                  {/* ЗАГОЛОВКИ СТАЛИ КЛИКАБЕЛЬНЫМИ */}
                   <th 
                     className="px-6 py-3 cursor-pointer hover:bg-gray-100 select-none transition-colors"
                     onClick={() => requestSort('name')}
@@ -284,22 +280,32 @@ const ProductsPage = () => {
                   >
                     Вес/Кол-во {getSortIndicator('amount')}
                   </th>
+                  {/* ИЗМЕНЕНИЕ 3: Добавлена колонка Ккал */}
+                  <th 
+                    className="px-6 py-3 cursor-pointer hover:bg-gray-100 select-none transition-colors"
+                    onClick={() => requestSort('calories')}
+                  >
+                    Ккал {getSortIndicator('calories')}
+                  </th>
                   <th className="px-6 py-3 text-right">Действия</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {products.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="text-center py-8 text-gray-400">Каталог пуст</td>
+                    <td colSpan="5" className="text-center py-8 text-gray-400">Каталог пуст</td>
                   </tr>
                 )}
-                {/* ИСПОЛЬЗУЕМ sortedProducts ВМЕСТО products */}
                 {sortedProducts.map((product) => (
                   <tr key={product.id} className={`hover:bg-gray-50 ${editingId === product.id ? 'bg-yellow-50' : ''}`}>
                     <td className="px-6 py-3 font-medium text-gray-900">{product.name}</td>
                     <td className="px-6 py-3">€{product.price.toFixed(2)}</td>
                     <td className="px-6 py-3 font-mono">
                       {product.amount} {product.unit}
+                    </td>
+                    {/* ИЗМЕНЕНИЕ 4: Отображение калорий */}
+                    <td className="px-6 py-3">
+                      {product.calories > 0 ? `${product.calories} ккал` : '—'}
                     </td>
                     <td className="px-6 py-3 text-right flex justify-end gap-2">
                       <button 
