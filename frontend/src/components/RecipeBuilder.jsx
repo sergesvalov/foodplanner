@@ -8,6 +8,12 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const [products, setProducts] = useState([]);
   const [portions, setPortions] = useState(1);
 
+  // Константы для ложек (в мл/г)
+  const SPOON_UNITS = [
+    { label: 'ст. л', value: 15 },
+    { label: 'ч. л', value: 5 }
+  ];
+
   useEffect(() => {
     fetch('/api/products/')
       .then(res => res.json())
@@ -24,11 +30,19 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       setDescription(initialData.description || '');
       setPortions(initialData.portions || 1);
       
-      const mapped = (initialData.ingredients || []).map(i => ({
-        product_id: i.product ? i.product.id : '',
-        quantity: i.quantity,
-        tempId: Date.now() + Math.random()
-      }));
+      const mapped = (initialData.ingredients || []).map(i => {
+        // При редактировании мы не знаем, была ли это ложка изначально, 
+        // поэтому устанавливаем базовую единицу измерения продукта (если продукт найден)
+        // или оставляем пустой, если продукта нет (редкий кейс).
+        // Логика восстановления "ложек" сложна без изменения БД, поэтому показываем в базовых единицах.
+        const prod = i.product; 
+        return {
+            product_id: prod ? prod.id : '',
+            quantity: i.quantity,
+            unit: prod ? prod.unit : '', // Используем базовую единицу
+            tempId: Date.now() + Math.random()
+        };
+      });
       setIngredients(mapped);
     } else {
       resetForm();
@@ -43,7 +57,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   };
 
   const addIngredient = () => {
-    setIngredients([...ingredients, { product_id: '', quantity: '', tempId: Date.now() + Math.random() }]);
+    setIngredients([...ingredients, { product_id: '', quantity: '', unit: '', tempId: Date.now() + Math.random() }]);
   };
 
   const removeIngredient = (index) => {
@@ -54,19 +68,56 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
 
   const updateIngredient = (index, field, value) => {
     const newList = [...ingredients];
-    newList[index][field] = value;
+    const item = newList[index];
+
+    if (field === 'product_id') {
+        // При смене продукта сбрасываем единицу измерения на "родную"
+        const prod = products.find(p => p.id === parseInt(value));
+        item.unit = prod ? prod.unit : '';
+        item.product_id = value;
+    } else {
+        item[field] = value;
+    }
+    
     setIngredients(newList);
+  };
+
+  // Функция нормализации: переводит введенное кол-во (в ложках или базе) в базовые единицы продукта
+  const getNormalizedQuantity = (qty, currentUnit, product) => {
+    if (!product || !qty) return 0;
+    
+    // Если единица совпадает с родной - конвертация не нужна
+    if (currentUnit === product.unit) return parseFloat(qty);
+
+    const spoon = SPOON_UNITS.find(s => s.label === currentUnit);
+    if (spoon) {
+        // Определяем, "большая" ли единица измерения у продукта (л, кг)
+        const baseUnitLower = (product.unit || '').toLowerCase();
+        const isBigUnit = ['л', 'кг', 'l', 'kg'].includes(baseUnitLower);
+        
+        // Если продукт в Литрах/КГ, то ложки (15мл) делим на 1000 -> 0.015
+        // Если продукт в Мл/Г, то ложки (15мл) остаются 15
+        const factor = isBigUnit ? spoon.value / 1000 : spoon.value;
+        return parseFloat(qty) * factor;
+    }
+
+    return parseFloat(qty);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Фильтруем пустые строки, но не запрещаем пустой список
+    // Подготавливаем данные: конвертируем всё в базовые единицы
     const validIngredients = ingredients
-        .map(i => ({
-            product_id: parseInt(i.product_id),
-            quantity: parseFloat(i.quantity)
-        }))
+        .map(i => {
+            const product = products.find(p => p.id === parseInt(i.product_id));
+            const normalizedQty = getNormalizedQuantity(i.quantity, i.unit, product);
+            
+            return {
+                product_id: parseInt(i.product_id),
+                quantity: normalizedQty
+            };
+        })
         .filter(i => i.product_id && i.quantity > 0);
     
     const payload = {
@@ -101,14 +152,16 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const getIngredientSummary = (ing) => {
     if (!products || products.length === 0) return null;
     const product = products.find(p => p.id === parseInt(ing.product_id));
-    const qty = parseFloat(ing.quantity);
     
-    if (!product || !qty) return null;
+    // Используем нормализованное значение для расчетов
+    const normalizedQty = getNormalizedQuantity(ing.quantity, ing.unit, product);
+    
+    if (!product || !normalizedQty) return null;
 
     // 1. Цена
     const packAmount = product.amount || 1;
     const pricePerUnit = product.price / packAmount;
-    const totalCost = (pricePerUnit * qty).toFixed(2);
+    const totalCost = (pricePerUnit * normalizedQty).toFixed(2);
 
     // 2. Калории (Штуки vs Вес)
     const prodCals = product.calories || 0;
@@ -116,13 +169,17 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     
     let totalCals = 0;
     if (isPieces) {
-        totalCals = Math.round(prodCals * qty);
+        totalCals = Math.round(prodCals * normalizedQty);
     } else {
-        totalCals = Math.round((prodCals / 100) * qty);
+        totalCals = Math.round((prodCals / 100) * normalizedQty);
     }
 
+    // Форматирование отображения количества (убираем лишние нули)
+    // Например, 0.0150000 -> 0.015
+    const displayQty = parseFloat(normalizedQty.toFixed(4));
+
     return (
-      <div className="text-xs text-gray-500 mt-1 ml-1 flex gap-3 select-none">
+      <div className="text-xs text-gray-500 mt-1 ml-1 flex flex-wrap gap-2 select-none items-center">
         <span className="bg-green-50 text-green-700 px-1 rounded border border-green-100 font-mono">
           €{totalCost}
         </span>
@@ -130,7 +187,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
           {totalCals} ккал
         </span>
         <span className="text-gray-400">
-           (за {qty} {product.unit})
+           (за {displayQty} {product.unit})
         </span>
       </div>
     );
@@ -149,7 +206,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                 <input 
                     type="text" required
                     className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
-                    placeholder="Напр. Вода"
+                    placeholder="Напр. Овсянка"
                     value={title}
                     onChange={e => setTitle(e.target.value)}
                 />
@@ -157,7 +214,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
             <div className="w-24">
                 <label className="block text-sm font-medium text-gray-700">Порций</label>
                 <input 
-                    type="number" min="1" max="20" required // <-- ИЗМЕНЕНО НА 20
+                    type="number" min="1" max="20" required
                     className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none text-center"
                     value={portions}
                     onChange={e => setPortions(e.target.value)}
@@ -177,39 +234,61 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Ингредиенты</label>
-          {ingredients.map((ing, idx) => (
-            <div key={ing.tempId} className="mb-3 p-3 bg-gray-50 rounded border border-gray-200">
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <ProductSelect 
-                    products={products}
-                    value={ing.product_id}
-                    onChange={(val) => updateIngredient(idx, 'product_id', val)}
-                  />
+          {ingredients.map((ing, idx) => {
+            const product = products.find(p => p.id === parseInt(ing.product_id));
+            const baseUnit = product ? product.unit : '';
+
+            // Список доступных единиц: Базовая + Ложки (если не штучный товар)
+            // Для штучных (яйца) ложки обычно не применяют, но можно и оставить
+            const availableUnits = [baseUnit, ...SPOON_UNITS.map(s => s.label)].filter(Boolean);
+            // Удаляем дубликаты (если базовая вдруг "ст. л")
+            const uniqueUnits = [...new Set(availableUnits)];
+
+            return (
+                <div key={ing.tempId} className="mb-3 p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="flex gap-2">
+                    <div className="flex-1">
+                    <ProductSelect 
+                        products={products}
+                        value={ing.product_id}
+                        onChange={(val) => updateIngredient(idx, 'product_id', val)}
+                    />
+                    </div>
+                    
+                    <div className="flex w-36 border rounded bg-white overflow-hidden focus-within:ring-2 focus-within:ring-indigo-200">
+                        <input 
+                            type="number" step="0.001" min="0" required placeholder="0"
+                            className="w-full p-2 text-sm outline-none border-r"
+                            value={ing.quantity}
+                            onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                if (val < 0) return;
+                                updateIngredient(idx, 'quantity', e.target.value)
+                            }}
+                        />
+                        <select 
+                            className="bg-gray-50 text-xs font-medium text-gray-600 outline-none px-1 cursor-pointer hover:bg-gray-100 max-w-[4rem]"
+                            value={ing.unit || baseUnit}
+                            onChange={(e) => updateIngredient(idx, 'unit', e.target.value)}
+                        >
+                            {uniqueUnits.map(u => (
+                                <option key={u} value={u}>{u}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <button 
+                    type="button"
+                    onClick={() => removeIngredient(idx)}
+                    className="text-red-500 hover:text-red-700 font-bold px-2 text-xl leading-none"
+                    >
+                    ×
+                    </button>
                 </div>
-                <div className="w-24">
-                  <input 
-                    type="number" step="0.001" min="0" required placeholder="Кол-во"
-                    className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-indigo-200 outline-none"
-                    value={ing.quantity}
-                    onChange={(e) => {
-                        const val = parseFloat(e.target.value);
-                        if (val < 0) return;
-                        updateIngredient(idx, 'quantity', e.target.value)
-                    }}
-                  />
+                {getIngredientSummary(ing)}
                 </div>
-                <button 
-                  type="button"
-                  onClick={() => removeIngredient(idx)}
-                  className="text-red-500 hover:text-red-700 font-bold px-2 text-xl leading-none"
-                >
-                  ×
-                </button>
-              </div>
-              {getIngredientSummary(ing)}
-            </div>
-          ))}
+            );
+          })}
           
           <button 
             type="button" onClick={addIngredient}

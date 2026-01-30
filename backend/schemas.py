@@ -33,9 +33,9 @@ class RecipeResponse(RecipeBase):
     ingredients: List[IngredientResponse] = []
     total_cost: float
     total_calories: float
+    calories_per_100g: float  # <-- Добавлено новое поле
     class Config: from_attributes = True
 
-# НОВЫЕ СХЕМЫ FAMILY
 class FamilyMemberBase(BaseModel):
     name: str
     color: str 
@@ -49,14 +49,14 @@ class PlanItemBase(BaseModel):
     meal_type: str
     recipe_id: int
     portions: int = 1
-    family_member_id: Optional[int] = None # ID пользователя
+    family_member_id: Optional[int] = None
 class PlanItemCreate(PlanItemBase): pass
 class PlanItemUpdate(BaseModel):
     portions: int
 class PlanItemResponse(PlanItemBase):
     id: int
     recipe: Optional[RecipeResponse]
-    family_member: Optional[FamilyMemberResponse] # Данные пользователя
+    family_member: Optional[FamilyMemberResponse]
     class Config: from_attributes = True
 
 class TelegramUserBase(BaseModel):

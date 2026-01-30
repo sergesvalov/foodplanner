@@ -64,7 +64,6 @@ const RecipesPage = () => {
   };
 
   return (
-    // ИСПРАВЛЕНИЕ: h-full вместо calc(...) + pb-4 для отступа снизу
     <div className="container mx-auto max-w-6xl h-full flex flex-col p-4 pb-6">
       
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 shrink-0">
@@ -79,7 +78,6 @@ const RecipesPage = () => {
         </div>
       </div>
       
-      {/* Контейнер грида занимает оставшееся место и не скроллит страницу, скролл внутри колонок */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-1 overflow-hidden min-h-0">
         <div className="overflow-y-auto pr-2">
           <RecipeBuilder 
@@ -111,8 +109,12 @@ const RecipesPage = () => {
                         <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">
                           €{(recipe.total_cost || 0).toFixed(2)}
                         </span>
+                        {/* ИЗМЕНЕНИЕ: Показываем ккал/100г, если они есть, иначе общие */}
                         <span className="text-xs font-bold bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-100">
-                          {recipe.total_calories || 0} ккал
+                          {recipe.calories_per_100g > 0 
+                            ? `${recipe.calories_per_100g} ккал/100г` 
+                            : `${recipe.total_calories} ккал (всего)`
+                          }
                         </span>
                     </div>
                   </div>
