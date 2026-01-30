@@ -20,10 +20,16 @@ def read_recipes(db: Session = Depends(get_db)):
 
 @router.post("/", response_model=schemas.RecipeResponse)
 def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
-    db_recipe = models.Recipe(title=recipe.title, description=recipe.description)
+    # ИСПРАВЛЕНО: добавлено поле portions
+    db_recipe = models.Recipe(
+        title=recipe.title, 
+        description=recipe.description,
+        portions=recipe.portions
+    )
     db.add(db_recipe)
     db.commit()
     db.refresh(db_recipe)
+    
     for item in recipe.ingredients:
         db_ingredient = models.RecipeIngredient(
             recipe_id=db_recipe.id, product_id=item.product_id, quantity=item.quantity
@@ -41,13 +47,17 @@ def update_recipe(recipe_id: int, recipe: schemas.RecipeCreate, db: Session = De
 
     db_recipe.title = recipe.title
     db_recipe.description = recipe.description
+    # ИСПРАВЛЕНО: обновляем поле portions
+    db_recipe.portions = recipe.portions
     
+    # Удаляем старые ингредиенты и добавляем новые
     db.query(models.RecipeIngredient).filter(models.RecipeIngredient.recipe_id == recipe_id).delete()
     for item in recipe.ingredients:
         db_ingredient = models.RecipeIngredient(
             recipe_id=db_recipe.id, product_id=item.product_id, quantity=item.quantity
         )
         db.add(db_ingredient)
+    
     db.commit()
     db.refresh(db_recipe)
     return db_recipe
@@ -66,7 +76,12 @@ def delete_recipe(recipe_id: int, db: Session = Depends(get_db)):
 @router.get("/export")
 def export_recipes(db: Session = Depends(get_db)):
     recipes = db.query(models.Recipe).all()
-    data = [{"title": r.title, "description": r.description} for r in recipes]
+    # Добавим portions и в экспорт, чтобы не терять данные при переносе
+    data = [{
+        "title": r.title, 
+        "description": r.description,
+        "portions": r.portions
+    } for r in recipes]
     try:
         with open(EXPORT_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -88,16 +103,28 @@ def import_recipes(db: Session = Depends(get_db)):
     for item in data:
         title = item.get("title")
         description = item.get("description", "")
+        portions = item.get("portions", 1) # Читаем порции из файла (по дефолту 1)
+        
         if not title: continue
         
         db_recipe = db.query(models.Recipe).filter(models.Recipe.title == title).first()
         if not db_recipe:
-            new_recipe = models.Recipe(title=title, description=description)
+            new_recipe = models.Recipe(title=title, description=description, portions=portions)
             db.add(new_recipe)
             created += 1
         else:
+            # Обновляем описание и порции, если изменились
+            updated_flag = False
             if db_recipe.description != description:
                 db_recipe.description = description
+                updated_flag = True
+            
+            if db_recipe.portions != portions:
+                db_recipe.portions = portions
+                updated_flag = True
+            
+            if updated_flag:
                 updated += 1
+
     db.commit()
     return {"message": "Импорт завершен", "created": created, "updated": updated}
