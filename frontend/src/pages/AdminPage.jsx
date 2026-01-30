@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 
-// Добавил labels для выпадающего списка
 const COLORS = [
   { name: 'red',    label: 'Красный',    bg: 'bg-red-500' },
   { name: 'orange', label: 'Оранжевый',  bg: 'bg-orange-500' },
@@ -23,7 +22,10 @@ const AdminPage = () => {
 
   const [family, setFamily] = useState([]);
   const [newMemberName, setNewMemberName] = useState('');
-  const [newMemberColor, setNewMemberColor] = useState('blue'); // Значение по умолчанию
+  const [newMemberColor, setNewMemberColor] = useState('blue');
+  
+  // Новое состояние для редактирования
+  const [editingId, setEditingId] = useState(null);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -55,19 +57,54 @@ const AdminPage = () => {
     if(window.confirm("Удалить?")) { await fetch(`/api/admin/telegram/users/${id}`, {method:'DELETE'}); fetchAllData(); }
   };
 
-  const addFamilyMember = async (e) => {
+  // --- ЛОГИКА СЕМЬИ (ADD / UPDATE) ---
+  const handleFamilySubmit = async (e) => {
     e.preventDefault();
     if (!newMemberName) return;
-    await fetch('/api/admin/family', { 
-        method: 'POST', headers: {'Content-Type':'application/json'}, 
-        body: JSON.stringify({ name: newMemberName, color: newMemberColor })
-    });
-    setNewMemberName(''); 
-    // Цвет не сбрасываем, чтобы удобно было добавлять следующего, или можно сбросить на 'blue'
-    fetchAllData(); 
+
+    try {
+        let url = '/api/admin/family';
+        let method = 'POST';
+
+        if (editingId) {
+            url = `/api/admin/family/${editingId}`;
+            method = 'PUT';
+        }
+
+        const res = await fetch(url, { 
+            method: method, 
+            headers: {'Content-Type':'application/json'}, 
+            body: JSON.stringify({ name: newMemberName, color: newMemberColor })
+        });
+
+        if (res.ok) {
+            resetFamilyForm();
+            fetchAllData();
+        }
+    } catch (err) {
+        console.error(err);
+    }
   };
+
+  const startEditing = (member) => {
+    setNewMemberName(member.name);
+    setNewMemberColor(member.color);
+    setEditingId(member.id);
+  };
+
+  const resetFamilyForm = () => {
+    setNewMemberName('');
+    setNewMemberColor('blue');
+    setEditingId(null);
+  };
+
   const deleteFamilyMember = async (id) => {
-    if(window.confirm("Удалить?")) { await fetch(`/api/admin/family/${id}`, {method:'DELETE'}); fetchAllData(); }
+    if(window.confirm("Удалить пользователя?")) { 
+        await fetch(`/api/admin/family/${id}`, {method:'DELETE'}); 
+        // Если удалили того, кого редактировали - сбрасываем форму
+        if (editingId === id) resetFamilyForm();
+        fetchAllData(); 
+    }
   };
 
   const triggerExport = async (endpoint) => {
@@ -81,7 +118,6 @@ const AdminPage = () => {
     if(res.ok) { alert("Готово"); fetchAllData(); } else alert("Ошибка");
   };
 
-  // Получаем объект текущего выбранного цвета для отображения превью
   const selectedColorObj = COLORS.find(c => c.name === newMemberColor) || COLORS[0];
 
   if (!isAuthenticated) {
@@ -112,7 +148,7 @@ const AdminPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
-            {/* ПОЛЬЗОВАТЕЛИ (ОБНОВЛЕННЫЙ ДИЗАЙН) */}
+            {/* ПОЛЬЗОВАТЕЛИ */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 lg:col-span-2">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="bg-gray-100 p-2 rounded-lg text-2xl">👤</div>
@@ -120,8 +156,21 @@ const AdminPage = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
-                        <form onSubmit={addFamilyMember} className="bg-gray-50 p-5 rounded-lg border border-gray-200">
-                            <h4 className="font-bold text-gray-700 mb-4 text-sm uppercase tracking-wide">Добавить пользователя</h4>
+                        <form onSubmit={handleFamilySubmit} className={`bg-gray-50 p-5 rounded-lg border transition-colors ${editingId ? 'border-yellow-400 ring-1 ring-yellow-400' : 'border-gray-200'}`}>
+                            <div className="flex justify-between items-center mb-4">
+                                <h4 className={`font-bold text-sm uppercase tracking-wide ${editingId ? 'text-yellow-700' : 'text-gray-700'}`}>
+                                    {editingId ? 'Редактировать' : 'Добавить пользователя'}
+                                </h4>
+                                {editingId && (
+                                    <button 
+                                        type="button" 
+                                        onClick={resetFamilyForm}
+                                        className="text-xs text-gray-500 hover:text-gray-800 hover:underline"
+                                    >
+                                        Отмена
+                                    </button>
+                                )}
+                            </div>
                             
                             <div className="mb-4">
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Имя</label>
@@ -138,10 +187,7 @@ const AdminPage = () => {
                             <div className="mb-6">
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Цвет метки</label>
                                 <div className="flex gap-2 items-center">
-                                    {/* Превью цвета */}
                                     <div className={`w-10 h-10 rounded shadow-sm flex-shrink-0 border border-black/5 ${selectedColorObj.bg}`} />
-                                    
-                                    {/* Выпадающий список */}
                                     <select 
                                         className="w-full border rounded p-2 bg-white cursor-pointer focus:ring-2 focus:ring-gray-300 outline-none transition-all"
                                         value={newMemberColor}
@@ -156,8 +202,8 @@ const AdminPage = () => {
                                 </div>
                             </div>
 
-                            <button className="w-full bg-gray-800 hover:bg-gray-900 text-white py-2.5 rounded font-bold shadow-sm transition-colors">
-                                Добавить пользователя
+                            <button className={`w-full text-white py-2.5 rounded font-bold shadow-sm transition-colors ${editingId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-gray-800 hover:bg-gray-900'}`}>
+                                {editingId ? 'Сохранить изменения' : 'Добавить пользователя'}
                             </button>
                         </form>
                     </div>
@@ -168,14 +214,29 @@ const AdminPage = () => {
                         ) : (
                             <ul className="space-y-2 max-h-80 overflow-y-auto pr-1">
                                 {family.map(member => (
-                                    <li key={member.id} className="flex justify-between items-center bg-white border border-gray-100 p-3 rounded shadow-sm hover:shadow-md transition-shadow">
+                                    <li key={member.id} className={`flex justify-between items-center bg-white border p-3 rounded shadow-sm hover:shadow-md transition-all ${editingId === member.id ? 'border-yellow-400 bg-yellow-50' : 'border-gray-100'}`}>
                                         <div className="flex items-center gap-3">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold uppercase shadow-sm bg-${member.color}-500`}>
                                                 {member.name[0]}
                                             </div>
                                             <span className="font-medium text-gray-700">{member.name}</span>
                                         </div>
-                                        <button onClick={() => deleteFamilyMember(member.id)} className="text-gray-300 hover:text-red-500 font-bold px-2 transition-colors">✕</button>
+                                        <div className="flex gap-1">
+                                            <button 
+                                                onClick={() => startEditing(member)} 
+                                                className="text-gray-400 hover:text-indigo-600 font-bold px-2 py-1 transition-colors"
+                                                title="Редактировать"
+                                            >
+                                                ✎
+                                            </button>
+                                            <button 
+                                                onClick={() => deleteFamilyMember(member.id)} 
+                                                className="text-gray-300 hover:text-red-500 font-bold px-2 py-1 transition-colors"
+                                                title="Удалить"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
                                     </li>
                                 ))}
                             </ul>
@@ -184,7 +245,7 @@ const AdminPage = () => {
                 </div>
             </div>
 
-            {/* TELEGRAM (Кнопки стали серыми) */}
+            {/* TELEGRAM */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 lg:col-span-2">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="bg-gray-100 p-2 rounded-lg text-2xl">🤖</div>

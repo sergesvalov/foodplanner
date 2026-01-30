@@ -76,7 +76,7 @@ def delete_telegram_user(user_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
-# Family Members (NEW)
+# Family Members
 @router.get("/family", response_model=List[schemas.FamilyMemberResponse])
 def get_family_members(db: Session = Depends(get_db)):
     return db.query(models.FamilyMember).all()
@@ -88,6 +88,21 @@ def add_family_member(member: schemas.FamilyMemberCreate, db: Session = Depends(
     db.commit()
     db.refresh(new_member)
     return new_member
+
+# --- НОВЫЙ ENDPOINT ДЛЯ РЕДАКТИРОВАНИЯ ---
+@router.put("/family/{member_id}", response_model=schemas.FamilyMemberResponse)
+def update_family_member(member_id: int, member: schemas.FamilyMemberCreate, db: Session = Depends(get_db)):
+    db_member = db.query(models.FamilyMember).filter(models.FamilyMember.id == member_id).first()
+    if not db_member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    db_member.name = member.name
+    db_member.color = member.color
+    
+    db.commit()
+    db.refresh(db_member)
+    return db_member
+# -----------------------------------------
 
 @router.delete("/family/{member_id}")
 def delete_family_member(member_id: int, db: Session = Depends(get_db)):
