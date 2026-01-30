@@ -47,30 +47,41 @@ class Recipe(Base):
 
     @property
     def total_weight(self):
-        """Считает общий вес рецепта в граммах (для жидких и весовых продуктов)"""
+        """Общий вес рецепта в граммах"""
         weight = 0.0
         for item in self.ingredients:
             if item.product:
                 unit_lower = (item.product.unit or "").lower()
                 qty = item.quantity
-                
-                # Конвертация в граммы
                 if unit_lower in ["kg", "кг", "l", "л"]:
                     weight += qty * 1000
                 elif unit_lower in ["g", "г", "ml", "мл"]:
                     weight += qty
-                # Штучные товары (шт, pcs) игнорируем, так как их вес неизвестен
-                # Это может дать погрешность, если рецепт состоит только из штук
         return weight
 
     @property
     def calories_per_100g(self):
-        """Вычисляет калорийность на 100г готового блюда"""
         cals = self.total_calories
         weight = self.total_weight
         if weight > 0:
             return round((cals / weight) * 100)
         return 0
+
+    # --- НОВЫЕ СВОЙСТВА ДЛЯ ПОРЦИЙ ---
+    @property
+    def calories_per_portion(self):
+        """Калорийность одной порции"""
+        if self.portions > 0:
+            return round(self.total_calories / self.portions)
+        return 0
+
+    @property
+    def weight_per_portion(self):
+        """Вес одной порции в граммах"""
+        if self.portions > 0:
+            return round(self.total_weight / self.portions)
+        return 0
+    # ---------------------------------
 
 class RecipeIngredient(Base):
     __tablename__ = "recipe_ingredients"
