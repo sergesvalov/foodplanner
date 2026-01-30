@@ -1,99 +1,137 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import json
+import os
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+import models
+import schemas
+from dependencies import get_db
 
-const ProductSelect = ({ products, value, onChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const wrapperRef = useRef(null);
+# Создаем роутер. Префикс позволяет не писать "/products" в каждом методе
+router = APIRouter(
+    prefix="/products",
+    tags=["Products"]
+)
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-        setIsOpen(false);
-        setSearchTerm('');
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+EXPORT_PATH = "/app/data/products.json"
 
-  const selectedProduct = (products || []).find(p => p.id === parseInt(value));
+# 1. ПОЛУЧЕНИЕ СПИСКА (С ВОЗМОЖНОСТЬЮ ПОИСКА ПО ИМЕНИ)
+@router.get("/", response_model=List[schemas.ProductResponse])
+def read_products(
+    q: Optional[str] = Query(None, description="Поиск продукта по названию"),
+    db: Session = Depends(get_db)
+):
+    """
+    Возвращает список всех продуктов.
+    Если передан параметр ?q=..., фильтрует продукты по названию (регистронезависимо).
+    """
+    query = db.query(models.Product)
+    if q:
+        # ilike делает поиск регистронезависимым (case-insensitive)
+        query = query.filter(models.Product.name.ilike(f"%{q}%"))
+    return query.all()
 
-  const filteredProducts = useMemo(() => {
-    return (products || []).filter(p =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [products, searchTerm]);
+# 2. ПОЛУЧЕНИЕ КОНКРЕТНОГО ПРОДУКТА ПО ID
+@router.get("/{product_id}", response_model=schemas.ProductResponse)
+def read_product(product_id: int, db: Session = Depends(get_db)):
+    """
+    Возвращает один конкретный продукт по его ID.
+    """
+    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if db_product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return db_product
 
-  const handleSelect = (id) => {
-    onChange(id);
-    setIsOpen(false);
-    setSearchTerm('');
-  };
+@router.post("/", response_model=schemas.ProductResponse)
+def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
+    db_product = models.Product(**product.dict())
+    db.add(db_product)
+    db.commit()
+    db.refresh(db_product)
+    return db_product
 
-  return (
-    <div className="relative w-full" ref={wrapperRef}>
-       <div
-         className={`
-            border rounded p-2 w-full cursor-text flex justify-between items-center bg-white transition-shadow
-            ${isOpen ? 'ring-2 ring-indigo-200 border-indigo-400' : 'border-gray-300'}
-         `}
-         onClick={() => {
-           if (!isOpen) setIsOpen(true);
-         }}
-       >
-         {isOpen ? (
-           <input
-             autoFocus
-             className="outline-none w-full text-sm text-gray-700 placeholder-gray-400"
-             placeholder="Начните вводить название..."
-             value={searchTerm}
-             onChange={e => setSearchTerm(e.target.value)}
-           />
-         ) : (
-           <span className={`text-sm truncate ${!selectedProduct ? "text-gray-400" : "text-gray-800"}`}>
-             {selectedProduct ? selectedProduct.name : "Выберите продукт"}
-           </span>
-         )}
-         
-         <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-         </svg>
-       </div>
+@router.put("/{product_id}", response_model=schemas.ProductResponse)
+def update_product(product_id: int, product: schemas.ProductCreate, db: Session = Depends(get_db)):
+    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if db_product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    db_product.name = product.name
+    db_product.price = product.price
+    db_product.unit = product.unit
+    db_product.amount = product.amount
+    db_product.calories = product.calories
+    
+    db.commit()
+    db.refresh(db_product)
+    return db_product
 
-       {isOpen && (
-         <ul className="absolute z-50 w-full bg-white border border-gray-200 mt-1 max-h-60 overflow-y-auto rounded-md shadow-lg animate-fadeIn">
-           {filteredProducts.length === 0 ? (
-             <li className="p-3 text-gray-400 text-sm text-center">
-               Ничего не найдено
-             </li>
-           ) : (
-             filteredProducts.map(product => {
-               const isPieces = ['шт', 'шт.', 'pcs'].includes((product.unit || '').toLowerCase());
-               return (
-                 <li
-                   key={product.id}
-                   className={`
-                      p-2 px-3 cursor-pointer text-sm flex justify-between items-center border-b border-gray-50 last:border-0
-                      ${product.id === parseInt(value) ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-50 text-gray-700'}
-                   `}
-                   onClick={() => handleSelect(product.id)}
-                 >
-                   <span className="font-medium">{product.name}</span>
-                   
-                   <span className="text-xs text-gray-400 flex flex-col items-end">
-                      <span>{product.amount} {product.unit}</span>
-                      <span className="text-[10px] text-orange-500">
-                          {product.calories > 0 ? `${product.calories} ккал/${isPieces ? 'шт' : '100г'}` : ''}
-                      </span>
-                   </span>
-                 </li>
-               );
-             })
-           )}
-         </ul>
-       )}
-    </div>
-  );
-};
+@router.delete("/{product_id}")
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    item = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Product not found")
+    db.delete(item)
+    db.commit()
+    return {"ok": True}
 
-export default ProductSelect;
+# --- Export / Import ---
+
+@router.get("/export")
+def export_products(db: Session = Depends(get_db)):
+    products = db.query(models.Product).all()
+    data = [{
+        "name": p.name,
+        "price": p.price,
+        "unit": p.unit,
+        "amount": p.amount,
+        "calories": p.calories
+    } for p in products]
+    
+    try:
+        with open(EXPORT_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return {"message": f"Успешно сохранено {len(data)} товаров в {EXPORT_PATH}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка записи: {str(e)}")
+
+@router.post("/import")
+def import_products(db: Session = Depends(get_db)):
+    if not os.path.exists(EXPORT_PATH):
+        raise HTTPException(status_code=404, detail="Файл не найден")
+
+    try:
+        with open(EXPORT_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ошибка чтения: {str(e)}")
+
+    created_count, updated_count = 0, 0
+    
+    for item in data:
+        db_product = db.query(models.Product).filter(models.Product.name == item["name"]).first()
+        params = {
+            "price": float(item.get("price", 0)),
+            "amount": float(item.get("amount", 1.0)),
+            "unit": item.get("unit", "шт"),
+            "calories": float(item.get("calories", 0))
+        }
+
+        if not db_product:
+            new_product = models.Product(name=item["name"], **params)
+            db.add(new_product)
+            created_count += 1
+        else:
+            if (db_product.price != params["price"] or 
+                db_product.amount != params["amount"] or
+                db_product.unit != params["unit"] or
+                db_product.calories != params["calories"]):
+                
+                db_product.price = params["price"]
+                db_product.amount = params["amount"]
+                db_product.unit = params["unit"]
+                db_product.calories = params["calories"]
+                updated_count += 1
+
+    db.commit()
+    return {"message": "Импорт завершен", "created": created_count, "updated": updated_count}
