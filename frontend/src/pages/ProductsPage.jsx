@@ -5,10 +5,9 @@ const ProductsPage = () => {
   const [editingId, setEditingId] = useState(null);
 
   // --- Состояние сортировки ---
-  // key: 'name' | 'price' | 'amount' | 'calories' | null
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+  // ИЗМЕНЕНИЕ: key: 'name' по умолчанию, чтобы список сразу был отсортирован
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
 
-  // ИЗМЕНЕНИЕ 1: По умолчанию 'г' вместо 'шт'
   const [form, setForm] = useState({
     name: '', price: '', amount: '1', unit: 'г', calories: ''
   });
@@ -34,7 +33,8 @@ const ProductsPage = () => {
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
 
-        if (sortConfig.key === 'name') {
+        // Специальная обработка для строк (чтобы 'Яблоко' > 'Абрикос')
+        if (typeof aValue === 'string') {
             aValue = aValue.toLowerCase();
             bValue = bValue.toLowerCase();
         }
@@ -53,6 +53,7 @@ const ProductsPage = () => {
 
   const requestSort = (key) => {
     let direction = 'ascending';
+    // Если кликнули по той же колонке, меняем направление
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
     }
@@ -124,7 +125,6 @@ const ProductsPage = () => {
   };
 
   const resetForm = () => {
-    // ИЗМЕНЕНИЕ 2: Сброс тоже на 'г'
     setForm({ name: '', price: '', amount: '1', unit: 'г', calories: '' });
     setEditingId(null);
   };
@@ -280,7 +280,6 @@ const ProductsPage = () => {
                   >
                     Вес/Кол-во {getSortIndicator('amount')}
                   </th>
-                  {/* ИЗМЕНЕНИЕ 3: Добавлена колонка Ккал */}
                   <th 
                     className="px-6 py-3 cursor-pointer hover:bg-gray-100 select-none transition-colors"
                     onClick={() => requestSort('calories')}
@@ -303,7 +302,6 @@ const ProductsPage = () => {
                     <td className="px-6 py-3 font-mono">
                       {product.amount} {product.unit}
                     </td>
-                    {/* ИЗМЕНЕНИЕ 4: Отображение калорий */}
                     <td className="px-6 py-3">
                       {product.calories > 0 ? `${product.calories} ккал` : '—'}
                     </td>
