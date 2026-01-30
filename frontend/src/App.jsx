@@ -8,6 +8,7 @@ import ShoppingListPage from './pages/ShoppingListPage';
 import TodayPage from './pages/TodayPage';
 import AdminPage from './pages/AdminPage';
 import AboutPage from './pages/AboutPage';
+import StatisticsPage from './pages/StatisticsPage';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/recipes" element={<RecipesPage />} />
             <Route path="/shopping-list" element={<ShoppingListPage />} />
+            <Route path="/stats" element={<StatisticsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/about" element={<AboutPage />} />
           </Routes>
