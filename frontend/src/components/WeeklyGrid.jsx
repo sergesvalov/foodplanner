@@ -74,7 +74,6 @@ const WeeklyGrid = () => {
   };
 
   const handlePortionChange = async (itemId, newPortions) => {
-    // ИЗМЕНЕНИЕ: Лимит увеличен до 20
     if (newPortions < 1 || newPortions > 20) return;
     setPlan(plan.map(item => item.id === itemId ? { ...item, portions: parseInt(newPortions) } : item));
     try {
@@ -97,6 +96,7 @@ const WeeklyGrid = () => {
   const ALL_COLUMNS = [...DAYS, EXTRA_KEY];
 
   return (
+    // ИЗМЕНЕНИЕ: h-auto вместо h-full, убран overflow-y-auto
     <div className="w-full flex flex-col bg-gray-100 rounded-lg border border-gray-300 relative h-auto shadow-sm">
       
       {pendingDrop && (
@@ -132,7 +132,8 @@ const WeeklyGrid = () => {
       </div>
 
       {/* GRID */}
-      <div className="overflow-x-auto overflow-y-visible">
+      {/* ИЗМЕНЕНИЕ: overflow-x-auto (горизонт), overflow-y-visible (вертикаль растет) */}
+      <div className="overflow-x-auto overflow-y-visible pb-12">
         <div className="grid grid-cols-8 divide-x divide-gray-300 min-w-[1200px]">
             {ALL_COLUMNS.map((col) => {
             const isExtra = col === EXTRA_KEY;
@@ -194,7 +195,6 @@ const PlanItemCard = ({ item, onRemove, onPortionChange, calculateStats }) => {
             <div className="flex items-center gap-1 mt-1 bg-gray-50 rounded px-1 py-0.5 justify-between">
                 <div className="flex items-center gap-1">
                     <span className="text-[9px] text-gray-400">Порц:</span>
-                    {/* ИЗМЕНЕНИЕ: max="20" */}
                     <input type="number" min="1" max="20" className="w-6 h-4 text-[10px] font-bold text-center border rounded" value={item.portions || 1} onClick={(e)=>e.stopPropagation()} onChange={(e)=>onPortionChange(item.id, e.target.value)} />
                 </div>
                 {base > 1 && <span className="text-[8px] text-gray-400">(из {base})</span>}
