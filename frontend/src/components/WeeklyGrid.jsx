@@ -15,7 +15,6 @@ const MEALS = [
   { id: 'late_snack', label: 'Поздний ужин', color: 'bg-indigo-50 border-indigo-100', isSnack: true },
 ];
 
-// Добавлен режим 'extra'
 const VIEW_MODES = [
   { id: 'week', label: 'Вся неделя' },
   { id: 'work', label: 'Рабочие дни' },
@@ -30,6 +29,8 @@ const WeeklyGrid = () => {
   const [pendingDrop, setPendingDrop] = useState(null);
   
   const [viewMode, setViewMode] = useState('week');
+  // 1. Новое состояние для выбранного пользователя
+  const [selectedUser, setSelectedUser] = useState('all');
 
   const fetchPlan = () => {
     fetch('/api/plan/')
@@ -47,27 +48,24 @@ const WeeklyGrid = () => {
     fetchUsers();
   }, []);
 
-  // Логика отображения колонок
+  // 2. Фильтрация плана на основе выбранного пользователя
+  const filteredPlan = useMemo(() => {
+    if (selectedUser === 'all') return plan;
+    // Показываем только карточки, привязанные к конкретному пользователю
+    return plan.filter(p => p.family_member_id === parseInt(selectedUser));
+  }, [plan, selectedUser]);
+
   const visibleColumns = useMemo(() => {
     switch (viewMode) {
-      case 'work':
-        // Пн (0) - Пт (4)
-        return DAYS.slice(0, 5);
-      case 'weekend':
-        // Сб (5) - Вс (6)
-        return DAYS.slice(5, 7);
+      case 'work': return DAYS.slice(0, 5);
+      case 'weekend': return DAYS.slice(5, 7);
       case 'today':
-        // Текущий день недели
-        const dayIndex = new Date().getDay(); // 0 (Вс) ... 6 (Сб)
+        const dayIndex = new Date().getDay();
         const mapIndex = dayIndex === 0 ? 6 : dayIndex - 1;
         return [DAYS[mapIndex]];
-      case 'extra':
-        // Только колонка вкусняшек
-        return [EXTRA_KEY];
+      case 'extra': return [EXTRA_KEY];
       case 'week':
-      default:
-        // 7 дней + Вкусняшки
-        return [...DAYS, EXTRA_KEY];
+      default: return [...DAYS, EXTRA_KEY];
     }
   }, [viewMode]);
 
@@ -81,8 +79,14 @@ const WeeklyGrid = () => {
     if (!data) return;
     const recipe = JSON.parse(data);
     
-    if (users.length === 0) confirmAdd(day, mealType, recipe.id, null);
-    else setPendingDrop({ day, mealType, recipeId: recipe.id });
+    // При сбросе: если выбран конкретный пользователь, сразу назначаем ему
+    // Если "Вся семья", спрашиваем модалку (как и было)
+    if (selectedUser !== 'all') {
+        confirmAdd(day, mealType, recipe.id, parseInt(selectedUser));
+    } else {
+        if (users.length === 0) confirmAdd(day, mealType, recipe.id, null);
+        else setPendingDrop({ day, mealType, recipeId: recipe.id });
+    }
   };
 
   const confirmAdd = async (day, mealType, recipeId, userId) => {
@@ -123,7 +127,8 @@ const WeeklyGrid = () => {
       return { cost: (recipe.total_cost || 0) * ratio, cals: Math.round((recipe.total_calories || 0) * ratio) };
   };
 
-  const weeklyStats = plan.reduce((acc, item) => {
+  // 3. Статистика пересчитывается на основе filteredPlan
+  const weeklyStats = filteredPlan.reduce((acc, item) => {
       const s = calculateItemStats(item);
       return { cost: acc.cost + s.cost, cals: acc.cals + s.cals };
   }, { cost: 0, cals: 0 });
@@ -155,29 +160,51 @@ const WeeklyGrid = () => {
       )}
 
       {/* HEADER */}
-      <div className="bg-white p-3 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center shadow-sm z-20 rounded-t-lg gap-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2">📅 План <span className="hidden md:inline">питания</span> <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{plan.length} блюд</span></h2>
+      <div className="bg-white p-3 border-b border-gray-200 flex flex-col xl:flex-row justify-between items-start xl:items-center shadow-sm z-20 rounded-t-lg gap-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full xl:w-auto">
+            <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2 whitespace-nowrap">
+                📅 План 
+                <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+                    {filteredPlan.length} блюд
+                </span>
+            </h2>
             
-            {/* Кнопки переключения вида */}
-            <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto max-w-[200px] md:max-w-none">
-                {VIEW_MODES.map(mode => (
-                    <button
-                        key={mode.id}
-                        onClick={() => setViewMode(mode.id)}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all whitespace-nowrap ${
-                            viewMode === mode.id 
-                            ? 'bg-white text-gray-800 shadow-sm' 
-                            : 'text-gray-400 hover:text-gray-600'
-                        }`}
+            <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
+                {/* Кнопки переключения вида */}
+                <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto">
+                    {VIEW_MODES.map(mode => (
+                        <button
+                            key={mode.id}
+                            onClick={() => setViewMode(mode.id)}
+                            className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all whitespace-nowrap ${
+                                viewMode === mode.id 
+                                ? 'bg-white text-gray-800 shadow-sm' 
+                                : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                        >
+                            {mode.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* 4. Выбор пользователя */}
+                <div className="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
+                    <span className="text-xs font-bold text-gray-400">Для:</span>
+                    <select 
+                        className="bg-transparent text-sm font-bold text-gray-700 outline-none cursor-pointer w-full md:w-auto min-w-[100px]"
+                        value={selectedUser}
+                        onChange={(e) => setSelectedUser(e.target.value)}
                     >
-                        {mode.label}
-                    </button>
-                ))}
+                        <option value="all">👨‍👩‍👧‍👦 Всех</option>
+                        {users.map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex gap-4 self-end xl:self-auto">
               <div className="flex flex-col items-end"><span className="text-[10px] text-gray-400 uppercase font-bold">Бюджет</span><span className="text-lg font-bold text-green-600 leading-none">€{weeklyStats.cost.toFixed(2)}</span></div>
               <div className="flex flex-col items-end"><span className="text-[10px] text-gray-400 uppercase font-bold">Калории</span><span className="text-lg font-bold text-orange-600 leading-none">{weeklyStats.cals}</span></div>
           </div>
@@ -188,14 +215,13 @@ const WeeklyGrid = () => {
         <div 
             className="grid divide-x divide-gray-300 min-w-full"
             style={{ 
-                // Если колонка одна (extra или today), растягиваем на весь экран (1fr), 
-                // если вся неделя - фиксируем минимум 150px
                 gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(${viewMode === 'week' ? '150px' : '0'}, 1fr))` 
             }}
         >
             {visibleColumns.map((col) => {
             const isExtra = col === EXTRA_KEY;
-            const items = plan.filter(p => p.day_of_week === col);
+            // 5. Используем filteredPlan для отображения
+            const items = filteredPlan.filter(p => p.day_of_week === col);
             const stats = items.reduce((acc, i) => { const s = calculateItemStats(i); return { cost: acc.cost + s.cost, cals: acc.cals + s.cals }; }, { cost: 0, cals: 0 });
 
             return (
@@ -217,7 +243,9 @@ const WeeklyGrid = () => {
                         </div>
                     ) : (
                         MEALS.map((meal) => {
-                            const slotItems = plan.filter(p => p.day_of_week === col && p.meal_type === meal.id);
+                            // 5. Используем filteredPlan
+                            const slotItems = filteredPlan.filter(p => p.day_of_week === col && p.meal_type === meal.id);
+                            // Компактный режим только если нет предметов
                             const isCompact = meal.isSnack && slotItems.length === 0;
                             return (
                             <div key={meal.id} className={`relative rounded border ${meal.color} ${isCompact ? 'h-8 opacity-50 hover:opacity-100 hover:h-auto border-dashed flex items-center justify-center' : 'min-h-[80px] pb-1 shadow-sm'}`}
