@@ -255,14 +255,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         <div>
           <div className="flex justify-between items-end mb-2">
             <label className="block text-sm font-medium text-gray-700">Ингредиенты</label>
-            <button
-              type="button"
-              onClick={fetchProducts}
-              className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
-              title="Обновить список продуктов"
-            >
-              🔄 Обновить продукты
-            </button>
+            {/* Auto-refresh enabled on dropdown open */}
           </div>
           {ingredients.map((ing, idx) => {
             const product = products.find(p => p.id === parseInt(ing.product_id));
@@ -284,6 +277,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
                       products={products}
                       value={ing.product_id}
                       onChange={(val) => updateIngredient(idx, 'product_id', val)}
+                      onOpen={fetchProducts}
                     />
                   </div>
 

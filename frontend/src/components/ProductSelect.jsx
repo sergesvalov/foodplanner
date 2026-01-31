@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 
-const ProductSelect = ({ products, value, onChange }) => {
+const ProductSelect = ({ products, value, onChange, onOpen }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef(null);
@@ -35,70 +35,73 @@ const ProductSelect = ({ products, value, onChange }) => {
 
   return (
     <div className="relative w-full" ref={wrapperRef}>
-       {/* Поле ввода / отображения выбранного */}
-       <div
-         className={`
+      {/* Поле ввода / отображения выбранного */}
+      <div
+        className={`
             border rounded p-2 w-full cursor-text flex justify-between items-center bg-white transition-shadow
             ${isOpen ? 'ring-2 ring-indigo-200 border-indigo-400' : 'border-gray-300'}
          `}
-         onClick={() => {
-           if (!isOpen) setIsOpen(true);
-         }}
-       >
-         {isOpen ? (
-           <input
-             autoFocus
-             className="outline-none w-full text-sm text-gray-700 placeholder-gray-400"
-             placeholder="Начните вводить название..."
-             value={searchTerm}
-             onChange={e => setSearchTerm(e.target.value)}
-           />
-         ) : (
-           <span className={`text-sm truncate ${!selectedProduct ? "text-gray-400" : "text-gray-800"}`}>
-             {selectedProduct ? selectedProduct.name : "Выберите продукт"}
-           </span>
-         )}
-         
-         <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-         </svg>
-       </div>
+        onClick={() => {
+          if (!isOpen) {
+            setIsOpen(true);
+            if (onOpen) onOpen();
+          }
+        }}
+      >
+        {isOpen ? (
+          <input
+            autoFocus
+            className="outline-none w-full text-sm text-gray-700 placeholder-gray-400"
+            placeholder="Начните вводить название..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        ) : (
+          <span className={`text-sm truncate ${!selectedProduct ? "text-gray-400" : "text-gray-800"}`}>
+            {selectedProduct ? selectedProduct.name : "Выберите продукт"}
+          </span>
+        )}
 
-       {/* Выпадающий список */}
-       {isOpen && (
-         <ul className="absolute z-50 w-full bg-white border border-gray-200 mt-1 max-h-60 overflow-y-auto rounded-md shadow-lg animate-fadeIn">
-           {filteredProducts.length === 0 ? (
-             <li className="p-3 text-gray-400 text-sm text-center">
-               Ничего не найдено
-             </li>
-           ) : (
-             filteredProducts.map(product => {
-               // Логика для отображения калорийности (шт или 100г)
-               const isPieces = ['шт', 'шт.', 'pcs'].includes((product.unit || '').toLowerCase());
-               
-               return (
-                 <li
-                   key={product.id}
-                   className={`
+        <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+
+      {/* Выпадающий список */}
+      {isOpen && (
+        <ul className="absolute z-50 w-full bg-white border border-gray-200 mt-1 max-h-60 overflow-y-auto rounded-md shadow-lg animate-fadeIn">
+          {filteredProducts.length === 0 ? (
+            <li className="p-3 text-gray-400 text-sm text-center">
+              Ничего не найдено
+            </li>
+          ) : (
+            filteredProducts.map(product => {
+              // Логика для отображения калорийности (шт или 100г)
+              const isPieces = ['шт', 'шт.', 'pcs'].includes((product.unit || '').toLowerCase());
+
+              return (
+                <li
+                  key={product.id}
+                  className={`
                       p-2 px-3 cursor-pointer text-sm flex justify-between items-center border-b border-gray-50 last:border-0
                       ${product.id === parseInt(value) ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-50 text-gray-700'}
                    `}
-                   onClick={() => handleSelect(product.id)}
-                 >
-                   <span className="font-medium">{product.name}</span>
-                   
-                   <span className="text-xs text-gray-400 flex flex-col items-end">
-                      <span>{product.amount} {product.unit}</span>
-                      <span className="text-[10px] text-orange-500">
-                          {product.calories > 0 ? `${product.calories} ккал/${isPieces ? 'шт' : '100г'}` : ''}
-                      </span>
-                   </span>
-                 </li>
-               );
-             })
-           )}
-         </ul>
-       )}
+                  onClick={() => handleSelect(product.id)}
+                >
+                  <span className="font-medium">{product.name}</span>
+
+                  <span className="text-xs text-gray-400 flex flex-col items-end">
+                    <span>{product.amount} {product.unit}</span>
+                    <span className="text-[10px] text-orange-500">
+                      {product.calories > 0 ? `${product.calories} ккал/${isPieces ? 'шт' : '100г'}` : ''}
+                    </span>
+                  </span>
+                </li>
+              );
+            })
+          )}
+        </ul>
+      )}
     </div>
   );
 };
