@@ -100,11 +100,31 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const getNormalizedQuantity = (qty, currentUnit, product) => {
     if (!product || !qty) return 0;
 
+    // Прямое совпадение
     if (currentUnit === product.unit) return parseFloat(qty);
+
+    // Логика перевода веса (г <-> кг, g <-> kg)
+    const baseUnitLower = (product.unit || '').toLowerCase();
+    const currentUnitLower = (currentUnit || '').toLowerCase();
+
+    // Если продукт в кг, а выбрали г (или наоборот)
+    if (['kg', 'кг'].includes(baseUnitLower) && ['g', 'г'].includes(currentUnitLower)) {
+      return parseFloat(qty) / 1000;
+    }
+    if (['g', 'г'].includes(baseUnitLower) && ['kg', 'кг'].includes(currentUnitLower)) {
+      return parseFloat(qty) * 1000;
+    }
+
+    // Если продукт в л, а выбрали мл (или наоборот)
+    if (['l', 'л'].includes(baseUnitLower) && ['ml', 'мл'].includes(currentUnitLower)) {
+      return parseFloat(qty) / 1000;
+    }
+    if (['ml', 'мл'].includes(baseUnitLower) && ['l', 'л'].includes(currentUnitLower)) {
+      return parseFloat(qty) * 1000;
+    }
 
     const spoon = SPOON_UNITS.find(s => s.label === currentUnit);
     if (spoon) {
-      const baseUnitLower = (product.unit || '').toLowerCase();
       const isBigUnit = ['л', 'кг', 'l', 'kg'].includes(baseUnitLower);
 
       const factor = isBigUnit ? spoon.value / 1000 : spoon.value;
@@ -264,6 +284,13 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
             const isPieces = ['шт', 'шт.', 'pcs', 'piece', 'stk'].includes(baseUnitLower);
 
             let availableUnits = [baseUnit];
+
+            // Если продукт весовой (кг или г), добавляем альтернативу
+            if (['kg', 'кг'].includes(baseUnitLower)) availableUnits.push('г');
+            if (['g', 'г'].includes(baseUnitLower)) availableUnits.push('кг');
+            if (['l', 'л'].includes(baseUnitLower)) availableUnits.push('мл');
+            if (['ml', 'мл'].includes(baseUnitLower)) availableUnits.push('л');
+
             if (!isPieces) {
               availableUnits = [...availableUnits, ...SPOON_UNITS.map(s => s.label)];
             }
