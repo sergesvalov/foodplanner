@@ -42,11 +42,16 @@ class Recipe(Base):
             if item.product:
                 unit_lower = (item.product.unit or "").lower()
                 is_pieces = unit_lower in ["шт", "шт.", "pcs", "piece", "stk"]
+                
+                qty = item.quantity
+                if unit_lower in ["kg", "кг", "l", "л"]:
+                    qty *= 1000  # Convert to grams/ml
+                
                 if is_pieces:
-                    total += item.product.calories * item.quantity
+                    total += item.product.calories * qty
                 else:
                     cals_per_gram = item.product.calories / 100.0
-                    total += item.quantity * cals_per_gram
+                    total += qty * cals_per_gram
         return round(total)
 
     @property
