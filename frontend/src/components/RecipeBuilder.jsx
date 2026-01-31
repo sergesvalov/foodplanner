@@ -8,17 +8,17 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const [products, setProducts] = useState([]);
   const [portions, setPortions] = useState(1);
   // ИЗМЕНЕНИЕ: По умолчанию 'other'
-  const [category, setCategory] = useState('other'); 
+  const [category, setCategory] = useState('other');
 
   // ИЗМЕНЕНИЕ: Добавлена категория 'Другое'
   const CATEGORIES = [
-      { id: 'breakfast', label: 'Завтрак' },
-      { id: 'snack', label: 'Перекус' },
-      { id: 'main', label: 'Второе' },
-      { id: 'soup', label: 'Первое' },
-      { id: 'side', label: 'Гарнир' },
-      { id: 'yummy', label: 'Вкусняшки' },
-      { id: 'other', label: 'Другое' },
+    { id: 'breakfast', label: 'Завтрак' },
+    { id: 'snack', label: 'Перекус' },
+    { id: 'main', label: 'Второе' },
+    { id: 'soup', label: 'Первое' },
+    { id: 'side', label: 'Гарнир' },
+    { id: 'yummy', label: 'Вкусняшки' },
+    { id: 'other', label: 'Другое' },
   ];
 
   const SPOON_UNITS = [
@@ -26,14 +26,18 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     { label: 'ч. л', value: 5 }
   ];
 
-  useEffect(() => {
+  const fetchProducts = () => {
     fetch('/api/products/')
       .then(res => res.json())
       .then(data => {
-          if(Array.isArray(data)) setProducts(data);
-          else setProducts([]);
+        if (Array.isArray(data)) setProducts(data);
+        else setProducts([]);
       })
       .catch(err => console.error(err));
+  };
+
+  useEffect(() => {
+    fetchProducts();
   }, []);
 
   useEffect(() => {
@@ -42,15 +46,15 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       setDescription(initialData.description || '');
       setPortions(initialData.portions || 1);
       // Если у редактируемого рецепта нет категории, ставим 'other'
-      setCategory(initialData.category || 'other'); 
-      
+      setCategory(initialData.category || 'other');
+
       const mapped = (initialData.ingredients || []).map(i => {
-        const prod = i.product; 
+        const prod = i.product;
         return {
-            product_id: prod ? prod.id : '',
-            quantity: i.quantity,
-            unit: prod ? prod.unit : '',
-            tempId: Date.now() + Math.random()
+          product_id: prod ? prod.id : '',
+          quantity: i.quantity,
+          unit: prod ? prod.unit : '',
+          tempId: Date.now() + Math.random()
         };
       });
       setIngredients(mapped);
@@ -83,28 +87,28 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     const item = newList[index];
 
     if (field === 'product_id') {
-        const prod = products.find(p => p.id === parseInt(value));
-        item.unit = prod ? prod.unit : '';
-        item.product_id = value;
+      const prod = products.find(p => p.id === parseInt(value));
+      item.unit = prod ? prod.unit : '';
+      item.product_id = value;
     } else {
-        item[field] = value;
+      item[field] = value;
     }
-    
+
     setIngredients(newList);
   };
 
   const getNormalizedQuantity = (qty, currentUnit, product) => {
     if (!product || !qty) return 0;
-    
+
     if (currentUnit === product.unit) return parseFloat(qty);
 
     const spoon = SPOON_UNITS.find(s => s.label === currentUnit);
     if (spoon) {
-        const baseUnitLower = (product.unit || '').toLowerCase();
-        const isBigUnit = ['л', 'кг', 'l', 'kg'].includes(baseUnitLower);
-        
-        const factor = isBigUnit ? spoon.value / 1000 : spoon.value;
-        return parseFloat(qty) * factor;
+      const baseUnitLower = (product.unit || '').toLowerCase();
+      const isBigUnit = ['л', 'кг', 'l', 'kg'].includes(baseUnitLower);
+
+      const factor = isBigUnit ? spoon.value / 1000 : spoon.value;
+      return parseFloat(qty) * factor;
     }
 
     return parseFloat(qty);
@@ -112,24 +116,24 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const validIngredients = ingredients
-        .map(i => {
-            const product = products.find(p => p.id === parseInt(i.product_id));
-            const normalizedQty = getNormalizedQuantity(i.quantity, i.unit, product);
-            
-            return {
-                product_id: parseInt(i.product_id),
-                quantity: normalizedQty
-            };
-        })
-        .filter(i => i.product_id && i.quantity > 0);
-    
+      .map(i => {
+        const product = products.find(p => p.id === parseInt(i.product_id));
+        const normalizedQty = getNormalizedQuantity(i.quantity, i.unit, product);
+
+        return {
+          product_id: parseInt(i.product_id),
+          quantity: normalizedQty
+        };
+      })
+      .filter(i => i.product_id && i.quantity > 0);
+
     const payload = {
       title,
       description,
       portions: parseInt(portions),
-      category, 
+      category,
       ingredients: validIngredients
     };
 
@@ -158,9 +162,9 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const getIngredientSummary = (ing) => {
     if (!products || products.length === 0) return null;
     const product = products.find(p => p.id === parseInt(ing.product_id));
-    
+
     const normalizedQty = getNormalizedQuantity(ing.quantity, ing.unit, product);
-    
+
     if (!product || !normalizedQty) return null;
 
     const packAmount = product.amount || 1;
@@ -169,12 +173,12 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
 
     const prodCals = product.calories || 0;
     const isPieces = ['шт', 'шт.', 'pcs', 'piece'].includes((product.unit || '').toLowerCase());
-    
+
     let totalCals = 0;
     if (isPieces) {
-        totalCals = Math.round(prodCals * normalizedQty);
+      totalCals = Math.round(prodCals * normalizedQty);
     } else {
-        totalCals = Math.round((prodCals / 100) * normalizedQty);
+      totalCals = Math.round((prodCals / 100) * normalizedQty);
     }
 
     const displayQty = parseFloat(normalizedQty.toFixed(4));
@@ -188,7 +192,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
           {totalCals} ккал
         </span>
         <span className="text-gray-400">
-           (за {displayQty} {product.unit})
+          (за {displayQty} {product.unit})
         </span>
       </div>
     );
@@ -200,47 +204,47 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         {initialData ? 'Редактировать рецепт' : 'Создать рецепт'}
       </h3>
       <form onSubmit={handleSubmit} className="space-y-4">
-        
+
         <div className="flex gap-4">
-            <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700">Название блюда</label>
-                <input 
-                    type="text" required
-                    className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
-                    placeholder="Напр. Овсянка"
-                    value={title}
-                    onChange={e => setTitle(e.target.value)}
-                />
-            </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700">Название блюда</label>
+            <input
+              type="text" required
+              className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+              placeholder="Напр. Овсянка"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className="flex gap-4">
-            <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700">Категория</label>
-                <select 
-                    className="mt-1 w-full border rounded p-2 bg-white focus:ring-2 focus:ring-indigo-200 outline-none"
-                    value={category}
-                    onChange={e => setCategory(e.target.value)}
-                >
-                    {CATEGORIES.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.label}</option>
-                    ))}
-                </select>
-            </div>
-            <div className="w-24">
-                <label className="block text-sm font-medium text-gray-700">Порций</label>
-                <input 
-                    type="number" min="1" max="20" required
-                    className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none text-center"
-                    value={portions}
-                    onChange={e => setPortions(e.target.value)}
-                />
-            </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700">Категория</label>
+            <select
+              className="mt-1 w-full border rounded p-2 bg-white focus:ring-2 focus:ring-indigo-200 outline-none"
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+            >
+              {CATEGORIES.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="w-24">
+            <label className="block text-sm font-medium text-gray-700">Порций</label>
+            <input
+              type="number" min="1" max="20" required
+              className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none text-center"
+              value={portions}
+              onChange={e => setPortions(e.target.value)}
+            />
+          </div>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700">Способ приготовления</label>
-          <textarea 
+          <textarea
             className="mt-1 w-full border rounded p-2 h-24 focus:ring-2 focus:ring-indigo-200 outline-none"
             placeholder="Опишите процесс..."
             value={description}
@@ -249,7 +253,17 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Ингредиенты</label>
+          <div className="flex justify-between items-end mb-2">
+            <label className="block text-sm font-medium text-gray-700">Ингредиенты</label>
+            <button
+              type="button"
+              onClick={fetchProducts}
+              className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
+              title="Обновить список продуктов"
+            >
+              🔄 Обновить продукты
+            </button>
+          </div>
           {ingredients.map((ing, idx) => {
             const product = products.find(p => p.id === parseInt(ing.product_id));
             const baseUnit = product ? product.unit : '';
@@ -258,57 +272,57 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
 
             let availableUnits = [baseUnit];
             if (!isPieces) {
-                availableUnits = [...availableUnits, ...SPOON_UNITS.map(s => s.label)];
+              availableUnits = [...availableUnits, ...SPOON_UNITS.map(s => s.label)];
             }
             const uniqueUnits = [...new Set(availableUnits.filter(Boolean))];
 
             return (
-                <div key={ing.tempId} className="mb-3 p-3 bg-gray-50 rounded border border-gray-200">
+              <div key={ing.tempId} className="mb-3 p-3 bg-gray-50 rounded border border-gray-200">
                 <div className="flex gap-2">
-                    <div className="flex-1">
-                    <ProductSelect 
-                        products={products}
-                        value={ing.product_id}
-                        onChange={(val) => updateIngredient(idx, 'product_id', val)}
+                  <div className="flex-1">
+                    <ProductSelect
+                      products={products}
+                      value={ing.product_id}
+                      onChange={(val) => updateIngredient(idx, 'product_id', val)}
                     />
-                    </div>
-                    
-                    <div className="flex w-36 border rounded bg-white overflow-hidden focus-within:ring-2 focus-within:ring-indigo-200">
-                        <input 
-                            type="number" step="0.001" min="0" required placeholder="0"
-                            className="w-full p-2 text-sm outline-none border-r"
-                            value={ing.quantity}
-                            onChange={(e) => {
-                                const val = parseFloat(e.target.value);
-                                if (val < 0) return;
-                                updateIngredient(idx, 'quantity', e.target.value)
-                            }}
-                        />
-                        <select 
-                            className="bg-gray-50 text-xs font-medium text-gray-600 outline-none px-1 cursor-pointer hover:bg-gray-100 max-w-[4rem]"
-                            value={ing.unit || baseUnit}
-                            onChange={(e) => updateIngredient(idx, 'unit', e.target.value)}
-                        >
-                            {uniqueUnits.map(u => (
-                                <option key={u} value={u}>{u}</option>
-                            ))}
-                        </select>
-                    </div>
+                  </div>
 
-                    <button 
+                  <div className="flex w-36 border rounded bg-white overflow-hidden focus-within:ring-2 focus-within:ring-indigo-200">
+                    <input
+                      type="number" step="0.001" min="0" required placeholder="0"
+                      className="w-full p-2 text-sm outline-none border-r"
+                      value={ing.quantity}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (val < 0) return;
+                        updateIngredient(idx, 'quantity', e.target.value)
+                      }}
+                    />
+                    <select
+                      className="bg-gray-50 text-xs font-medium text-gray-600 outline-none px-1 cursor-pointer hover:bg-gray-100 max-w-[4rem]"
+                      value={ing.unit || baseUnit}
+                      onChange={(e) => updateIngredient(idx, 'unit', e.target.value)}
+                    >
+                      {uniqueUnits.map(u => (
+                        <option key={u} value={u}>{u}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
                     type="button"
                     onClick={() => removeIngredient(idx)}
                     className="text-red-500 hover:text-red-700 font-bold px-2 text-xl leading-none"
-                    >
+                  >
                     ×
-                    </button>
+                  </button>
                 </div>
                 {getIngredientSummary(ing)}
-                </div>
+              </div>
             );
           })}
-          
-          <button 
+
+          <button
             type="button" onClick={addIngredient}
             className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 mt-2"
           >
@@ -317,21 +331,21 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         </div>
 
         <div className="flex gap-3 pt-4 border-t border-gray-100">
-            <button 
-                type="submit" 
-                className="flex-1 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition font-medium shadow-sm"
+          <button
+            type="submit"
+            className="flex-1 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition font-medium shadow-sm"
+          >
+            {initialData ? 'Сохранить изменения' : 'Создать рецепт'}
+          </button>
+          {initialData && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
             >
-                {initialData ? 'Сохранить изменения' : 'Создать рецепт'}
+              Отмена
             </button>
-            {initialData && (
-                <button 
-                    type="button" 
-                    onClick={onCancel}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
-                >
-                    Отмена
-                </button>
-            )}
+          )}
         </div>
       </form>
     </div>
