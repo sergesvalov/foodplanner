@@ -191,7 +191,13 @@ const RecipesPage = () => {
 
                       {/* Заголовок и Категория */}
                       <div className="flex justify-between items-start">
-                        <h4 className="font-bold text-gray-800 text-lg leading-tight">{recipe.title}</h4>
+                        <h4
+                          className="font-bold text-gray-800 text-lg leading-tight cursor-pointer hover:text-indigo-600 transition-colors"
+                          onClick={() => setEditingRecipe(recipe)}
+                          title="Редактировать рецепт"
+                        >
+                          {recipe.title}
+                        </h4>
                         <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ml-2 ${CATEGORY_COLORS[recipe.category] || CATEGORY_COLORS.other}`}>
                           {CATEGORY_LABELS[recipe.category] || CATEGORY_LABELS.other}
                         </span>
