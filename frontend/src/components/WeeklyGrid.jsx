@@ -27,7 +27,7 @@ const WeeklyGrid = () => {
   const [users, setUsers] = useState([]);
   const [pendingDrop, setPendingDrop] = useState(null);
   
-  // 1. Состояние для режима отображения
+  // Состояние режима просмотра (по умолчанию "Вся неделя")
   const [viewMode, setViewMode] = useState('week');
 
   const fetchPlan = () => {
@@ -46,23 +46,23 @@ const WeeklyGrid = () => {
     fetchUsers();
   }, []);
 
-  // 2. Логика вычисления отображаемых колонок
+  // Логика отображения колонок
   const visibleColumns = useMemo(() => {
     switch (viewMode) {
       case 'work':
-        // Понедельник (0) - Пятница (4)
+        // Только рабочие дни (Пн-Пт)
         return DAYS.slice(0, 5);
       case 'weekend':
-        // Суббота (5) - Воскресенье (6)
+        // Только выходные (Сб-Вс)
         return DAYS.slice(5, 7);
       case 'today':
+        // Текущий день
         const dayIndex = new Date().getDay(); // 0 (Вс) ... 6 (Сб)
-        // Конвертируем JS день недели (Вс=0) в наш индекс (Пн=0, ..., Вс=6)
         const mapIndex = dayIndex === 0 ? 6 : dayIndex - 1;
         return [DAYS[mapIndex]];
       case 'week':
       default:
-        // Все дни + колонка "Вкусняшки"
+        // Вся неделя + Вкусняшки
         return [...DAYS, EXTRA_KEY];
     }
   }, [viewMode]);
@@ -155,7 +155,7 @@ const WeeklyGrid = () => {
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2">📅 План <span className="hidden md:inline">питания</span> <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{plan.length} блюд</span></h2>
             
-            {/* 3. Кнопки переключения режимов */}
+            {/* Кнопки переключения вида */}
             <div className="flex bg-gray-100 rounded-lg p-1">
                 {VIEW_MODES.map(mode => (
                     <button
@@ -181,10 +181,10 @@ const WeeklyGrid = () => {
 
       {/* GRID */}
       <div className="overflow-x-auto overflow-y-visible pb-12">
-        {/* 4. Динамическая сетка: используем style gridTemplateColumns чтобы колонки делили пространство поровну */}
         <div 
             className="grid divide-x divide-gray-300 min-w-full"
             style={{ 
+                // Динамическое количество колонок в зависимости от видимых
                 gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(${viewMode === 'week' ? '150px' : '0'}, 1fr))` 
             }}
         >
