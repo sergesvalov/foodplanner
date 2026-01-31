@@ -295,7 +295,11 @@ const ProductsPage = () => {
                   </tr>
                 )}
                 {sortedProducts.map((product) => (
-                  <tr key={product.id} className={`hover:bg-gray-50 ${editingId === product.id ? 'bg-yellow-50' : ''}`}>
+                  <tr
+                    key={product.id}
+                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${editingId === product.id ? 'bg-yellow-50' : ''}`}
+                    onClick={() => handleEditClick(product)}
+                  >
                     <td className="px-6 py-3 font-medium text-gray-900">{product.name}</td>
                     <td className="px-6 py-3">€{product.price.toFixed(2)}</td>
                     <td className="px-6 py-3 font-mono">
@@ -312,7 +316,10 @@ const ProductsPage = () => {
                         ✎
                       </button>
                       <button
-                        onClick={() => handleDelete(product.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(product.id);
+                        }}
                         className="text-red-500 hover:text-red-700 font-bold px-2 py-1"
                       >
                         ✕
