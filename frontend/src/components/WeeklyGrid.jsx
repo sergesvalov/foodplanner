@@ -15,11 +15,13 @@ const MEALS = [
   { id: 'late_snack', label: 'Поздний ужин', color: 'bg-indigo-50 border-indigo-100', isSnack: true },
 ];
 
+// Добавлен режим 'extra'
 const VIEW_MODES = [
   { id: 'week', label: 'Вся неделя' },
   { id: 'work', label: 'Рабочие дни' },
   { id: 'weekend', label: 'Выходные' },
   { id: 'today', label: 'Сегодня' },
+  { id: 'extra', label: '🍪 Вкусняшки' },
 ];
 
 const WeeklyGrid = () => {
@@ -27,7 +29,6 @@ const WeeklyGrid = () => {
   const [users, setUsers] = useState([]);
   const [pendingDrop, setPendingDrop] = useState(null);
   
-  // Состояние режима просмотра (по умолчанию "Вся неделя")
   const [viewMode, setViewMode] = useState('week');
 
   const fetchPlan = () => {
@@ -50,19 +51,22 @@ const WeeklyGrid = () => {
   const visibleColumns = useMemo(() => {
     switch (viewMode) {
       case 'work':
-        // Только рабочие дни (Пн-Пт)
+        // Пн (0) - Пт (4)
         return DAYS.slice(0, 5);
       case 'weekend':
-        // Только выходные (Сб-Вс)
+        // Сб (5) - Вс (6)
         return DAYS.slice(5, 7);
       case 'today':
-        // Текущий день
+        // Текущий день недели
         const dayIndex = new Date().getDay(); // 0 (Вс) ... 6 (Сб)
         const mapIndex = dayIndex === 0 ? 6 : dayIndex - 1;
         return [DAYS[mapIndex]];
+      case 'extra':
+        // Только колонка вкусняшек
+        return [EXTRA_KEY];
       case 'week':
       default:
-        // Вся неделя + Вкусняшки
+        // 7 дней + Вкусняшки
         return [...DAYS, EXTRA_KEY];
     }
   }, [viewMode]);
@@ -152,16 +156,16 @@ const WeeklyGrid = () => {
 
       {/* HEADER */}
       <div className="bg-white p-3 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center shadow-sm z-20 rounded-t-lg gap-4">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2">📅 План <span className="hidden md:inline">питания</span> <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{plan.length} блюд</span></h2>
             
             {/* Кнопки переключения вида */}
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto max-w-[200px] md:max-w-none">
                 {VIEW_MODES.map(mode => (
                     <button
                         key={mode.id}
                         onClick={() => setViewMode(mode.id)}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all ${
+                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all whitespace-nowrap ${
                             viewMode === mode.id 
                             ? 'bg-white text-gray-800 shadow-sm' 
                             : 'text-gray-400 hover:text-gray-600'
@@ -184,7 +188,8 @@ const WeeklyGrid = () => {
         <div 
             className="grid divide-x divide-gray-300 min-w-full"
             style={{ 
-                // Динамическое количество колонок в зависимости от видимых
+                // Если колонка одна (extra или today), растягиваем на весь экран (1fr), 
+                // если вся неделя - фиксируем минимум 150px
                 gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(${viewMode === 'week' ? '150px' : '0'}, 1fr))` 
             }}
         >
