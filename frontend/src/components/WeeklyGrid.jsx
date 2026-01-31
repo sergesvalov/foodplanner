@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 
 const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 const EXTRA_KEY = 'Вкусняшки';
@@ -15,10 +15,20 @@ const MEALS = [
   { id: 'late_snack', label: 'Поздний ужин', color: 'bg-indigo-50 border-indigo-100', isSnack: true },
 ];
 
+const VIEW_MODES = [
+  { id: 'week', label: 'Вся неделя' },
+  { id: 'work', label: 'Рабочие дни' },
+  { id: 'weekend', label: 'Выходные' },
+  { id: 'today', label: 'Сегодня' },
+];
+
 const WeeklyGrid = () => {
   const [plan, setPlan] = useState([]);
   const [users, setUsers] = useState([]);
   const [pendingDrop, setPendingDrop] = useState(null);
+  
+  // 1. Состояние для режима отображения
+  const [viewMode, setViewMode] = useState('week');
 
   const fetchPlan = () => {
     fetch('/api/plan/')
@@ -35,6 +45,27 @@ const WeeklyGrid = () => {
     fetchPlan();
     fetchUsers();
   }, []);
+
+  // 2. Логика вычисления отображаемых колонок
+  const visibleColumns = useMemo(() => {
+    switch (viewMode) {
+      case 'work':
+        // Понедельник (0) - Пятница (4)
+        return DAYS.slice(0, 5);
+      case 'weekend':
+        // Суббота (5) - Воскресенье (6)
+        return DAYS.slice(5, 7);
+      case 'today':
+        const dayIndex = new Date().getDay(); // 0 (Вс) ... 6 (Сб)
+        // Конвертируем JS день недели (Вс=0) в наш индекс (Пн=0, ..., Вс=6)
+        const mapIndex = dayIndex === 0 ? 6 : dayIndex - 1;
+        return [DAYS[mapIndex]];
+      case 'week':
+      default:
+        // Все дни + колонка "Вкусняшки"
+        return [...DAYS, EXTRA_KEY];
+    }
+  }, [viewMode]);
 
   const handleDragOver = (e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-indigo-300', 'bg-white'); };
   const handleDragLeave = (e) => { e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white'); };
@@ -93,10 +124,7 @@ const WeeklyGrid = () => {
       return { cost: acc.cost + s.cost, cals: acc.cals + s.cals };
   }, { cost: 0, cals: 0 });
 
-  const ALL_COLUMNS = [...DAYS, EXTRA_KEY];
-
   return (
-    // ИЗМЕНЕНИЕ: h-auto вместо h-full, убран overflow-y-auto
     <div className="w-full flex flex-col bg-gray-100 rounded-lg border border-gray-300 relative h-auto shadow-sm">
       
       {pendingDrop && (
@@ -123,8 +151,28 @@ const WeeklyGrid = () => {
       )}
 
       {/* HEADER */}
-      <div className="bg-white p-3 border-b border-gray-200 flex justify-between items-center shadow-sm z-20 rounded-t-lg">
-          <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2">📅 План питания <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{plan.length} блюд</span></h2>
+      <div className="bg-white p-3 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center shadow-sm z-20 rounded-t-lg gap-4">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2">📅 План <span className="hidden md:inline">питания</span> <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{plan.length} блюд</span></h2>
+            
+            {/* 3. Кнопки переключения режимов */}
+            <div className="flex bg-gray-100 rounded-lg p-1">
+                {VIEW_MODES.map(mode => (
+                    <button
+                        key={mode.id}
+                        onClick={() => setViewMode(mode.id)}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all ${
+                            viewMode === mode.id 
+                            ? 'bg-white text-gray-800 shadow-sm' 
+                            : 'text-gray-400 hover:text-gray-600'
+                        }`}
+                    >
+                        {mode.label}
+                    </button>
+                ))}
+            </div>
+          </div>
+
           <div className="flex gap-4">
               <div className="flex flex-col items-end"><span className="text-[10px] text-gray-400 uppercase font-bold">Бюджет</span><span className="text-lg font-bold text-green-600 leading-none">€{weeklyStats.cost.toFixed(2)}</span></div>
               <div className="flex flex-col items-end"><span className="text-[10px] text-gray-400 uppercase font-bold">Калории</span><span className="text-lg font-bold text-orange-600 leading-none">{weeklyStats.cals}</span></div>
@@ -132,10 +180,15 @@ const WeeklyGrid = () => {
       </div>
 
       {/* GRID */}
-      {/* ИЗМЕНЕНИЕ: overflow-x-auto (горизонт), overflow-y-visible (вертикаль растет) */}
       <div className="overflow-x-auto overflow-y-visible pb-12">
-        <div className="grid grid-cols-8 divide-x divide-gray-300 min-w-[1200px]">
-            {ALL_COLUMNS.map((col) => {
+        {/* 4. Динамическая сетка: используем style gridTemplateColumns чтобы колонки делили пространство поровну */}
+        <div 
+            className="grid divide-x divide-gray-300 min-w-full"
+            style={{ 
+                gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(${viewMode === 'week' ? '150px' : '0'}, 1fr))` 
+            }}
+        >
+            {visibleColumns.map((col) => {
             const isExtra = col === EXTRA_KEY;
             const items = plan.filter(p => p.day_of_week === col);
             const stats = items.reduce((acc, i) => { const s = calculateItemStats(i); return { cost: acc.cost + s.cost, cals: acc.cals + s.cals }; }, { cost: 0, cals: 0 });
