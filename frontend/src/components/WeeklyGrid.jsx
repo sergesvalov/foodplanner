@@ -29,7 +29,7 @@ const WeeklyGrid = () => {
   const [pendingDrop, setPendingDrop] = useState(null);
   
   const [viewMode, setViewMode] = useState('week');
-  const [selectedUser, setSelectedUser] = useState('all'); // Состояние фильтра пользователя
+  const [selectedUser, setSelectedUser] = useState('all');
 
   const fetchPlan = () => {
     fetch('/api/plan/')
@@ -47,7 +47,6 @@ const WeeklyGrid = () => {
     fetchUsers();
   }, []);
 
-  // Фильтрация плана по пользователю
   const filteredPlan = useMemo(() => {
     if (selectedUser === 'all') return plan;
     return plan.filter(p => p.family_member_id === parseInt(selectedUser));
@@ -70,7 +69,6 @@ const WeeklyGrid = () => {
   const handleDragOver = (e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-indigo-300', 'bg-white'); };
   const handleDragLeave = (e) => { e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white'); };
 
-  // --- ОСНОВНАЯ ЛОГИКА DROP ---
   const handleDrop = (e, day, mealType) => {
     e.preventDefault();
     e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white');
@@ -78,11 +76,9 @@ const WeeklyGrid = () => {
     if (!data) return;
     const recipe = JSON.parse(data);
     
-    // Если выбран конкретный пользователь - сразу назначаем ему
     if (selectedUser !== 'all') {
         confirmAdd(day, mealType, recipe.id, parseInt(selectedUser));
     } else {
-        // Иначе показываем модалку выбора (если есть пользователи)
         if (users.length === 0) confirmAdd(day, mealType, recipe.id, null);
         else setPendingDrop({ day, mealType, recipeId: recipe.id });
     }
@@ -126,15 +122,21 @@ const WeeklyGrid = () => {
       return { cost: (recipe.total_cost || 0) * ratio, cals: Math.round((recipe.total_calories || 0) * ratio) };
   };
 
-  const weeklyStats = filteredPlan.reduce((acc, item) => {
-      const s = calculateItemStats(item);
-      return { cost: acc.cost + s.cost, cals: acc.cals + s.cals };
-  }, { cost: 0, cals: 0 });
+  // --- ИЗМЕНЕНИЕ: Статистика считается только по видимым колонкам ---
+  const viewStats = useMemo(() => {
+    return filteredPlan.reduce((acc, item) => {
+        // Проверяем, отображается ли день недели этого блюда сейчас
+        if (visibleColumns.includes(item.day_of_week)) {
+            const s = calculateItemStats(item);
+            return { cost: acc.cost + s.cost, cals: acc.cals + s.cals };
+        }
+        return acc;
+    }, { cost: 0, cals: 0 });
+  }, [filteredPlan, visibleColumns]); // Зависит от плана и текущего режима просмотра
 
   return (
     <div className="w-full flex flex-col bg-gray-100 rounded-lg border border-gray-300 relative h-auto shadow-sm">
       
-      {/* Модальное окно (показывается только если selectedUser === 'all') */}
       {pendingDrop && (
           <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center backdrop-blur-sm animate-fadeIn">
               <div className="bg-white rounded-xl shadow-2xl p-6 w-80">
@@ -169,7 +171,6 @@ const WeeklyGrid = () => {
             </h2>
             
             <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
-                {/* View Mode Buttons */}
                 <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto">
                     {VIEW_MODES.map(mode => (
                         <button
@@ -186,7 +187,6 @@ const WeeklyGrid = () => {
                     ))}
                 </div>
 
-                {/* User Selector */}
                 <div className="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
                     <span className="text-xs font-bold text-gray-400">Для:</span>
                     <select 
@@ -204,8 +204,16 @@ const WeeklyGrid = () => {
           </div>
 
           <div className="flex gap-4 self-end xl:self-auto">
-              <div className="flex flex-col items-end"><span className="text-[10px] text-gray-400 uppercase font-bold">Бюджет</span><span className="text-lg font-bold text-green-600 leading-none">€{weeklyStats.cost.toFixed(2)}</span></div>
-              <div className="flex flex-col items-end"><span className="text-[10px] text-gray-400 uppercase font-bold">Калории</span><span className="text-lg font-bold text-orange-600 leading-none">{weeklyStats.cals}</span></div>
+              <div className="flex flex-col items-end">
+                  <span className="text-[10px] text-gray-400 uppercase font-bold">Бюджет</span>
+                  {/* Используем viewStats вместо weeklyStats */}
+                  <span className="text-lg font-bold text-green-600 leading-none">€{viewStats.cost.toFixed(2)}</span>
+              </div>
+              <div className="flex flex-col items-end">
+                  <span className="text-[10px] text-gray-400 uppercase font-bold">Калории</span>
+                  {/* Используем viewStats вместо weeklyStats */}
+                  <span className="text-lg font-bold text-orange-600 leading-none">{viewStats.cals}</span>
+              </div>
           </div>
       </div>
 
