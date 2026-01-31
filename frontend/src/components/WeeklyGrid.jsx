@@ -29,8 +29,7 @@ const WeeklyGrid = () => {
   const [pendingDrop, setPendingDrop] = useState(null);
   
   const [viewMode, setViewMode] = useState('week');
-  // 1. Новое состояние для выбранного пользователя
-  const [selectedUser, setSelectedUser] = useState('all');
+  const [selectedUser, setSelectedUser] = useState('all'); // Состояние фильтра пользователя
 
   const fetchPlan = () => {
     fetch('/api/plan/')
@@ -48,10 +47,9 @@ const WeeklyGrid = () => {
     fetchUsers();
   }, []);
 
-  // 2. Фильтрация плана на основе выбранного пользователя
+  // Фильтрация плана по пользователю
   const filteredPlan = useMemo(() => {
     if (selectedUser === 'all') return plan;
-    // Показываем только карточки, привязанные к конкретному пользователю
     return plan.filter(p => p.family_member_id === parseInt(selectedUser));
   }, [plan, selectedUser]);
 
@@ -72,6 +70,7 @@ const WeeklyGrid = () => {
   const handleDragOver = (e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-indigo-300', 'bg-white'); };
   const handleDragLeave = (e) => { e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white'); };
 
+  // --- ОСНОВНАЯ ЛОГИКА DROP ---
   const handleDrop = (e, day, mealType) => {
     e.preventDefault();
     e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white');
@@ -79,11 +78,11 @@ const WeeklyGrid = () => {
     if (!data) return;
     const recipe = JSON.parse(data);
     
-    // При сбросе: если выбран конкретный пользователь, сразу назначаем ему
-    // Если "Вся семья", спрашиваем модалку (как и было)
+    // Если выбран конкретный пользователь - сразу назначаем ему
     if (selectedUser !== 'all') {
         confirmAdd(day, mealType, recipe.id, parseInt(selectedUser));
     } else {
+        // Иначе показываем модалку выбора (если есть пользователи)
         if (users.length === 0) confirmAdd(day, mealType, recipe.id, null);
         else setPendingDrop({ day, mealType, recipeId: recipe.id });
     }
@@ -127,7 +126,6 @@ const WeeklyGrid = () => {
       return { cost: (recipe.total_cost || 0) * ratio, cals: Math.round((recipe.total_calories || 0) * ratio) };
   };
 
-  // 3. Статистика пересчитывается на основе filteredPlan
   const weeklyStats = filteredPlan.reduce((acc, item) => {
       const s = calculateItemStats(item);
       return { cost: acc.cost + s.cost, cals: acc.cals + s.cals };
@@ -136,6 +134,7 @@ const WeeklyGrid = () => {
   return (
     <div className="w-full flex flex-col bg-gray-100 rounded-lg border border-gray-300 relative h-auto shadow-sm">
       
+      {/* Модальное окно (показывается только если selectedUser === 'all') */}
       {pendingDrop && (
           <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center backdrop-blur-sm animate-fadeIn">
               <div className="bg-white rounded-xl shadow-2xl p-6 w-80">
@@ -170,7 +169,7 @@ const WeeklyGrid = () => {
             </h2>
             
             <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
-                {/* Кнопки переключения вида */}
+                {/* View Mode Buttons */}
                 <div className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto">
                     {VIEW_MODES.map(mode => (
                         <button
@@ -187,7 +186,7 @@ const WeeklyGrid = () => {
                     ))}
                 </div>
 
-                {/* 4. Выбор пользователя */}
+                {/* User Selector */}
                 <div className="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
                     <span className="text-xs font-bold text-gray-400">Для:</span>
                     <select 
@@ -220,7 +219,6 @@ const WeeklyGrid = () => {
         >
             {visibleColumns.map((col) => {
             const isExtra = col === EXTRA_KEY;
-            // 5. Используем filteredPlan для отображения
             const items = filteredPlan.filter(p => p.day_of_week === col);
             const stats = items.reduce((acc, i) => { const s = calculateItemStats(i); return { cost: acc.cost + s.cost, cals: acc.cals + s.cals }; }, { cost: 0, cals: 0 });
 
@@ -243,9 +241,7 @@ const WeeklyGrid = () => {
                         </div>
                     ) : (
                         MEALS.map((meal) => {
-                            // 5. Используем filteredPlan
                             const slotItems = filteredPlan.filter(p => p.day_of_week === col && p.meal_type === meal.id);
-                            // Компактный режим только если нет предметов
                             const isCompact = meal.isSnack && slotItems.length === 0;
                             return (
                             <div key={meal.id} className={`relative rounded border ${meal.color} ${isCompact ? 'h-8 opacity-50 hover:opacity-100 hover:h-auto border-dashed flex items-center justify-center' : 'min-h-[80px] pb-1 shadow-sm'}`}
