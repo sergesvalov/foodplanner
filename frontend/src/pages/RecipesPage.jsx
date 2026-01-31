@@ -27,6 +27,7 @@ const RecipesPage = () => {
   const [tgUsers, setTgUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState('');
   const [sendingId, setSendingId] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
   const fetchRecipes = () => {
     fetch('/api/recipes/')
@@ -157,89 +158,104 @@ const RecipesPage = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow border border-gray-200 flex flex-col overflow-hidden h-full">
-          <div className="p-4 border-b bg-gray-50 font-bold text-gray-700 shrink-0">
-            Каталог блюд ({recipes.length})
+          <div className="p-4 border-b bg-gray-50 flex justify-between items-center shrink-0">
+            <div className="font-bold text-gray-700">
+              Каталог блюд ({recipes.length})
+            </div>
+
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200"
+            >
+              <option value="all">Все категории ({recipes.length})</option>
+              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {Array.isArray(recipes) && recipes.map(recipe => (
-              <div
-                key={recipe.id}
-                className={`p-4 rounded-lg border transition-all ${editingRecipe?.id === recipe.id
+            {Array.isArray(recipes) && recipes
+              .filter(r => selectedCategory === "all" || r.category === selectedCategory)
+              .map(recipe => (
+                <div
+                  key={recipe.id}
+                  className={`p-4 rounded-lg border transition-all ${editingRecipe?.id === recipe.id
                     ? 'bg-yellow-50 border-yellow-300 ring-1 ring-yellow-300'
                     : 'bg-white border-gray-200 hover:border-indigo-300'
-                  }`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex flex-col gap-1 w-full">
+                    }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex flex-col gap-1 w-full">
 
-                    {/* Заголовок и Категория */}
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-bold text-gray-800 text-lg leading-tight">{recipe.title}</h4>
-                      <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ml-2 ${CATEGORY_COLORS[recipe.category] || CATEGORY_COLORS.other}`}>
-                        {CATEGORY_LABELS[recipe.category] || CATEGORY_LABELS.other}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">
-                        €{(recipe.total_cost || 0).toFixed(2)}
-                      </span>
-
-                      {recipe.calories_per_100g > 0 && (
-                        <span className="text-xs font-bold bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-100">
-                          {recipe.calories_per_100g} ккал/100г
+                      {/* Заголовок и Категория */}
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-bold text-gray-800 text-lg leading-tight">{recipe.title}</h4>
+                        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ml-2 ${CATEGORY_COLORS[recipe.category] || CATEGORY_COLORS.other}`}>
+                          {CATEGORY_LABELS[recipe.category] || CATEGORY_LABELS.other}
                         </span>
-                      )}
+                      </div>
 
-                      {recipe.portions > 0 && (
-                        <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">
-                          {recipe.calories_per_portion} ккал/порц ({recipe.weight_per_portion}г)
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        <span className="text-xs font-bold bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100">
+                          €{(recipe.total_cost || 0).toFixed(2)}
                         </span>
-                      )}
+
+                        {recipe.calories_per_100g > 0 && (
+                          <span className="text-xs font-bold bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-100">
+                            {recipe.calories_per_100g} ккал/100г
+                          </span>
+                        )}
+
+                        {recipe.portions > 0 && (
+                          <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">
+                            {recipe.calories_per_portion} ккал/порц ({recipe.weight_per_portion}г)
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <p className="text-sm text-gray-500 line-clamp-2 mb-3 min-h-[1.25rem]">
-                  {recipe.description || "Нет описания"}
-                </p>
+                  <p className="text-sm text-gray-500 line-clamp-2 mb-3 min-h-[1.25rem]">
+                    {recipe.description || "Нет описания"}
+                  </p>
 
-                <div className="flex justify-between items-center border-t pt-2 border-gray-100">
-                  <span className="text-xs text-gray-400">
-                    {recipe.ingredients ? recipe.ingredients.length : 0} ингредиентов
-                  </span>
+                  <div className="flex justify-between items-center border-t pt-2 border-gray-100">
+                    <span className="text-xs text-gray-400">
+                      {recipe.ingredients ? recipe.ingredients.length : 0} ингредиентов
+                    </span>
 
-                  <div className="flex gap-2">
-                    {/* Telegram Button */}
-                    {tgUsers.length > 0 && (
-                      <button
-                        onClick={() => handleSendTelegram(recipe)}
-                        disabled={sendingId === recipe.id}
-                        className={`text-sm px-2 py-1 rounded border transition-colors flex items-center gap-1
+                    <div className="flex gap-2">
+                      {/* Telegram Button */}
+                      {tgUsers.length > 0 && (
+                        <button
+                          onClick={() => handleSendTelegram(recipe)}
+                          disabled={sendingId === recipe.id}
+                          className={`text-sm px-2 py-1 rounded border transition-colors flex items-center gap-1
                                 ${sendingId === recipe.id ? 'bg-gray-100 text-gray-400' : 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100'}
                             `}
-                        title="Отправить в Telegram"
+                          title="Отправить в Telegram"
+                        >
+                          {sendingId === recipe.id ? '...' : '✈️'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { setEditingRecipe(recipe); }}
+                        className="text-sm px-3 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 font-medium transition"
                       >
-                        {sendingId === recipe.id ? '...' : '✈️'}
+                        Изменить
                       </button>
-                    )}
-                    <button
-                      onClick={() => { setEditingRecipe(recipe); }}
-                      className="text-sm px-3 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 font-medium transition"
-                    >
-                      Изменить
-                    </button>
-                    <button
-                      onClick={() => handleDelete(recipe.id)}
-                      className="text-sm px-3 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100 font-medium transition"
-                    >
-                      Удалить
-                    </button>
+                      <button
+                        onClick={() => handleDelete(recipe.id)}
+                        className="text-sm px-3 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100 font-medium transition"
+                      >
+                        Удалить
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
             {(!Array.isArray(recipes) || recipes.length === 0) && (
               <div className="text-center text-gray-400 mt-10">Список рецептов пуст</div>
