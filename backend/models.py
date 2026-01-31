@@ -96,6 +96,8 @@ class FamilyMember(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     color = Column(String, default="blue")
+    # НОВОЕ ПОЛЕ
+    max_calories = Column(Integer, default=2000)
 
 class WeeklyPlanEntry(Base):
     __tablename__ = "weekly_plan"

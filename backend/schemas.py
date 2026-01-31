@@ -43,7 +43,9 @@ class RecipeResponse(RecipeBase):
 
 class FamilyMemberBase(BaseModel):
     name: str
-    color: str 
+    color: str
+    # НОВОЕ ПОЛЕ
+    max_calories: int = 2000
 class FamilyMemberCreate(FamilyMemberBase): pass
 class FamilyMemberResponse(FamilyMemberBase):
     id: int

@@ -83,7 +83,12 @@ def get_family_members(db: Session = Depends(get_db)):
 
 @router.post("/family", response_model=schemas.FamilyMemberResponse)
 def add_family_member(member: schemas.FamilyMemberCreate, db: Session = Depends(get_db)):
-    new_member = models.FamilyMember(name=member.name, color=member.color)
+    new_member = models.FamilyMember(
+        name=member.name, 
+        color=member.color,
+        # Сохраняем калории
+        max_calories=member.max_calories
+    )
     db.add(new_member)
     db.commit()
     db.refresh(new_member)
@@ -98,6 +103,8 @@ def update_family_member(member_id: int, member: schemas.FamilyMemberCreate, db:
     
     db_member.name = member.name
     db_member.color = member.color
+    # Обновляем калории
+    db_member.max_calories = member.max_calories
     
     db.commit()
     db.refresh(db_member)
@@ -119,7 +126,7 @@ def export_settings(db: Session = Depends(get_db)):
         data = {
             "app_settings": [{"key": s.key, "value": s.value} for s in db.query(models.AppSetting).all()],
             "telegram_users": [{"name": u.name, "chat_id": u.chat_id} for u in db.query(models.TelegramUser).all()],
-            "family_members": [{"name": f.name, "color": f.color} for f in db.query(models.FamilyMember).all()]
+            "family_members": [{"name": f.name, "color": f.color, "max_calories": f.max_calories} for f in db.query(models.FamilyMember).all()]
         }
         with open(SETTINGS_BACKUP_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
@@ -137,7 +144,12 @@ def import_settings(db: Session = Depends(get_db)):
         
         for s in data.get("app_settings", []): db.add(models.AppSetting(key=s["key"], value=s["value"]))
         for u in data.get("telegram_users", []): db.add(models.TelegramUser(name=u["name"], chat_id=u["chat_id"]))
-        for f in data.get("family_members", []): db.add(models.FamilyMember(name=f["name"], color=f["color"]))
+        for f in data.get("family_members", []): 
+            db.add(models.FamilyMember(
+                name=f["name"], 
+                color=f["color"],
+                max_calories=f.get("max_calories", 2000)
+            ))
         
         db.commit()
         return {"status": "ok", "message": "Настройки восстановлены"}

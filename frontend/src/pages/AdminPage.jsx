@@ -23,6 +23,8 @@ const AdminPage = () => {
   const [family, setFamily] = useState([]);
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberColor, setNewMemberColor] = useState('blue');
+  // НОВЫЙ СТЕЙТ
+  const [newMemberMaxCalories, setNewMemberMaxCalories] = useState(2000);
   
   // Новое состояние для редактирования
   const [editingId, setEditingId] = useState(null);
@@ -74,7 +76,12 @@ const AdminPage = () => {
         const res = await fetch(url, { 
             method: method, 
             headers: {'Content-Type':'application/json'}, 
-            body: JSON.stringify({ name: newMemberName, color: newMemberColor })
+            body: JSON.stringify({ 
+                name: newMemberName, 
+                color: newMemberColor,
+                // ОТПРАВЛЯЕМ КАЛОРИИ
+                max_calories: parseInt(newMemberMaxCalories)
+            })
         });
 
         if (res.ok) {
@@ -89,12 +96,15 @@ const AdminPage = () => {
   const startEditing = (member) => {
     setNewMemberName(member.name);
     setNewMemberColor(member.color);
+    // ЗАПОЛНЯЕМ ПОЛЕ КАЛОРИЙ
+    setNewMemberMaxCalories(member.max_calories || 2000);
     setEditingId(member.id);
   };
 
   const resetFamilyForm = () => {
     setNewMemberName('');
     setNewMemberColor('blue');
+    setNewMemberMaxCalories(2000);
     setEditingId(null);
   };
 
@@ -183,6 +193,20 @@ const AdminPage = () => {
                                     onChange={e => setNewMemberName(e.target.value)} 
                                 />
                             </div>
+                            
+                            {/* НОВОЕ ПОЛЕ ВВОДА КАЛОРИЙ */}
+                            <div className="mb-4">
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Макс. калорий (день)</label>
+                                <input 
+                                    type="number" 
+                                    min="0"
+                                    step="50"
+                                    required 
+                                    className="w-full border rounded p-2 bg-white focus:ring-2 focus:ring-gray-300 outline-none transition-all" 
+                                    value={newMemberMaxCalories} 
+                                    onChange={e => setNewMemberMaxCalories(e.target.value)} 
+                                />
+                            </div>
 
                             <div className="mb-6">
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Цвет метки</label>
@@ -219,7 +243,11 @@ const AdminPage = () => {
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold uppercase shadow-sm bg-${member.color}-500`}>
                                                 {member.name[0]}
                                             </div>
-                                            <span className="font-medium text-gray-700">{member.name}</span>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-gray-700">{member.name}</span>
+                                                {/* ОТОБРАЖЕНИЕ ЛИМИТА */}
+                                                <span className="text-xs text-gray-400">Лимит: {member.max_calories} ккал</span>
+                                            </div>
                                         </div>
                                         <div className="flex gap-1">
                                             <button 
