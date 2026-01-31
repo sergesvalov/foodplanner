@@ -25,7 +25,7 @@ const StatisticsPage = () => {
     });
   }, []);
 
-  // 2. Логика расчета стоимости одной позиции (дублируем логику из WeeklyGrid)
+  // 2. Логика расчета стоимости одной позиции
   const calculateItemStats = (item) => {
     const recipe = item.recipe;
     if (!recipe) return { cost: 0, cals: 0 };
@@ -54,8 +54,6 @@ const StatisticsPage = () => {
     plan.forEach(item => {
       // Фильтрация по пользователю
       if (selectedUser !== 'all') {
-        // Если у записи нет владельца (null), она считается общей (показываем только если выбрано 'all' или логика "общих" блюд)
-        // В данном случае, если фильтр включен, показываем только то, что привязано к user_id
         if (item.family_member_id !== parseInt(selectedUser)) return;
       }
 
@@ -72,6 +70,22 @@ const StatisticsPage = () => {
 
     return { daily: dailyStats, total: { cost: totalCost, cals: totalCals } };
   }, [plan, selectedUser]);
+
+  // 4. НОВОЕ: Расчет дневного лимита калорий
+  const dailyLimit = useMemo(() => {
+    // Дефолтное значение, если у пользователя не задано
+    const DEFAULT_LIMIT = 2000;
+
+    if (selectedUser === 'all') {
+        // Если выбрана "Вся семья", суммируем лимиты всех пользователей
+        if (users.length === 0) return DEFAULT_LIMIT * 2; // Фоллбэк если список пуст
+        return users.reduce((sum, u) => sum + (u.max_calories || DEFAULT_LIMIT), 0);
+    } else {
+        // Лимит конкретного пользователя
+        const user = users.find(u => u.id === parseInt(selectedUser));
+        return user ? (user.max_calories || DEFAULT_LIMIT) : DEFAULT_LIMIT;
+    }
+  }, [users, selectedUser]);
 
   if (loading) return <div className="p-10 text-center text-gray-500">Загрузка статистики...</div>;
 
@@ -116,7 +130,9 @@ const StatisticsPage = () => {
            <div className="z-10">
              <div className="text-sm font-bold text-orange-600 uppercase tracking-wider mb-1">Всего калорий</div>
              <div className="text-4xl font-extrabold text-gray-800">{stats.total.cals}</div>
-             <div className="text-xs text-gray-400 mt-2">за текущую неделю</div>
+             <div className="text-xs text-gray-400 mt-2">
+                 за текущую неделю (Цель: ~{dailyLimit * 7})
+             </div>
            </div>
            <div className="absolute -right-6 -bottom-6 text-9xl text-orange-50 opacity-50 select-none">🔥</div>
         </div>
@@ -131,7 +147,7 @@ const StatisticsPage = () => {
               <tr>
                 <th className="px-6 py-4">День недели</th>
                 <th className="px-6 py-4">Блюд</th>
-                <th className="px-6 py-4">Калории</th>
+                <th className="px-6 py-4">Калории / Лимит</th>
                 <th className="px-6 py-4">Стоимость</th>
                 <th className="px-6 py-4 hidden md:table-cell">Инфо</th>
               </tr>
@@ -141,9 +157,16 @@ const StatisticsPage = () => {
                 const dayStat = stats.daily[day];
                 const isZero = dayStat.itemsCount === 0;
                 
-                // Простейшая визуализация (процент от макс. калорий за неделю для примера, или просто бар)
-                const maxCalsPerDay = 3000; // Условная норма для визуальной шкалы
-                const widthPercent = Math.min((dayStat.cals / maxCalsPerDay) * 100, 100);
+                // Расчет процента заполнения и цвета
+                const percent = Math.min((dayStat.cals / dailyLimit) * 100, 100);
+                const isOverLimit = dayStat.cals > dailyLimit;
+
+                // Цвета текста и полоски
+                const textColorClass = dayStat.cals > 0 
+                    ? (isOverLimit ? 'text-red-600' : 'text-green-600') 
+                    : 'text-gray-300';
+                
+                const barColorClass = isOverLimit ? 'bg-red-500' : 'bg-green-500';
 
                 return (
                   <tr key={day} className={`hover:bg-gray-50 transition-colors ${isZero ? 'opacity-50' : ''}`}>
@@ -157,26 +180,32 @@ const StatisticsPage = () => {
                         </span>
                       ) : "—"}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 w-1/3">
                       <div className="flex flex-col gap-1">
-                        <span className={`font-bold ${dayStat.cals > 0 ? 'text-orange-600' : 'text-gray-300'}`}>
-                          {dayStat.cals} ккал
-                        </span>
+                        <div className="flex justify-between items-end">
+                            <span className={`font-bold ${textColorClass}`}>
+                                {dayStat.cals} ккал
+                            </span>
+                            <span className="text-xs text-gray-400">
+                                из {dailyLimit}
+                            </span>
+                        </div>
                         {/* Visual Bar */}
-                        {dayStat.cals > 0 && (
-                          <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-orange-400" style={{ width: `${widthPercent}%` }}></div>
-                          </div>
-                        )}
+                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div 
+                                className={`h-full transition-all duration-500 ${barColorClass}`} 
+                                style={{ width: `${percent}%` }}
+                            ></div>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 font-mono font-bold text-green-700">
                       {dayStat.cost > 0 ? `€${dayStat.cost.toFixed(2)}` : '—'}
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-400 hidden md:table-cell">
-                      {dayStat.itemsCount > 0 && selectedUser === 'all' && (
-                         "Суммарно на семью"
-                      )}
+                        {isOverLimit && dayStat.cals > 0 && (
+                            <span className="text-red-500 font-bold">Превышение!</span>
+                        )}
                     </td>
                   </tr>
                 );
