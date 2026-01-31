@@ -178,6 +178,7 @@ const RecipesPage = () => {
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {Array.isArray(recipes) && recipes
               .filter(r => selectedCategory === "all" || r.category === selectedCategory)
+              .sort((a, b) => a.title.localeCompare(b.title))
               .map(recipe => (
                 <div
                   key={recipe.id}
