@@ -192,6 +192,7 @@ def autofill_week(db: Session = Depends(get_db)):
     count = 0
     current_recipe = None
     portions_left = 0
+    last_recipe_id = None
     
     # Генерируем хронологический список слотов на неделю
     slots = []
@@ -211,7 +212,14 @@ def autofill_week(db: Session = Depends(get_db)):
         # Если еды совсем нет - готовим новое. 
         # (Если есть хоть 1 порция - доедаем её, остальные останутся голодными в этот слот)
         if portions_left <= 0:
-            current_recipe = random.choice(candidates)
+            # Filter out the last recipe to avoid repeats
+            valid_candidates = [r for r in candidates if r.id != last_recipe_id]
+            if not valid_candidates:
+                valid_candidates = candidates
+            
+            current_recipe = random.choice(valid_candidates)
+            last_recipe_id = current_recipe.id
+            
             portions_left = current_recipe.portions
             if portions_left < 1: portions_left = 1
 
