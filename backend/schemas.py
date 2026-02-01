@@ -7,11 +7,17 @@ class ProductBase(BaseModel):
     unit: str
     amount: float
     calories: float = 0
+    # Новые поля (опциональные)
+    proteins: Optional[float] = None
+    fats: Optional[float] = None
+    carbs: Optional[float] = None
+
 class ProductCreate(ProductBase): pass
 class ProductResponse(ProductBase):
     id: int
     class Config: from_attributes = True
 
+# Остальные схемы без изменений...
 class IngredientBase(BaseModel):
     product_id: int
     quantity: float
@@ -26,7 +32,6 @@ class RecipeBase(BaseModel):
     title: str
     description: Optional[str] = None
     portions: int = 1
-    # НОВОЕ ПОЛЕ В СХЕМЕ
     category: str = "other" 
 
 class RecipeCreate(RecipeBase):
@@ -44,7 +49,6 @@ class RecipeResponse(RecipeBase):
 class FamilyMemberBase(BaseModel):
     name: str
     color: str
-    # НОВОЕ ПОЛЕ
     max_calories: int = 2000
 class FamilyMemberCreate(FamilyMemberBase): pass
 class FamilyMemberResponse(FamilyMemberBase):

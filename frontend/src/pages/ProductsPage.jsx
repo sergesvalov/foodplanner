@@ -4,12 +4,13 @@ const ProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [editingId, setEditingId] = useState(null);
 
-  // --- Состояние сортировки ---
-  // ИЗМЕНЕНИЕ: key: 'name' по умолчанию, чтобы список сразу был отсортирован
+  // Сортировка
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
 
+  // Форма с новыми полями
   const [form, setForm] = useState({
-    name: '', price: '', amount: '1', unit: 'г', calories: ''
+    name: '', price: '', amount: '1', unit: 'г', calories: '',
+    proteins: '', fats: '', carbs: ''
   });
 
   const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'упак'];
@@ -32,8 +33,11 @@ const ProductsPage = () => {
       sortableItems.sort((a, b) => {
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
+        
+        // Обработка null значений
+        if (aValue === null || aValue === undefined) aValue = -1;
+        if (bValue === null || bValue === undefined) bValue = -1;
 
-        // Специальная обработка для строк (чтобы 'Яблоко' > 'Абрикос')
         if (typeof aValue === 'string') {
           aValue = aValue.toLowerCase();
           bValue = bValue.toLowerCase();
@@ -53,7 +57,6 @@ const ProductsPage = () => {
 
   const requestSort = (key) => {
     let direction = 'ascending';
-    // Если кликнули по той же колонке, меняем направление
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
     }
@@ -99,7 +102,11 @@ const ProductsPage = () => {
       price: parseFloat(form.price),
       amount: parseFloat(form.amount),
       unit: form.unit,
-      calories: form.calories ? parseFloat(form.calories) : 0
+      calories: form.calories ? parseFloat(form.calories) : 0,
+      // Отправляем null, если строка пустая
+      proteins: form.proteins ? parseFloat(form.proteins) : null,
+      fats: form.fats ? parseFloat(form.fats) : null,
+      carbs: form.carbs ? parseFloat(form.carbs) : null
     };
 
     try {
@@ -125,7 +132,7 @@ const ProductsPage = () => {
   };
 
   const resetForm = () => {
-    setForm({ name: '', price: '', amount: '1', unit: 'г', calories: '' });
+    setForm({ name: '', price: '', amount: '1', unit: 'г', calories: '', proteins: '', fats: '', carbs: '' });
     setEditingId(null);
   };
 
@@ -136,7 +143,10 @@ const ProductsPage = () => {
       price: product.price,
       amount: product.amount || 1,
       unit: product.unit,
-      calories: product.calories || ''
+      calories: product.calories || '',
+      proteins: product.proteins !== null ? product.proteins : '',
+      fats: product.fats !== null ? product.fats : '',
+      carbs: product.carbs !== null ? product.carbs : ''
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -149,7 +159,7 @@ const ProductsPage = () => {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl">
+    <div className="container mx-auto max-w-7xl p-4">
 
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -172,7 +182,7 @@ const ProductsPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
         {/* ФОРМА (Слева) */}
         <div className={`bg-white p-6 rounded-lg shadow border h-fit transition-colors ${editingId ? 'border-yellow-400 ring-1 ring-yellow-400' : 'border-gray-200'}`}>
@@ -222,7 +232,7 @@ const ProductsPage = () => {
                     onChange={e => setForm({ ...form, amount: e.target.value })}
                   />
                   <select
-                    className="w-1/2 border rounded-r p-2 bg-gray-50 focus:ring-2 focus:ring-indigo-200 outline-none cursor-pointer"
+                    className="w-1/2 border rounded-r p-2 bg-gray-50 focus:ring-2 focus:ring-indigo-200 outline-none cursor-pointer text-sm"
                     value={form.unit}
                     onChange={e => setForm({ ...form, unit: e.target.value })}
                   >
@@ -232,18 +242,53 @@ const ProductsPage = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Ккал на 100 гр</label>
-              <input
-                type="number" step="1" min="0"
-                className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
-                placeholder="Необязательно"
-                value={form.calories}
-                onChange={e => setForm({ ...form, calories: e.target.value })}
-              />
+            <hr className="border-gray-100" />
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">На 100г продукта</div>
+
+            <div className="grid grid-cols-2 gap-4">
+               <div>
+                  <label className="block text-sm font-medium text-gray-700">Калории (ккал)</label>
+                  <input
+                    type="number" step="1" min="0"
+                    className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                    placeholder="0"
+                    value={form.calories}
+                    onChange={e => setForm({ ...form, calories: e.target.value })}
+                  />
+               </div>
+               <div>
+                  <label className="block text-sm font-medium text-gray-700">Белки (г)</label>
+                  <input
+                    type="number" step="0.1" min="0"
+                    className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                    placeholder="—"
+                    value={form.proteins}
+                    onChange={e => setForm({ ...form, proteins: e.target.value })}
+                  />
+               </div>
+               <div>
+                  <label className="block text-sm font-medium text-gray-700">Жиры (г)</label>
+                  <input
+                    type="number" step="0.1" min="0"
+                    className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                    placeholder="—"
+                    value={form.fats}
+                    onChange={e => setForm({ ...form, fats: e.target.value })}
+                  />
+               </div>
+               <div>
+                  <label className="block text-sm font-medium text-gray-700">Углеводы (г)</label>
+                  <input
+                    type="number" step="0.1" min="0"
+                    className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                    placeholder="—"
+                    value={form.carbs}
+                    onChange={e => setForm({ ...form, carbs: e.target.value })}
+                  />
+               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-4">
               <button
                 type="submit"
                 className={`w-full py-2 rounded text-white font-medium shadow-sm transition-colors ${editingId ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-indigo-600 hover:bg-indigo-700'
@@ -256,42 +301,32 @@ const ProductsPage = () => {
         </div>
 
         {/* ТАБЛИЦА (Справа) */}
-        <div className="md:col-span-2 bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+        <div className="lg:col-span-2 bg-white rounded-lg shadow border border-gray-200 overflow-hidden flex flex-col">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-gray-600">
               <thead className="bg-gray-50 text-gray-800 font-bold uppercase text-xs">
                 <tr>
-                  <th
-                    className="px-6 py-3 cursor-pointer hover:bg-gray-100 select-none transition-colors"
-                    onClick={() => requestSort('name')}
-                  >
+                  <th className="px-4 py-3 cursor-pointer hover:bg-gray-100" onClick={() => requestSort('name')}>
                     Название {getSortIndicator('name')}
                   </th>
-                  <th
-                    className="px-6 py-3 cursor-pointer hover:bg-gray-100 select-none transition-colors"
-                    onClick={() => requestSort('price')}
-                  >
+                  <th className="px-4 py-3 cursor-pointer hover:bg-gray-100" onClick={() => requestSort('price')}>
                     Цена {getSortIndicator('price')}
                   </th>
-                  <th
-                    className="px-6 py-3 cursor-pointer hover:bg-gray-100 select-none transition-colors"
-                    onClick={() => requestSort('amount')}
-                  >
-                    Вес/Кол-во {getSortIndicator('amount')}
-                  </th>
-                  <th
-                    className="px-6 py-3 cursor-pointer hover:bg-gray-100 select-none transition-colors"
-                    onClick={() => requestSort('calories')}
-                  >
+                  <th className="px-4 py-3 cursor-pointer hover:bg-gray-100" onClick={() => requestSort('calories')}>
                     Ккал {getSortIndicator('calories')}
                   </th>
-                  <th className="px-6 py-3 text-right">Действия</th>
+                  {/* Новые колонки */}
+                  <th className="px-2 py-3 text-center cursor-pointer hover:bg-gray-100" onClick={() => requestSort('proteins')} title="Белки">Б</th>
+                  <th className="px-2 py-3 text-center cursor-pointer hover:bg-gray-100" onClick={() => requestSort('fats')} title="Жиры">Ж</th>
+                  <th className="px-2 py-3 text-center cursor-pointer hover:bg-gray-100" onClick={() => requestSort('carbs')} title="Углеводы">У</th>
+                  
+                  <th className="px-4 py-3 text-right">Действия</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {products.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="text-center py-8 text-gray-400">Каталог пуст</td>
+                    <td colSpan="7" className="text-center py-8 text-gray-400">Каталог пуст</td>
                   </tr>
                 )}
                 {sortedProducts.map((product) => (
@@ -300,17 +335,22 @@ const ProductsPage = () => {
                     className={`hover:bg-gray-50 cursor-pointer transition-colors ${editingId === product.id ? 'bg-yellow-50' : ''}`}
                     onClick={() => handleEditClick(product)}
                   >
-                    <td className="px-6 py-3 font-medium text-gray-900">{product.name}</td>
-                    <td className="px-6 py-3">€{product.price.toFixed(2)}</td>
-                    <td className="px-6 py-3 font-mono">
-                      {product.amount} {product.unit}
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                        <div>{product.name}</div>
+                        <div className="text-xs text-gray-400 font-normal">{product.amount} {product.unit}</div>
                     </td>
-                    <td className="px-6 py-3">
-                      {product.calories > 0 ? `${product.calories} ккал` : '—'}
+                    <td className="px-4 py-3">€{product.price.toFixed(2)}</td>
+                    <td className="px-4 py-3">
+                      {product.calories > 0 ? product.calories : '—'}
                     </td>
-                    <td className="px-6 py-3 text-right flex justify-end gap-2">
+                    
+                    <td className="px-2 py-3 text-center text-xs">{product.proteins ?? '—'}</td>
+                    <td className="px-2 py-3 text-center text-xs">{product.fats ?? '—'}</td>
+                    <td className="px-2 py-3 text-center text-xs">{product.carbs ?? '—'}</td>
+
+                    <td className="px-4 py-3 text-right flex justify-end gap-2">
                       <button
-                        onClick={() => handleEditClick(product)}
+                        onClick={(e) => { e.stopPropagation(); handleEditClick(product); }}
                         className="text-indigo-600 hover:text-indigo-900 font-semibold px-2 py-1"
                       >
                         ✎

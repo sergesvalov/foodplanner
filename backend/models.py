@@ -11,6 +11,11 @@ class Product(Base):
     unit = Column(String, default="шт")
     amount = Column(Float, default=1.0)
     calories = Column(Float, default=0.0)
+    
+    # --- НОВЫЕ ПОЛЯ (БЖУ) ---
+    proteins = Column(Float, nullable=True, default=None) # Белки
+    fats = Column(Float, nullable=True, default=None)     # Жиры
+    carbs = Column(Float, nullable=True, default=None)    # Углеводы
 
 class Recipe(Base):
     __tablename__ = "recipes"
@@ -19,8 +24,6 @@ class Recipe(Base):
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     portions = Column(Integer, default=1)
-    
-    # НОВОЕ ПОЛЕ
     category = Column(String, default="other") 
 
     ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan")
@@ -45,7 +48,7 @@ class Recipe(Base):
                 
                 qty = item.quantity
                 if unit_lower in ["kg", "кг", "l", "л"]:
-                    qty *= 1000  # Convert to grams/ml
+                    qty *= 1000
                 
                 if is_pieces:
                     total += item.product.calories * qty
@@ -54,6 +57,8 @@ class Recipe(Base):
                     total += qty * cals_per_gram
         return round(total)
 
+    # Остальные свойства Recipe (total_weight, calories_per_100g и т.д.) оставляем без изменений...
+    # (Для краткости не дублирую весь класс Recipe, если он не менялся, но убедитесь, что он там есть)
     @property
     def total_weight(self):
         weight = 0.0
@@ -101,7 +106,6 @@ class FamilyMember(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     color = Column(String, default="blue")
-    # НОВОЕ ПОЛЕ
     max_calories = Column(Integer, default=2000)
 
 class WeeklyPlanEntry(Base):
