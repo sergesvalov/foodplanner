@@ -5,11 +5,13 @@ services:
     container_name: menu_backend
     restart: always
     volumes:
-      # База данных сохраняется в папку foodplanner на сервере
-      - ./foodplanner:/app/data
+      # База данных сохраняется в папку /opt/foodplanner на сервере (запрос пользователя)
+      - /opt/foodplanner:/app/data
+      # Монтируем код, чтобы изменения применялись сразу (и чтобы миграции сохранялись)
+      - ./backend:/app
     
-    # ВАЖНО: Эта команда сначала применяет миграции, потом запускает сервер
-    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    # ВАЖНО: Запускаем авто-мигратор перед сервером
+    command: sh -c "python fast_migrate.py && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
     
     expose:
       - "8000" 
