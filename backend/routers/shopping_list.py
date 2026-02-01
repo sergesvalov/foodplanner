@@ -80,7 +80,7 @@ def send_shopping_list_telegram(body: TelegramSendRequest, db: Session = Depends
     
     message_lines = ["🛒 *Список покупок*", ""]
     for i, item in enumerate(items, 1):
-        line = f"{i}. {item['name']} — *{item['total_quantity']} {item['unit']}*"
+        line = f"{i}. {item['name']} — *{item['total_quantity']} {item['unit']}* (~€{item['estimated_cost']:.2f})"
         message_lines.append(line)
     
     message_lines.append("")
