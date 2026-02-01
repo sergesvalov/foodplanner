@@ -1,7 +1,7 @@
 import datetime
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 import models
 import schemas
 from dependencies import get_db
@@ -182,7 +182,9 @@ def autofill_week(db: Session = Depends(get_db)):
     target_meals = ['lunch', 'dinner'] # Только обед и ужин
     
     # Рецепты (суп или второе)
-    candidates = db.query(models.Recipe).filter(
+    candidates = db.query(models.Recipe).options(
+        joinedload(models.Recipe.ingredients).joinedload(models.RecipeIngredient.product)
+    ).filter(
         models.Recipe.category.in_(['soup', 'main'])
     ).all()
     
@@ -193,6 +195,9 @@ def autofill_week(db: Session = Depends(get_db)):
     current_recipe = None
     portions_left = 0
     last_recipe_id = None
+
+    # Track daily calories: {(date_str, member_id): current_calories}
+    daily_calories = {}
     
     # Генерируем хронологический список слотов на неделю
     slots = []
@@ -243,6 +248,19 @@ def autofill_week(db: Session = Depends(get_db)):
             
             # 4. Если порции есть - накладываем. Если нет - пропускаем (не готовим новое сразу)
             if portions_left > 0:
+                # Calculate new calories
+                recipe_cals = current_recipe.calories_per_portion
+                
+                # Check calorie limit
+                limit = member.max_calories if member else 2000
+                date_str = slot["date"].isoformat()
+                current_daily_cals = daily_calories.get((date_str, member_id), 0)
+                
+                # Logic: If we are already near limit (e.g. max - 200), do not add more.
+                if current_daily_cals >= (limit - 200):
+                     # Skip this member for this meal
+                     continue
+
                 new_item = models.WeeklyPlanEntry(
                     day_of_week=slot["day"],
                     meal_type=slot["meal"],
@@ -254,6 +272,8 @@ def autofill_week(db: Session = Depends(get_db)):
                 db.add(new_item)
                 count += 1
                 
+                # Update stats
+                daily_calories[(date_str, member_id)] = current_daily_cals + recipe_cals
                 portions_left -= 1
             else:
                 # Порции кончились прямо сейчас. 
