@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+import datetime
 from typing import List, Optional
 
 class ProductBase(BaseModel):
@@ -71,6 +72,7 @@ class PlanItemResponse(PlanItemBase):
     id: int
     recipe: Optional[RecipeResponse]
     family_member: Optional[FamilyMemberResponse]
+    date: Optional[datetime.date] = None
     class Config: from_attributes = True
 
 class TelegramUserBase(BaseModel):

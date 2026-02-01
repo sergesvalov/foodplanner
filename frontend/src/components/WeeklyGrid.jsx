@@ -66,6 +66,31 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
         }
     }, [viewMode]);
 
+    // --- ХЕЛПЕР ДЛЯ ДАТ ---
+    const getDatesForCurrentWeek = () => {
+        const today = new Date();
+        const currentDay = today.getDay(); // 0-Sun, 1-Mon...
+        // Корректировка: если воскресенье (0), считаем его 7-м днем, чтобы неделя начиналась с Пн
+        const dayIndex = currentDay === 0 ? 6 : currentDay - 1;
+
+        // Понедельник текущей недели
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - dayIndex);
+
+        const dates = {};
+        DAYS.forEach((d, i) => {
+            const date = new Date(monday);
+            date.setDate(monday.getDate() + i);
+            const dd = String(date.getDate()).padStart(2, '0');
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            dates[d] = `${dd}.${mm}`;
+        });
+        return dates;
+    };
+
+    const weekDates = useMemo(() => getDatesForCurrentWeek(), []);
+    // -----------------------
+
     const handleDragOver = (e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-indigo-300', 'bg-white'); };
     const handleDragLeave = (e) => { e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white'); };
 
@@ -254,7 +279,13 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
                             <div key={col} className={`flex flex-col h-auto relative group min-w-0 ${isExtra ? 'bg-indigo-50/30' : 'bg-white'}`}>
 
                                 <div className={`py-2 flex flex-col items-center justify-center border-b border-gray-600 gap-1 ${isExtra ? 'bg-indigo-700' : 'bg-gray-800'}`}>
-                                    <span className="font-bold text-xs uppercase tracking-wider text-white">{isExtra ? '🍪 Вкусняшки' : col}</span>
+                                    <span className="font-bold text-xs uppercase tracking-wider text-white">
+                                        {isExtra ? '🍪 Вкусняшки' : (
+                                            <>
+                                                {col} <span className="opacity-70 text-[10px] ml-1">{weekDates[col]}</span>
+                                            </>
+                                        )}
+                                    </span>
                                     <div className="flex gap-1">
                                         <div className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${items.length > 0 ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400'}`}>€{stats.cost.toFixed(2)}</div>
                                         <div className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${items.length > 0 ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-400'}`}>{stats.cals}</div>
