@@ -23,13 +23,13 @@ const VIEW_MODES = [
     { id: 'extra', label: '🍪 Вкусняшки' },
 ];
 
-const WeeklyGrid = () => {
+const WeeklyGrid = ({ selectedUser, onUserChange }) => {
     const [plan, setPlan] = useState([]);
     const [users, setUsers] = useState([]);
     const [pendingDrop, setPendingDrop] = useState(null);
 
     const [viewMode, setViewMode] = useState('week');
-    const [selectedUser, setSelectedUser] = useState('all');
+    // const [selectedUser, setSelectedUser] = useState('all'); // Moved to parent
 
     const fetchPlan = () => {
         fetch('/api/plan/')
@@ -212,7 +212,7 @@ const WeeklyGrid = () => {
                             <select
                                 className="bg-transparent text-sm font-bold text-gray-700 outline-none cursor-pointer w-full md:w-auto min-w-[100px]"
                                 value={selectedUser}
-                                onChange={(e) => setSelectedUser(e.target.value)}
+                                onChange={(e) => onUserChange(e.target.value)}
                             >
                                 <option value="all">👨‍👩‍👧‍👦 Всех</option>
                                 {users.map(u => (

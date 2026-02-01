@@ -4,6 +4,7 @@ import DraggableRecipeList from '../components/DraggableRecipeList';
 
 const HomePage = () => {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedUser, setSelectedUser] = useState('all');
 
   const handleSavePlan = async () => {
     try {
@@ -30,7 +31,16 @@ const HomePage = () => {
 
   const handleAutoFillOne = async () => {
     try {
-      const res = await fetch('/api/plan/autofill_one', { method: 'POST' });
+      const body = {};
+      if (selectedUser !== 'all') {
+        body.family_member_id = parseInt(selectedUser);
+      }
+
+      const res = await fetch('/api/plan/autofill_one', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
       const data = await res.json();
       if (res.ok) {
         // Убрали alert, чтобы не надоедал
@@ -81,7 +91,7 @@ const HomePage = () => {
           </div>
         </div>
         <div className="flex-1 min-h-0">
-          <WeeklyGrid key={refreshKey} />
+          <WeeklyGrid key={refreshKey} selectedUser={selectedUser} onUserChange={setSelectedUser} />
         </div>
       </div>
 

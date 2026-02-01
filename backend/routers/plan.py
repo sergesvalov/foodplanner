@@ -119,7 +119,7 @@ def import_plan(db: Session = Depends(get_db)):
     return {"message": "Plan loaded successfully"}
 
 @router.post("/autofill_one")
-def autofill_one(db: Session = Depends(get_db)):
+def autofill_one(req: schemas.AutoFillRequest = None, db: Session = Depends(get_db)):
     # 1. Find candidates (Snacks)
     # categories: 'snack' (Перекус)
     candidates = db.query(models.Recipe).filter(
@@ -165,7 +165,8 @@ def autofill_one(db: Session = Depends(get_db)):
         day_of_week=target_slot[0],
         meal_type=target_slot[1],
         recipe_id=target_recipe.id,
-        portions=1
+        portions=1,
+        family_member_id=req.family_member_id if req else None
     )
     db.add(new_item)
     db.commit()
