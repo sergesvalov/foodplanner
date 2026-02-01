@@ -39,10 +39,21 @@ def update_plan_item(item_id: int, update_data: schemas.PlanItemUpdate, db: Sess
     db_item = db.query(models.WeeklyPlanEntry).filter(models.WeeklyPlanEntry.id == item_id).first()
     if not db_item: raise HTTPException(status_code=404, detail="Item not found")
     
-    if update_data.portions > 0:
+    if update_data.portions is not None and update_data.portions > 0:
         db_item.portions = update_data.portions
-        db.commit()
-        db.refresh(db_item)
+        
+    # Разрешаем сброс пользователя (если передадут None, это удалит привязку? 
+    # В Pydantic Optional[int]=None значит поле необязательно. 
+    # Но если мы хотим передать null, нужно быть аккуратнее.
+    # Пока сделаем так: если поле присутствует в запросе (даже если None - хотя тут сложно отличить).
+    # Упростим: если пришло значение, ставим.
+    if update_data.family_member_id is not None:
+        # -1 или 0 можно использовать как сброс, если нужно.
+        # Или просто обновляем.
+        db_item.family_member_id = update_data.family_member_id
+        
+    db.commit()
+    db.refresh(db_item)
     return db_item
 
 @router.delete("/{item_id}")

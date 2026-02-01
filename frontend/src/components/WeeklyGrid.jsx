@@ -115,6 +115,27 @@ const WeeklyGrid = () => {
         } catch (e) { fetchPlan(); }
     };
 
+    const handleUserChange = async (itemId, userId) => {
+        const parsedId = parseInt(userId);
+        // Optimistic update
+        setPlan(plan.map(item => {
+            if (item.id === itemId) {
+                const user = users.find(u => u.id === parsedId);
+                return { ...item, family_member_id: parsedId, family_member: user };
+            }
+            return item;
+        }));
+
+        try {
+            await fetch(`/api/plan/${itemId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ family_member_id: parsedId })
+            });
+            // fetchPlan(); // Can refresh to ensure consistency
+        } catch (e) { fetchPlan(); }
+    };
+
     const calculateItemStats = (item) => {
         const recipe = item.recipe;
         if (!recipe) return { cost: 0, cals: 0 };
@@ -177,8 +198,8 @@ const WeeklyGrid = () => {
                                     key={mode.id}
                                     onClick={() => setViewMode(mode.id)}
                                     className={`text-xs font-bold px-3 py-1.5 rounded-md transition-all whitespace-nowrap ${viewMode === mode.id
-                                            ? 'bg-white text-gray-800 shadow-sm'
-                                            : 'text-gray-400 hover:text-gray-600'
+                                        ? 'bg-white text-gray-800 shadow-sm'
+                                        : 'text-gray-400 hover:text-gray-600'
                                         }`}
                                 >
                                     {mode.label}
@@ -244,7 +265,7 @@ const WeeklyGrid = () => {
                                     {isExtra ? (
                                         <div className="min-h-[300px] h-full border-2 border-dashed border-indigo-200 rounded-lg bg-indigo-50/50 flex flex-col p-2 gap-2 hover:bg-indigo-100/50"
                                             onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, col, EXTRA_MEAL_TYPE)}>
-                                            {items.map(item => <PlanItemCard key={item.id} item={item} onRemove={handleRemove} onPortionChange={handlePortionChange} calculateStats={calculateItemStats} />)}
+                                            {items.map(item => <PlanItemCard key={item.id} item={item} onRemove={handleRemove} onPortionChange={handlePortionChange} onUserChange={handleUserChange} calculateStats={calculateItemStats} users={users} />)}
                                         </div>
                                     ) : (
                                         MEALS.map((meal) => {
@@ -254,7 +275,7 @@ const WeeklyGrid = () => {
                                                 <div key={meal.id} className={`relative rounded border ${meal.color} ${isCompact ? 'h-8 opacity-50 hover:opacity-100 hover:h-auto border-dashed flex items-center justify-center' : 'min-h-[80px] pb-1 shadow-sm'}`}
                                                     onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, col, meal.id)}>
                                                     {isCompact ? <span className="text-[9px] text-gray-400 uppercase font-bold">+ {meal.label}</span> : <div className="text-[9px] font-bold uppercase px-1.5 py-1 text-gray-500/80 mb-0.5">{meal.label}</div>}
-                                                    {!isCompact && <div className="px-1 space-y-1">{slotItems.map(item => <PlanItemCard key={item.id} item={item} onRemove={handleRemove} onPortionChange={handlePortionChange} calculateStats={calculateItemStats} />)}</div>}
+                                                    {!isCompact && <div className="px-1 space-y-1">{slotItems.map(item => <PlanItemCard key={item.id} item={item} onRemove={handleRemove} onPortionChange={handlePortionChange} onUserChange={handleUserChange} calculateStats={calculateItemStats} users={users} />)}</div>}
                                                 </div>
                                             );
                                         })
@@ -270,7 +291,7 @@ const WeeklyGrid = () => {
     );
 };
 
-const PlanItemCard = ({ item, onRemove, onPortionChange, calculateStats }) => {
+const PlanItemCard = ({ item, onRemove, onPortionChange, onUserChange, calculateStats, users }) => {
     if (!item.recipe) return null;
     const stats = calculateStats(item);
     const base = item.recipe.portions || 1;
@@ -280,7 +301,22 @@ const PlanItemCard = ({ item, onRemove, onPortionChange, calculateStats }) => {
         <div className={`relative flex flex-col bg-white rounded border border-gray-200 shadow-sm p-1.5 group/item hover:border-indigo-300 ${u ? `border-l-4 border-l-${u.color}-500` : ''}`}>
             <button onClick={(e) => { e.stopPropagation(); onRemove(item.id); }} className="absolute -top-1.5 -right-1.5 bg-red-100 text-red-500 rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold opacity-0 group-hover/item:opacity-100 shadow-sm hover:bg-red-500 hover:text-white z-20">×</button>
             <span className="text-[11px] text-gray-800 font-medium leading-tight line-clamp-2" title={item.recipe.title}>{item.recipe.title}</span>
-            {u && <div className={`text-[9px] px-1 rounded-sm inline-block mt-0.5 font-bold text-white bg-${u.color}-500 self-start`}>{u.name}</div>}
+            {u ? (
+                <div className={`text-[9px] px-1 rounded-sm inline-block mt-0.5 font-bold text-white bg-${u.color}-500 self-start`}>{u.name}</div>
+            ) : (
+                <select
+                    className="text-[9px] bg-gray-50 border border-gray-200 rounded px-1 py-0.5 mt-0.5 outline-none cursor-pointer max-w-full text-gray-500 hover:bg-white focus:ring-1 focus:ring-indigo-100"
+                    onChange={(e) => onUserChange(item.id, e.target.value)}
+                    defaultValue=""
+                    onClick={(e) => e.stopPropagation()}
+                    title="Назначить кому"
+                >
+                    <option value="" disabled>Кому?</option>
+                    {users && users.map(user => (
+                        <option key={user.id} value={user.id}>{user.name}</option>
+                    ))}
+                </select>
+            )}
             <div className="flex items-center gap-1 mt-1 bg-gray-50 rounded px-1 py-0.5 justify-between">
                 <div className="flex items-center gap-1">
                     <span className="text-[9px] text-gray-400">Порц:</span>

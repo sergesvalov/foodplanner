@@ -59,7 +59,8 @@ class PlanItemBase(BaseModel):
     family_member_id: Optional[int] = None
 class PlanItemCreate(PlanItemBase): pass
 class PlanItemUpdate(BaseModel):
-    portions: int
+    portions: Optional[int] = None
+    family_member_id: Optional[int] = None
 class PlanItemResponse(PlanItemBase):
     id: int
     recipe: Optional[RecipeResponse]
