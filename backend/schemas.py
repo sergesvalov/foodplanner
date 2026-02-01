@@ -62,6 +62,7 @@ class PlanItemBase(BaseModel):
     recipe_id: int
     portions: int = 1
     family_member_id: Optional[int] = None
+    date: Optional[datetime.date] = None
 class PlanItemCreate(PlanItemBase): pass
 class PlanItemUpdate(BaseModel):
     portions: Optional[int] = None
@@ -72,7 +73,6 @@ class PlanItemResponse(PlanItemBase):
     id: int
     recipe: Optional[RecipeResponse]
     family_member: Optional[FamilyMemberResponse]
-    date: Optional[datetime.date] = None
     class Config: from_attributes = True
 
 class TelegramUserBase(BaseModel):
