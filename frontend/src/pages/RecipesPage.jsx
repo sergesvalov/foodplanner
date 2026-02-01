@@ -114,9 +114,37 @@ const RecipesPage = () => {
 
     } catch (e) {
       alert("Ошибка сети");
-    } finally {
       setSendingId(null);
     }
+  };
+
+  const calculateRecipeStats = (recipe) => {
+    let totalProt = 0;
+    let totalFat = 0;
+    let totalCarb = 0;
+
+    if (recipe.ingredients) {
+      recipe.ingredients.forEach(ing => {
+        const qty = ing.quantity;
+        const isPieces = ['шт', 'шт.', 'pcs'].includes((ing.product?.unit || '').toLowerCase());
+        const p = ing.product || {};
+        const factor = isPieces ? qty : (qty / 100);
+
+        totalProt += (p.proteins || 0) * factor;
+        totalFat += (p.fats || 0) * factor;
+        totalCarb += (p.carbs || 0) * factor;
+      });
+    }
+
+    // Рассчитываем на 100г или на порцию? 
+    // Обычно для рецепта полезно знать ВСЕГО или НА ПОРЦИЮ.
+    // Давайте показывать НА ПОРЦИЮ, как делают диетологи.
+    const portions = recipe.portions || 1;
+    return {
+      prot: Math.round(totalProt / portions),
+      fat: Math.round(totalFat / portions),
+      carb: Math.round(totalCarb / portions)
+    };
   };
 
   return (
@@ -220,6 +248,18 @@ const RecipesPage = () => {
                             {recipe.calories_per_portion} ккал/порц ({recipe.weight_per_portion}г)
                           </span>
                         )}
+
+                        {/* Nutrition Badges */}
+                        {(() => {
+                          const stats = calculateRecipeStats(recipe);
+                          return (
+                            <div className="flex gap-1 ml-1">
+                              <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 font-bold" title="Белки на порцию">Б:{stats.prot}</span>
+                              <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded border border-yellow-200 font-bold" title="Жиры на порцию">Ж:{stats.fat}</span>
+                              <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200 font-bold" title="Углеводы на порцию">У:{stats.carb}</span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
