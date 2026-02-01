@@ -109,6 +109,13 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
         setCurrentDate(new Date());
     };
 
+    const handleDateChange = (e) => {
+        const date = new Date(e.target.value);
+        if (!isNaN(date.getTime())) {
+            setCurrentDate(date);
+        }
+    };
+
     useEffect(() => {
         fetchPlan();
         fetchUsers();
@@ -265,12 +272,17 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full xl:w-auto">
                     <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2 whitespace-nowrap">
                         📅 План
-                        <div className="flex bg-gray-100 rounded-lg p-0.5 ml-4 items-center gap-1">
-                            <button onClick={handlePrevWeek} className="px-2 py-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded transition-all">←</button>
-                            <button onClick={handleGoToday} className="px-3 py-1 text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-white rounded transition-all">
-                                Сегодня
-                            </button>
-                            <button onClick={handleNextWeek} className="px-2 py-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded transition-all">→</button>
+                        <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+                            <button onClick={handlePrevWeek} className="p-2 hover:bg-gray-100 rounded text-gray-600 transition-colors">←</button>
+                            <button onClick={handleGoToday} className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded font-medium text-sm hover:bg-indigo-100 transition-colors">Сегодня</button>
+                            {/* Выбор даты */}
+                            <input
+                                type="date"
+                                className="p-1 border border-gray-200 rounded text-sm text-gray-600 focus:ring-2 focus:ring-indigo-100 outline-none"
+                                value={currentDate.toISOString().split('T')[0]}
+                                onChange={handleDateChange}
+                            />
+                            <button onClick={handleNextWeek} className="p-2 hover:bg-gray-100 rounded text-gray-600 transition-colors">→</button>
                         </div>
                         <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
                             {filteredPlan.length} блюд
