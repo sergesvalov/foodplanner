@@ -120,55 +120,93 @@ def import_plan(db: Session = Depends(get_db)):
 
 @router.post("/autofill_one")
 def autofill_one(req: schemas.AutoFillRequest = None, db: Session = Depends(get_db)):
-    # 1. Find candidates (Snacks)
-    # categories: 'snack' (Перекус)
+    # 1. Determine time-based rules
+    now = datetime.datetime.now()
+    hour = now.hour
+    
+    target_meal = None
+    allowed_categories = []
+    
+    if 0 <= hour < 10:
+        target_meal = 'breakfast'
+        allowed_categories = ['snack'] # User req: Only snacks
+    elif 10 <= hour < 14:
+        target_meal = 'lunch'
+        allowed_categories = ['snack'] # User req: Only snacks
+    elif 14 <= hour < 17:
+        target_meal = 'afternoon_snack'
+        allowed_categories = ['snack']
+    elif 17 <= hour < 24:
+        target_meal = 'dinner'
+        allowed_categories = ['snack'] # User req: Only snacks
+    else:
+        # Fallback
+        target_meal = 'late_snack'
+        allowed_categories = ['snack']
+
+    # 2. Find Candidates
     candidates = db.query(models.Recipe).filter(
-        models.Recipe.category == 'snack'
+        models.Recipe.category.in_(allowed_categories)
     ).all()
     
     if not candidates:
-        raise HTTPException(status_code=400, detail="No recipes found in category 'snack'")
+        raise HTTPException(status_code=400, detail=f"No recipes found for {target_meal} (categories: {allowed_categories})")
 
-    # 2. Get current plan
-    current_plan = db.query(models.WeeklyPlanEntry).all()
-    
-    # 3. Define all slots: Days x Meals (lunch, dinner)
+    # 3. Get current plan for TODAY
     days_map = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+    target_day = days_map[now.weekday()]
     
-    # Ограничиваемся ТОЛЬКО СЕГОДНЯШНИМ ДНЕМ
-    today_index = datetime.datetime.now().weekday()
-    target_day = days_map[today_index]
+    current_plan_items = db.query(models.WeeklyPlanEntry).filter(
+        models.WeeklyPlanEntry.day_of_week == target_day,
+        models.WeeklyPlanEntry.meal_type == target_meal
+    ).all()
     
-    # Target snack slots
-    meals = ['morning_snack', 'afternoon_snack', 'late_snack']
+    # Check if slot is occupied for the requested user (or generally if no user logic was complex)
+    # The requirement simplifies to: "adds food...". 
+    # If we are adding for a specific user, check if THEY have food.
+    # If we are adding for 'all', check if there is ANY food? Or just add another?
+    # Context from previous turns: "In place where it adds, there should be no other food".
     
-    occupied_slots = set()
-    for item in current_plan:
-        if item.meal_type in meals and item.day_of_week == target_day:
-            occupied_slots.add((item.day_of_week, item.meal_type))
+    # Let's verify if the specific slot is empty.
+    # Logic: If I ask for User A, and User A has no food there -> Add.
+    # If I selected 'All' (req is None or family_member_id is None) -> Check if *any* "All" entry exists?
+    # To keep it simple and consistent with previous "Empty Slot":
+    # If specific user: check if that user has an entry.
+    # If generic: check if there is a generic entry (family_member_id is NULL).
+    
+    target_user_id = req.family_member_id if req else None
+    
+    is_occupied = False
+    for item in current_plan_items:
+        if item.family_member_id == target_user_id:
+            is_occupied = True
+            break
             
-    # 4. Find empty slots (Only for Today)
-    empty_slots = []
-    for m in meals:
-        if (target_day, m) not in occupied_slots:
-            empty_slots.append((target_day, m))
-                
-    if not empty_slots:
-        raise HTTPException(status_code=400, detail=f"На сегодня ({target_day}) уже все перекусы запланированы!")
-        
-    # 5. Pick randoms
-    target_slot = random.choice(empty_slots)
+    if is_occupied:
+         user_label = "вас" if target_user_id else "общий стол"
+         raise HTTPException(status_code=400, detail=f"На {target_meal} ({target_day}) для {user_label} уже есть еда!")
+
+    # 4. Pick Random Recipe
     target_recipe = random.choice(candidates)
     
-    # 6. Create entry
+    # 5. Create Entry
     new_item = models.WeeklyPlanEntry(
-        day_of_week=target_slot[0],
-        meal_type=target_slot[1],
+        day_of_week=target_day,
+        meal_type=target_meal,
         recipe_id=target_recipe.id,
         portions=1,
-        family_member_id=req.family_member_id if req else None
+        family_member_id=target_user_id
     )
     db.add(new_item)
+    db.commit()
+    db.refresh(new_item)
+    
+    return {
+        "message": f"Added {target_recipe.title} to {target_meal}", 
+        "day": target_day, 
+        "meal": target_meal, 
+        "recipe": target_recipe.title
+    }
     db.commit()
     db.refresh(new_item)
     
