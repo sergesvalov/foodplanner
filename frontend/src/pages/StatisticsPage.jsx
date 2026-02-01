@@ -14,29 +14,50 @@ const StatisticsPage = () => {
       fetch('/api/plan/').then(res => res.json()),
       fetch('/api/admin/family').then(res => res.json())
     ])
-    .then(([planData, usersData]) => {
-      setPlan(Array.isArray(planData) ? planData : []);
-      setUsers(Array.isArray(usersData) ? usersData : []);
-      setLoading(false);
-    })
-    .catch(err => {
-      console.error(err);
-      setLoading(false);
-    });
+      .then(([planData, usersData]) => {
+        setPlan(Array.isArray(planData) ? planData : []);
+        setUsers(Array.isArray(usersData) ? usersData : []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
   }, []);
 
   // 2. Логика расчета стоимости одной позиции
   const calculateItemStats = (item) => {
     const recipe = item.recipe;
     if (!recipe) return { cost: 0, cals: 0 };
-    
+
     const basePortions = recipe.portions || 1;
     const targetPortions = item.portions || 1;
     const ratio = targetPortions / basePortions;
 
-    return { 
-      cost: (recipe.total_cost || 0) * ratio, 
-      cals: Math.round((recipe.total_calories || 0) * ratio) 
+    // 3.2. БЖУ считается по ингредиентам (т.к. у рецепта нет полей total_proteins...)
+    let totalProt = 0;
+    let totalFat = 0;
+    let totalCarb = 0;
+
+    if (recipe.ingredients) {
+      recipe.ingredients.forEach(ing => {
+        const qty = ing.quantity * ratio;
+        const isPieces = ['шт', 'шт.', 'pcs'].includes((ing.product?.unit || '').toLowerCase());
+        const p = ing.product || {};
+        const factor = isPieces ? qty : (qty / 100);
+
+        totalProt += (p.proteins || 0) * factor;
+        totalFat += (p.fats || 0) * factor;
+        totalCarb += (p.carbs || 0) * factor;
+      });
+    }
+
+    return {
+      cost: (recipe.total_cost || 0) * ratio,
+      cals: Math.round((recipe.total_calories || 0) * ratio),
+      prot: Math.round(totalProt),
+      fat: Math.round(totalFat),
+      carb: Math.round(totalCarb)
     };
   };
 
@@ -45,10 +66,13 @@ const StatisticsPage = () => {
     const dailyStats = {};
     let totalCost = 0;
     let totalCals = 0;
+    let totalProt = 0;
+    let totalFat = 0;
+    let totalCarb = 0;
 
     // Инициализируем нулями
     DAYS.forEach(day => {
-      dailyStats[day] = { cost: 0, cals: 0, itemsCount: 0 };
+      dailyStats[day] = { cost: 0, cals: 0, prot: 0, fat: 0, carb: 0, itemsCount: 0 };
     });
 
     plan.forEach(item => {
@@ -58,17 +82,32 @@ const StatisticsPage = () => {
       }
 
       if (dailyStats[item.day_of_week]) {
-        const { cost, cals } = calculateItemStats(item);
+        const { cost, cals, prot, fat, carb } = calculateItemStats(item);
         dailyStats[item.day_of_week].cost += cost;
         dailyStats[item.day_of_week].cals += cals;
+        dailyStats[item.day_of_week].prot += prot;
+        dailyStats[item.day_of_week].fat += fat;
+        dailyStats[item.day_of_week].carb += carb;
         dailyStats[item.day_of_week].itemsCount += 1;
-        
+
         totalCost += cost;
         totalCals += cals;
+        totalProt += prot;
+        totalFat += fat;
+        totalCarb += carb;
       }
     });
 
-    return { daily: dailyStats, total: { cost: totalCost, cals: totalCals } };
+    return {
+      daily: dailyStats,
+      total: {
+        cost: totalCost,
+        cals: totalCals,
+        prot: totalProt,
+        fat: totalFat,
+        carb: totalCarb
+      }
+    };
   }, [plan, selectedUser]);
 
   // 4. НОВОЕ: Расчет дневного лимита калорий
@@ -77,13 +116,13 @@ const StatisticsPage = () => {
     const DEFAULT_LIMIT = 2000;
 
     if (selectedUser === 'all') {
-        // Если выбрана "Вся семья", суммируем лимиты всех пользователей
-        if (users.length === 0) return DEFAULT_LIMIT * 2; // Фоллбэк если список пуст
-        return users.reduce((sum, u) => sum + (u.max_calories || DEFAULT_LIMIT), 0);
+      // Если выбрана "Вся семья", суммируем лимиты всех пользователей
+      if (users.length === 0) return DEFAULT_LIMIT * 2; // Фоллбэк если список пуст
+      return users.reduce((sum, u) => sum + (u.max_calories || DEFAULT_LIMIT), 0);
     } else {
-        // Лимит конкретного пользователя
-        const user = users.find(u => u.id === parseInt(selectedUser));
-        return user ? (user.max_calories || DEFAULT_LIMIT) : DEFAULT_LIMIT;
+      // Лимит конкретного пользователя
+      const user = users.find(u => u.id === parseInt(selectedUser));
+      return user ? (user.max_calories || DEFAULT_LIMIT) : DEFAULT_LIMIT;
     }
   }, [users, selectedUser]);
 
@@ -91,7 +130,7 @@ const StatisticsPage = () => {
 
   return (
     <div className="container mx-auto max-w-5xl p-6 h-full overflow-y-auto">
-      
+
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-gray-200 pb-6">
         <div>
@@ -99,10 +138,35 @@ const StatisticsPage = () => {
           <p className="text-gray-500">Анализ расходов и калорийности за неделю</p>
         </div>
 
+        {/* NUTRITION CARDS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-100 flex items-center justify-between relative overflow-hidden">
+            <div className="z-10">
+              <div className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-1">Белки</div>
+              <div className="text-3xl font-extrabold text-gray-800">{stats.total.prot}г</div>
+            </div>
+            <div className="absolute -right-4 -bottom-4 text-8xl text-blue-50 opacity-50 select-none">🥩</div>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-yellow-100 flex items-center justify-between relative overflow-hidden">
+            <div className="z-10">
+              <div className="text-sm font-bold text-yellow-600 uppercase tracking-wider mb-1">Жиры</div>
+              <div className="text-3xl font-extrabold text-gray-800">{stats.total.fat}г</div>
+            </div>
+            <div className="absolute -right-4 -bottom-4 text-8xl text-yellow-50 opacity-50 select-none">🧀</div>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-red-100 flex items-center justify-between relative overflow-hidden">
+            <div className="z-10">
+              <div className="text-sm font-bold text-red-600 uppercase tracking-wider mb-1">Углеводы</div>
+              <div className="text-3xl font-extrabold text-gray-800">{stats.total.carb}г</div>
+            </div>
+            <div className="absolute -right-4 -bottom-4 text-8xl text-red-50 opacity-50 select-none">🍞</div>
+          </div>
+        </div>
+
         {/* User Filter */}
         <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
           <span className="text-sm font-bold text-gray-400 pl-2">Пользователь:</span>
-          <select 
+          <select
             className="bg-transparent font-medium text-gray-700 outline-none cursor-pointer"
             value={selectedUser}
             onChange={(e) => setSelectedUser(e.target.value)}
@@ -118,23 +182,23 @@ const StatisticsPage = () => {
       {/* TOTAL CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-green-100 flex items-center justify-between relative overflow-hidden">
-           <div className="z-10">
-             <div className="text-sm font-bold text-green-600 uppercase tracking-wider mb-1">Общий бюджет</div>
-             <div className="text-4xl font-extrabold text-gray-800">€{stats.total.cost.toFixed(2)}</div>
-             <div className="text-xs text-gray-400 mt-2">за текущую неделю</div>
-           </div>
-           <div className="absolute -right-6 -bottom-6 text-9xl text-green-50 opacity-50 select-none">€</div>
+          <div className="z-10">
+            <div className="text-sm font-bold text-green-600 uppercase tracking-wider mb-1">Общий бюджет</div>
+            <div className="text-4xl font-extrabold text-gray-800">€{stats.total.cost.toFixed(2)}</div>
+            <div className="text-xs text-gray-400 mt-2">за текущую неделю</div>
+          </div>
+          <div className="absolute -right-6 -bottom-6 text-9xl text-green-50 opacity-50 select-none">€</div>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-orange-100 flex items-center justify-between relative overflow-hidden">
-           <div className="z-10">
-             <div className="text-sm font-bold text-orange-600 uppercase tracking-wider mb-1">Всего калорий</div>
-             <div className="text-4xl font-extrabold text-gray-800">{stats.total.cals}</div>
-             <div className="text-xs text-gray-400 mt-2">
-                 за текущую неделю (Цель: ~{dailyLimit * 7})
-             </div>
-           </div>
-           <div className="absolute -right-6 -bottom-6 text-9xl text-orange-50 opacity-50 select-none">🔥</div>
+          <div className="z-10">
+            <div className="text-sm font-bold text-orange-600 uppercase tracking-wider mb-1">Всего калорий</div>
+            <div className="text-4xl font-extrabold text-gray-800">{stats.total.cals}</div>
+            <div className="text-xs text-gray-400 mt-2">
+              за текущую неделю (Цель: ~{dailyLimit * 7})
+            </div>
+          </div>
+          <div className="absolute -right-6 -bottom-6 text-9xl text-orange-50 opacity-50 select-none">🔥</div>
         </div>
       </div>
 
@@ -148,6 +212,9 @@ const StatisticsPage = () => {
                 <th className="px-6 py-4">День недели</th>
                 <th className="px-6 py-4">Блюд</th>
                 <th className="px-6 py-4">Калории / Лимит</th>
+                <th className="px-2 py-4 text-center">Б</th>
+                <th className="px-2 py-4 text-center">Ж</th>
+                <th className="px-2 py-4 text-center">У</th>
                 <th className="px-6 py-4">Стоимость</th>
                 <th className="px-6 py-4 hidden md:table-cell">Инфо</th>
               </tr>
@@ -156,16 +223,16 @@ const StatisticsPage = () => {
               {DAYS.map(day => {
                 const dayStat = stats.daily[day];
                 const isZero = dayStat.itemsCount === 0;
-                
+
                 // Расчет процента заполнения и цвета
                 const percent = Math.min((dayStat.cals / dailyLimit) * 100, 100);
                 const isOverLimit = dayStat.cals > dailyLimit;
 
                 // Цвета текста и полоски
-                const textColorClass = dayStat.cals > 0 
-                    ? (isOverLimit ? 'text-red-600' : 'text-green-600') 
-                    : 'text-gray-300';
-                
+                const textColorClass = dayStat.cals > 0
+                  ? (isOverLimit ? 'text-red-600' : 'text-green-600')
+                  : 'text-gray-300';
+
                 const barColorClass = isOverLimit ? 'bg-red-500' : 'bg-green-500';
 
                 return (
@@ -183,29 +250,32 @@ const StatisticsPage = () => {
                     <td className="px-6 py-4 w-1/3">
                       <div className="flex flex-col gap-1">
                         <div className="flex justify-between items-end">
-                            <span className={`font-bold ${textColorClass}`}>
-                                {dayStat.cals} ккал
-                            </span>
-                            <span className="text-xs text-gray-400">
-                                из {dailyLimit}
-                            </span>
+                          <span className={`font-bold ${textColorClass}`}>
+                            {dayStat.cals} ккал
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            из {dailyLimit}
+                          </span>
                         </div>
                         {/* Visual Bar */}
                         <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div 
-                                className={`h-full transition-all duration-500 ${barColorClass}`} 
-                                style={{ width: `${percent}%` }}
-                            ></div>
+                          <div
+                            className={`h-full transition-all duration-500 ${barColorClass}`}
+                            style={{ width: `${percent}%` }}
+                          ></div>
                         </div>
                       </div>
                     </td>
+                    <td className="px-2 py-4 text-center text-sm font-bold text-blue-600">{dayStat.prot}</td>
+                    <td className="px-2 py-4 text-center text-sm font-bold text-yellow-600">{dayStat.fat}</td>
+                    <td className="px-2 py-4 text-center text-sm font-bold text-red-600">{dayStat.carb}</td>
                     <td className="px-6 py-4 font-mono font-bold text-green-700">
                       {dayStat.cost > 0 ? `€${dayStat.cost.toFixed(2)}` : '—'}
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-400 hidden md:table-cell">
-                        {isOverLimit && dayStat.cals > 0 && (
-                            <span className="text-red-500 font-bold">Превышение!</span>
-                        )}
+                      {isOverLimit && dayStat.cals > 0 && (
+                        <span className="text-red-500 font-bold">Превышение!</span>
+                      )}
                     </td>
                   </tr>
                 );
