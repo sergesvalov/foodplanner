@@ -233,7 +233,7 @@ const ProductsPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Ккал</label>
+              <label className="block text-sm font-medium text-gray-700">Ккал на 100 гр</label>
               <input
                 type="number" step="1" min="0"
                 className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
