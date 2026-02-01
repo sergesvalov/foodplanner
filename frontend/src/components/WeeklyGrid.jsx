@@ -224,9 +224,34 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
 
     const calculateItemStats = (item) => {
         const recipe = item.recipe;
-        if (!recipe) return { cost: 0, cals: 0 };
+        if (!recipe) return { cost: 0, cals: 0, prot: 0, fat: 0, carb: 0 };
         const ratio = (item.portions || 1) / (recipe.portions || 1);
-        return { cost: (recipe.total_cost || 0) * ratio, cals: Math.round((recipe.total_calories || 0) * ratio) };
+
+        // Считаем БЖУ по ингредиентам
+        let totalProt = 0;
+        let totalFat = 0;
+        let totalCarb = 0;
+
+        if (recipe.ingredients) {
+            recipe.ingredients.forEach(ing => {
+                const qty = ing.quantity * ratio;
+                const isPieces = ['шт', 'шт.', 'pcs'].includes((ing.product?.unit || '').toLowerCase());
+                const p = ing.product || {};
+                const factor = isPieces ? qty : (qty / 100);
+
+                totalProt += (p.proteins || 0) * factor;
+                totalFat += (p.fats || 0) * factor;
+                totalCarb += (p.carbs || 0) * factor;
+            });
+        }
+
+        return {
+            cost: (recipe.total_cost || 0) * ratio,
+            cals: Math.round((recipe.total_calories || 0) * ratio),
+            prot: Math.round(totalProt),
+            fat: Math.round(totalFat),
+            carb: Math.round(totalCarb)
+        };
     };
 
     // --- ИЗМЕНЕНИЕ: Статистика считается только по видимым колонкам ---
@@ -438,7 +463,15 @@ const PlanItemCard = ({ item, onRemove, onPortionChange, onUserChange, calculate
                 </div>
                 {base > 1 && <span className="text-[8px] text-gray-400">(из {base})</span>}
             </div>
-            <div className="flex justify-between items-end mt-1"><span className="text-[9px] text-green-600 font-bold">€{stats.cost.toFixed(2)}</span><span className="text-[9px] text-orange-600">{stats.cals}</span></div>
+            <div className="flex justify-between items-end mt-1">
+                <span className="text-[9px] text-green-600 font-bold">€{stats.cost.toFixed(2)}</span>
+                <div className="flex gap-1">
+                    <span className="text-[8px] text-blue-600 bg-blue-50 px-0.5 rounded" title="Белки">Б{stats.prot}</span>
+                    <span className="text-[8px] text-yellow-600 bg-yellow-50 px-0.5 rounded" title="Жиры">Ж{stats.fat}</span>
+                    <span className="text-[8px] text-red-600 bg-red-50 px-0.5 rounded" title="Углеводы">У{stats.carb}</span>
+                    <span className="text-[9px] text-orange-600 ml-1">{stats.cals}</span>
+                </div>
+            </div>
         </div>
     );
 };
