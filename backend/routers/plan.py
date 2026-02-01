@@ -11,6 +11,9 @@ import os
 from sqlalchemy import text
 
 
+import random
+from sqlalchemy import or_
+
 router = APIRouter(prefix="/plan", tags=["Weekly Plan"])
 
 @router.get("/", response_model=List[schemas.PlanItemResponse])
@@ -102,3 +105,53 @@ def import_plan(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
         
     return {"message": "Plan loaded successfully"}
+
+@router.post("/autofill_one")
+def autofill_one(db: Session = Depends(get_db)):
+    # 1. Find candidates (Soup or Main)
+    # categories: 'soup' (Первое), 'main' (Второе)
+    candidates = db.query(models.Recipe).filter(
+        or_(models.Recipe.category == 'soup', models.Recipe.category == 'main')
+    ).all()
+    
+    if not candidates:
+        raise HTTPException(status_code=400, detail="No recipes found in categories 'soup' or 'main'")
+
+    # 2. Get current plan
+    current_plan = db.query(models.WeeklyPlanEntry).all()
+    
+    # 3. Define all slots: Days x Meals (lunch, dinner)
+    days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+    meals = ['lunch', 'dinner']
+    
+    occupied_slots = set()
+    for item in current_plan:
+        if item.meal_type in meals:
+            occupied_slots.add((item.day_of_week, item.meal_type))
+            
+    # 4. Find empty slots
+    empty_slots = []
+    for d in days:
+        for m in meals:
+            if (d, m) not in occupied_slots:
+                empty_slots.append((d, m))
+                
+    if not empty_slots:
+        raise HTTPException(status_code=400, detail="No empty slots for lunch or dinner")
+        
+    # 5. Pick randoms
+    target_slot = random.choice(empty_slots)
+    target_recipe = random.choice(candidates)
+    
+    # 6. Create entry
+    new_item = models.WeeklyPlanEntry(
+        day_of_week=target_slot[0],
+        meal_type=target_slot[1],
+        recipe_id=target_recipe.id,
+        portions=1
+    )
+    db.add(new_item)
+    db.commit()
+    db.refresh(new_item)
+    
+    return {"message": "Added recipe", "day": target_slot[0], "meal": target_slot[1], "recipe": target_recipe.title}

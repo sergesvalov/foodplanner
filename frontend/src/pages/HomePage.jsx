@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import WeeklyGrid from '../components/WeeklyGrid';
 import DraggableRecipeList from '../components/DraggableRecipeList';
 
 const HomePage = () => {
+  const [refreshKey, setRefreshKey] = useState(0);
+
   const handleSavePlan = async () => {
     try {
       const res = await fetch('/api/plan/export');
@@ -26,6 +28,19 @@ const HomePage = () => {
     } catch (err) { console.error(err); alert("Ошибка сети"); }
   };
 
+  const handleAutoFillOne = async () => {
+    try {
+      const res = await fetch('/api/plan/autofill_one', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        // Убрали alert, чтобы не надоедал
+        setRefreshKey(k => k + 1); // Обновляем сетку
+      } else {
+        alert("⚠️ " + data.detail);
+      }
+    } catch (err) { console.error(err); alert("Ошибка сети"); }
+  };
+
   return (
     <div className="flex flex-row items-start bg-gray-100 relative min-h-screen">
 
@@ -45,6 +60,13 @@ const HomePage = () => {
           <h1 className="text-2xl font-bold text-gray-800">План на неделю</h1>
           <div className="flex gap-2">
             <button
+              onClick={handleAutoFillOne}
+              className="px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 border border-purple-200 text-sm font-medium transition-colors flex items-center gap-1"
+              title="Добавить случайный обед или ужин"
+            >
+              🪄 Авто-блюдо
+            </button>
+            <button
               onClick={handleSavePlan}
               className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 border border-indigo-200 text-sm font-medium transition-colors"
             >
@@ -59,7 +81,7 @@ const HomePage = () => {
           </div>
         </div>
         <div className="flex-1 min-h-0">
-          <WeeklyGrid />
+          <WeeklyGrid key={refreshKey} />
         </div>
       </div>
 
