@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Text
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Text, Date
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -12,10 +12,10 @@ class Product(Base):
     amount = Column(Float, default=1.0)
     calories = Column(Float, default=0.0)
     
-    # --- НОВЫЕ ПОЛЯ (БЖУ) ---
-    proteins = Column(Float, nullable=True, default=None) # Белки
-    fats = Column(Float, nullable=True, default=None)     # Жиры
-    carbs = Column(Float, nullable=True, default=None)    # Углеводы
+    # Новые поля
+    proteins = Column(Float, nullable=True, default=None)
+    fats = Column(Float, nullable=True, default=None)
+    carbs = Column(Float, nullable=True, default=None)
 
 class Recipe(Base):
     __tablename__ = "recipes"
@@ -45,7 +45,6 @@ class Recipe(Base):
             if item.product:
                 unit_lower = (item.product.unit or "").lower()
                 is_pieces = unit_lower in ["шт", "шт.", "pcs", "piece", "stk"]
-                
                 qty = item.quantity
                 if unit_lower in ["kg", "кг", "l", "л"]:
                     qty *= 1000
@@ -57,8 +56,6 @@ class Recipe(Base):
                     total += qty * cals_per_gram
         return round(total)
 
-    # Остальные свойства Recipe (total_weight, calories_per_100g и т.д.) оставляем без изменений...
-    # (Для краткости не дублирую весь класс Recipe, если он не менялся, но убедитесь, что он там есть)
     @property
     def total_weight(self):
         weight = 0.0
@@ -116,6 +113,9 @@ class WeeklyPlanEntry(Base):
     recipe_id = Column(Integer, ForeignKey("recipes.id"))
     portions = Column(Integer, default=1)
     family_member_id = Column(Integer, ForeignKey("family_members.id"), nullable=True)
+
+    # --- НОВОЕ ПОЛЕ ---
+    date = Column(Date, nullable=True)
 
     recipe = relationship("Recipe")
     family_member = relationship("FamilyMember")
