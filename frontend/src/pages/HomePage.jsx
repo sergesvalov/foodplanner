@@ -15,6 +15,22 @@ const HomePage = () => {
     } catch (err) { console.error(err); alert("Ошибка сети"); }
   };
 
+  const handleAutoPlanWeek = async () => {
+    if (!confirm("Спланировать обеды и ужины на СЛЕДУЮЩУЮ неделю?")) return;
+    try {
+      const res = await fetch('/api/plan/autofill_week', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ " + data.message);
+        setRefreshKey(k => k + 1);
+      } else {
+        alert("❌ Ошибка: " + data.detail);
+      }
+    } catch (err) {
+      alert("❌ Ошибка сети");
+    }
+  };
+
   const handleLoadPlan = async () => {
     if (!window.confirm("Загрузить сохраненный план? Текущий план будет перезаписан!")) return;
     try {
@@ -69,6 +85,13 @@ const HomePage = () => {
         <div className="flex justify-between items-center mb-4 shrink-0">
           <h1 className="text-2xl font-bold text-gray-800">План на неделю</h1>
           <div className="flex gap-2">
+            <button
+              onClick={handleAutoPlanWeek}
+              className="px-3 py-1 bg-violet-100 text-violet-700 rounded hover:bg-violet-200 border border-violet-200 text-sm font-medium transition-colors flex items-center gap-1"
+              title="Спланировать обеды и ужины на следующую неделю"
+            >
+              🔮 Спланировать
+            </button>
             <button
               onClick={handleAutoFillOne}
               className="px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 border border-purple-200 text-sm font-medium transition-colors flex items-center gap-1"

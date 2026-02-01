@@ -134,7 +134,8 @@ def autofill_one(req: schemas.AutoFillRequest = None, db: Session = Depends(get_
     # Проверяем, есть ли уже что-то в этот слот для этого человека
     q = db.query(models.WeeklyPlanEntry).filter(
         models.WeeklyPlanEntry.day_of_week == target_day,
-        models.WeeklyPlanEntry.meal_type == target_meal
+        models.WeeklyPlanEntry.meal_type == target_meal,
+        models.WeeklyPlanEntry.date == datetime.date.today() # <--- Строгая привязка к дате
     )
     if req and req.family_member_id:
         q = q.filter(models.WeeklyPlanEntry.family_member_id == req.family_member_id)
@@ -150,7 +151,7 @@ def autofill_one(req: schemas.AutoFillRequest = None, db: Session = Depends(get_
         recipe_id=target_recipe.id,
         portions=1,
         family_member_id=req.family_member_id if req else None,
-        date=datetime.date.today() # <--- Всегда сегодня
+        date=datetime.date.today() 
     )
     db.add(new_item)
     db.commit()
@@ -162,6 +163,57 @@ def autofill_one(req: schemas.AutoFillRequest = None, db: Session = Depends(get_
         "meal": target_meal, 
         "recipe": target_recipe.title
     }
+
+@router.post("/autofill_week")
+def autofill_week(db: Session = Depends(get_db)):
+    # 1. Определяем даты следующей недели
+    today = datetime.date.today()
+    current_weekday = today.weekday() # 0 = Пн
+    days_until_next_monday = 7 - current_weekday
+    next_monday = today + datetime.timedelta(days=days_until_next_monday)
+    
+    days_map = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+    target_meals = ['lunch', 'dinner']
+    
+    # Рецепты, которые подходят (суп или второе)
+    candidates = db.query(models.Recipe).filter(
+        models.Recipe.category.in_(['soup', 'main'])
+    ).all()
+    
+    if not candidates:
+        raise HTTPException(status_code=400, detail="No recipes found (need soup or main)")
+
+    count = 0
+    
+    # Проходим по всем дням следующей недели (0..6)
+    for i in range(7):
+        target_date = next_monday + datetime.timedelta(days=i)
+        target_day_name = days_map[i]
+        
+        for meal in target_meals:
+            # Проверяем, занят ли слот
+            # (Для простоты проверяем "общий" слот, т.е. без привязки к конкретному человеку,
+            #  или можно проверять "есть ли хоть что-то" в этот слот)
+            exists = db.query(models.WeeklyPlanEntry).filter(
+                models.WeeklyPlanEntry.date == target_date,
+                models.WeeklyPlanEntry.meal_type == meal
+            ).first()
+            
+            if not exists:
+                recipe = random.choice(candidates)
+                new_item = models.WeeklyPlanEntry(
+                    day_of_week=target_day_name,
+                    meal_type=meal,
+                    recipe_id=recipe.id,
+                    portions=1,
+                    family_member_id=None, # Общее блюдо
+                    date=target_date
+                )
+                db.add(new_item)
+                count += 1
+
+    db.commit()
+    return {"message": f"Planned {count} items for next week ({next_monday} - {next_monday+datetime.timedelta(days=6)})"}
 
 @router.get("/export")
 def export_plan(db: Session = Depends(get_db)):
