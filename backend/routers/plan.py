@@ -35,8 +35,19 @@ def get_date_for_day_of_week(day_name: str) -> datetime.date:
 # ----------------------
 
 @router.get("/", response_model=List[schemas.PlanItemResponse])
-def get_plan(db: Session = Depends(get_db)):
-    return db.query(models.WeeklyPlanEntry).order_by(models.WeeklyPlanEntry.date.asc(), models.WeeklyPlanEntry.id.asc()).all()
+def get_plan(
+    start_date: datetime.date = None, 
+    end_date: datetime.date = None, 
+    db: Session = Depends(get_db)
+):
+    q = db.query(models.WeeklyPlanEntry)
+    
+    if start_date:
+        q = q.filter(models.WeeklyPlanEntry.date >= start_date)
+    if end_date:
+        q = q.filter(models.WeeklyPlanEntry.date <= end_date)
+        
+    return q.order_by(models.WeeklyPlanEntry.date.asc(), models.WeeklyPlanEntry.id.asc()).all()
 
 @router.post("/", response_model=schemas.PlanItemResponse)
 def add_to_plan(item: schemas.PlanItemCreate, db: Session = Depends(get_db)):

@@ -28,11 +28,43 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
     const [users, setUsers] = useState([]);
     const [pendingDrop, setPendingDrop] = useState(null);
 
+    const [currentDate, setCurrentDate] = useState(new Date());
+
     const [viewMode, setViewMode] = useState('week');
     // const [selectedUser, setSelectedUser] = useState('all'); // Moved to parent
 
+    // --- ХЕЛПЕР ДЛЯ ДАТ ---
+    const getWeekDays = (baseDate) => {
+        const currentDay = baseDate.getDay(); // 0-Sun, 1-Mon...
+        // Корректировка: если воскресенье (0), считаем его 7-м днем, чтобы неделя начиналась с Пн
+        const dayIndex = currentDay === 0 ? 6 : currentDay - 1;
+
+        // Понедельник текущей недели
+        const monday = new Date(baseDate);
+        monday.setDate(baseDate.getDate() - dayIndex);
+
+        return DAYS.map((d, i) => {
+            const date = new Date(monday);
+            date.setDate(monday.getDate() + i);
+            const dd = String(date.getDate()).padStart(2, '0');
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const yyyy = date.getFullYear();
+            return {
+                name: d,
+                dateObj: date,
+                dateStr: `${yyyy}-${mm}-${dd}`,
+                display: `${dd}.${mm}`
+            };
+        });
+    };
+
+    const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
+
     const fetchPlan = () => {
-        fetch('/api/plan/')
+        const start = weekDays[0].dateStr;
+        const end = weekDays[6].dateStr;
+
+        fetch(`/api/plan/?start_date=${start}&end_date=${end}`)
             .then(res => res.json())
             .then(data => { if (Array.isArray(data)) setPlan(data); else setPlan([]); })
             .catch(err => { console.error(err); setPlan([]); });
@@ -41,11 +73,6 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
     const fetchUsers = () => {
         fetch('/api/admin/family').then(res => res.json()).then(setUsers).catch(console.error);
     };
-
-    useEffect(() => {
-        fetchPlan();
-        fetchUsers();
-    }, []);
 
     const filteredPlan = useMemo(() => {
         if (selectedUser === 'all') return plan;
@@ -66,50 +93,57 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
         }
     }, [viewMode]);
 
-    // --- ХЕЛПЕР ДЛЯ ДАТ ---
-    const getDatesForCurrentWeek = () => {
-        const today = new Date();
-        const currentDay = today.getDay(); // 0-Sun, 1-Mon...
-        // Корректировка: если воскресенье (0), считаем его 7-м днем, чтобы неделя начиналась с Пн
-        const dayIndex = currentDay === 0 ? 6 : currentDay - 1;
-
-        // Понедельник текущей недели
-        const monday = new Date(today);
-        monday.setDate(today.getDate() - dayIndex);
-
-        const dates = {};
-        DAYS.forEach((d, i) => {
-            const date = new Date(monday);
-            date.setDate(monday.getDate() + i);
-            const dd = String(date.getDate()).padStart(2, '0');
-            const mm = String(date.getMonth() + 1).padStart(2, '0');
-            dates[d] = `${dd}.${mm}`;
-        });
-        return dates;
+    const handlePrevWeek = () => {
+        const newDate = new Date(currentDate);
+        newDate.setDate(newDate.getDate() - 7);
+        setCurrentDate(newDate);
     };
 
-    const weekDates = useMemo(() => getDatesForCurrentWeek(), []);
+    const handleNextWeek = () => {
+        const newDate = new Date(currentDate);
+        newDate.setDate(newDate.getDate() + 7);
+        setCurrentDate(newDate);
+    };
+
+    const handleGoToday = () => {
+        setCurrentDate(new Date());
+    };
+
+    useEffect(() => {
+        fetchPlan();
+        fetchUsers();
+    }, [currentDate]);
+    // -----------------------
+
+
     // -----------------------
 
     const handleDragOver = (e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-indigo-300', 'bg-white'); };
     const handleDragLeave = (e) => { e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white'); };
 
-    const handleDrop = (e, day, mealType) => {
+    const handleDrop = (e, dayObj, mealType) => {
         e.preventDefault();
         e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white');
         const data = e.dataTransfer.getData('recipeData');
         if (!data) return;
         const recipe = JSON.parse(data);
 
+        // dayObj - это объект { name, dateObj, dateStr, display }
+        // Если это EXTRA_KEY (вкусняшки), у нас нет конкретной даты, можно брать сегодня или первый день недели
+        // Но логика "вкусняшек" может быть отдельной. Пока привяжем к понедельнику недели или текущей дате.
+        // Для простоты, если dayObj - строка (EXTRA_KEY), используем понедельник
+        const dateToUse = (typeof dayObj === 'string') ? weekDays[0].dateStr : dayObj.dateStr;
+        const dayName = (typeof dayObj === 'string') ? dayObj : dayObj.name;
+
         if (selectedUser !== 'all') {
-            confirmAdd(day, mealType, recipe.id, parseInt(selectedUser));
+            confirmAdd(dayName, dateToUse, mealType, recipe.id, parseInt(selectedUser));
         } else {
-            if (users.length === 0) confirmAdd(day, mealType, recipe.id, null);
-            else setPendingDrop({ day, mealType, recipeId: recipe.id });
+            if (users.length === 0) confirmAdd(dayName, dateToUse, mealType, recipe.id, null);
+            else setPendingDrop({ dayName, date: dateToUse, mealType, recipeId: recipe.id });
         }
     };
 
-    const confirmAdd = async (day, mealType, recipeId, userId) => {
+    const confirmAdd = async (day, date, mealType, recipeId, userId) => {
         try {
             const res = await fetch('/api/plan/', {
                 method: 'POST',
@@ -119,7 +153,8 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
                     meal_type: mealType,
                     recipe_id: recipeId,
                     portions: 1,
-                    family_member_id: userId
+                    family_member_id: userId,
+                    date: date // Передаем дату!
                 })
             });
             if (res.ok) fetchPlan();
@@ -189,13 +224,13 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
                         <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">Кто будет это есть?</h3>
                         <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto">
                             {users.map(u => (
-                                <button key={u.id} onClick={() => confirmAdd(pendingDrop.day, pendingDrop.mealType, pendingDrop.recipeId, u.id)}
+                                <button key={u.id} onClick={() => confirmAdd(pendingDrop.dayName, pendingDrop.date, pendingDrop.mealType, pendingDrop.recipeId, u.id)}
                                     className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-left group">
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold uppercase bg-${u.color}-500 shadow-sm`}>{u.name[0]}</div>
                                     <span className="font-medium text-gray-700">{u.name}</span>
                                 </button>
                             ))}
-                            <button onClick={() => confirmAdd(pendingDrop.day, pendingDrop.mealType, pendingDrop.recipeId, null)}
+                            <button onClick={() => confirmAdd(pendingDrop.dayName, pendingDrop.date, pendingDrop.mealType, pendingDrop.recipeId, null)}
                                 className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-gray-300 hover:bg-gray-50 text-left">
                                 <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-bold">?</div>
                                 <span className="font-medium text-gray-500">Общее (Без имени)</span>
@@ -211,6 +246,13 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full xl:w-auto">
                     <h2 className="text-lg font-bold text-gray-700 flex items-center gap-2 whitespace-nowrap">
                         📅 План
+                        <div className="flex bg-gray-100 rounded-lg p-0.5 ml-4 items-center gap-1">
+                            <button onClick={handlePrevWeek} className="px-2 py-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded transition-all">←</button>
+                            <button onClick={handleGoToday} className="px-3 py-1 text-xs font-bold text-gray-600 hover:text-indigo-600 hover:bg-white rounded transition-all">
+                                Сегодня
+                            </button>
+                            <button onClick={handleNextWeek} className="px-2 py-1 text-gray-500 hover:text-indigo-600 hover:bg-white rounded transition-all">→</button>
+                        </div>
                         <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
                             {filteredPlan.length} блюд
                         </span>
@@ -270,19 +312,29 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
                         gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(${viewMode === 'week' ? '150px' : '0'}, 1fr))`
                     }}
                 >
-                    {visibleColumns.map((col) => {
-                        const isExtra = col === EXTRA_KEY;
-                        const items = filteredPlan.filter(p => p.day_of_week === col);
+                    {visibleColumns.map((colName) => {
+                        const isExtra = colName === EXTRA_KEY;
+                        // Находим объект дня из weekDays. Если это EXTRA_KEY, то дня нет.
+                        const dayObj = isExtra ? null : weekDays.find(d => d.name === colName);
+
+                        // Фильтруем элементы: совпадают по дню недели И по дате (если дата есть в плане)
+                        const items = filteredPlan.filter(p => {
+                            if (isExtra) return p.day_of_week === EXTRA_KEY;
+                            // Если у элемента есть дата, сравниваем её. Если нет (старые записи), фолбек на день недели
+                            if (p.date) return p.date === dayObj?.dateStr;
+                            return p.day_of_week === colName;
+                        });
+
                         const stats = items.reduce((acc, i) => { const s = calculateItemStats(i); return { cost: acc.cost + s.cost, cals: acc.cals + s.cals }; }, { cost: 0, cals: 0 });
 
                         return (
-                            <div key={col} className={`flex flex-col h-auto relative group min-w-0 ${isExtra ? 'bg-indigo-50/30' : 'bg-white'}`}>
+                            <div key={colName} className={`flex flex-col h-auto relative group min-w-0 ${isExtra ? 'bg-indigo-50/30' : 'bg-white'}`}>
 
                                 <div className={`py-2 flex flex-col items-center justify-center border-b border-gray-600 gap-1 ${isExtra ? 'bg-indigo-700' : 'bg-gray-800'}`}>
                                     <span className="font-bold text-xs uppercase tracking-wider text-white">
                                         {isExtra ? '🍪 Вкусняшки' : (
                                             <>
-                                                {col} <span className="opacity-70 text-[10px] ml-1">{weekDates[col]}</span>
+                                                {colName} <span className="opacity-70 text-[10px] ml-1">{dayObj?.display}</span>
                                             </>
                                         )}
                                     </span>
@@ -295,16 +347,16 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
                                 <div className="p-1 space-y-1 h-full">
                                     {isExtra ? (
                                         <div className="min-h-[300px] h-full border-2 border-dashed border-indigo-200 rounded-lg bg-indigo-50/50 flex flex-col p-2 gap-2 hover:bg-indigo-100/50"
-                                            onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, col, EXTRA_MEAL_TYPE)}>
+                                            onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, colName, EXTRA_MEAL_TYPE)}>
                                             {items.map(item => <PlanItemCard key={item.id} item={item} onRemove={handleRemove} onPortionChange={handlePortionChange} onUserChange={handleUserChange} calculateStats={calculateItemStats} users={users} />)}
                                         </div>
                                     ) : (
                                         MEALS.map((meal) => {
-                                            const slotItems = filteredPlan.filter(p => p.day_of_week === col && p.meal_type === meal.id);
+                                            const slotItems = items.filter(p => p.meal_type === meal.id);
                                             const isCompact = meal.isSnack && slotItems.length === 0;
                                             return (
                                                 <div key={meal.id} className={`relative rounded border ${meal.color} ${isCompact ? 'h-8 opacity-50 hover:opacity-100 hover:h-auto border-dashed flex items-center justify-center' : 'min-h-[80px] pb-1 shadow-sm'}`}
-                                                    onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, col, meal.id)}>
+                                                    onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, dayObj, meal.id)}>
                                                     {isCompact ? <span className="text-[9px] text-gray-400 uppercase font-bold">+ {meal.label}</span> : <div className="text-[9px] font-bold uppercase px-1.5 py-1 text-gray-500/80 mb-0.5">{meal.label}</div>}
                                                     {!isCompact && <div className="px-1 space-y-1">{slotItems.map(item => <PlanItemCard key={item.id} item={item} onRemove={handleRemove} onPortionChange={handlePortionChange} onUserChange={handleUserChange} calculateStats={calculateItemStats} users={users} />)}</div>}
                                                 </div>
