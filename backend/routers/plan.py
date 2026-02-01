@@ -217,7 +217,17 @@ def autofill_week(db: Session = Depends(get_db)):
 
 @router.get("/export")
 def export_plan(db: Session = Depends(get_db)):
-    plan = db.query(models.WeeklyPlanEntry).all()
+    # Экспортируем только ТЕКУЩУЮ неделю, чтобы это работало как шаблон
+    today = datetime.date.today()
+    current_weekday = today.weekday()
+    start_of_week = today - datetime.timedelta(days=current_weekday)
+    end_of_week = start_of_week + datetime.timedelta(days=6)
+
+    plan = db.query(models.WeeklyPlanEntry).filter(
+        models.WeeklyPlanEntry.date >= start_of_week,
+        models.WeeklyPlanEntry.date <= end_of_week
+    ).all()
+
     data = []
     for item in plan:
         data.append({
@@ -226,12 +236,13 @@ def export_plan(db: Session = Depends(get_db)):
             "recipe_id": item.recipe_id,
             "portions": item.portions,
             "family_member_id": item.family_member_id,
-            "date": item.date.isoformat() if item.date else None
+            # Экспортируем без даты или с датой - неважно, импорт пересчитает
+            "date": item.date.isoformat() if item.date else None 
         })
     try:
         with open(EXPORT_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        return {"message": f"Saved {len(data)} items"}
+        return {"message": f"Saved {len(data)} items from current week"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -245,29 +256,33 @@ def import_plan(db: Session = Depends(get_db)):
     except Exception as e:
          raise HTTPException(status_code=500, detail=str(e))
 
-    # Очищаем текущий план перед импортом (опционально)
-    db.query(models.WeeklyPlanEntry).delete()
+    # Очищаем только ТЕКУЩУЮ неделю перед импортом
+    today = datetime.date.today()
+    current_weekday = today.weekday()
+    start_of_week = today - datetime.timedelta(days=current_weekday)
+    end_of_week = start_of_week + datetime.timedelta(days=6)
+
+    db.query(models.WeeklyPlanEntry).filter(
+        models.WeeklyPlanEntry.date >= start_of_week,
+        models.WeeklyPlanEntry.date <= end_of_week
+    ).delete()
     
     count = 0
     for item in data:
-        # Парсим дату
-        d = None
-        if item.get("date"):
-            try:
-                d = datetime.date.fromisoformat(item["date"])
-            except:
-                pass
+        # Пересчитываем дату на текущую неделю на основе дня недели
+        day_name = item.get("day")
+        target_date = get_date_for_day_of_week(day_name)
         
         new_entry = models.WeeklyPlanEntry(
-            day_of_week=item.get("day"),
+            day_of_week=day_name,
             meal_type=item.get("meal"),
             recipe_id=item.get("recipe_id"),
             portions=item.get("portions", 1),
             family_member_id=item.get("family_member_id"),
-            date=d
+            date=target_date
         )
         db.add(new_entry)
         count += 1
     
     db.commit()
-    return {"message": f"Imported {count} items"}
+    return {"message": f"Imported {count} items into current week"}
