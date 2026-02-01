@@ -120,14 +120,14 @@ def import_plan(db: Session = Depends(get_db)):
 
 @router.post("/autofill_one")
 def autofill_one(db: Session = Depends(get_db)):
-    # 1. Find candidates (Soup or Main)
-    # categories: 'soup' (Первое), 'main' (Второе)
+    # 1. Find candidates (Snacks)
+    # categories: 'snack' (Перекус)
     candidates = db.query(models.Recipe).filter(
-        or_(models.Recipe.category == 'soup', models.Recipe.category == 'main')
+        models.Recipe.category == 'snack'
     ).all()
     
     if not candidates:
-        raise HTTPException(status_code=400, detail="No recipes found in categories 'soup' or 'main'")
+        raise HTTPException(status_code=400, detail="No recipes found in category 'snack'")
 
     # 2. Get current plan
     current_plan = db.query(models.WeeklyPlanEntry).all()
@@ -139,7 +139,8 @@ def autofill_one(db: Session = Depends(get_db)):
     today_index = datetime.datetime.now().weekday()
     target_day = days_map[today_index]
     
-    meals = ['lunch', 'dinner']
+    # Target snack slots
+    meals = ['morning_snack', 'afternoon_snack', 'late_snack']
     
     occupied_slots = set()
     for item in current_plan:
@@ -153,7 +154,7 @@ def autofill_one(db: Session = Depends(get_db)):
             empty_slots.append((target_day, m))
                 
     if not empty_slots:
-        raise HTTPException(status_code=400, detail=f"На сегодня ({target_day}) уже все запланировано!")
+        raise HTTPException(status_code=400, detail=f"На сегодня ({target_day}) уже все перекусы запланированы!")
         
     # 5. Pick randoms
     target_slot = random.choice(empty_slots)
