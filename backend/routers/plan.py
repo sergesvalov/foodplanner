@@ -13,6 +13,7 @@ from sqlalchemy import text
 
 import random
 from sqlalchemy import or_
+import datetime
 
 router = APIRouter(prefix="/plan", tags=["Weekly Plan"])
 
@@ -132,23 +133,27 @@ def autofill_one(db: Session = Depends(get_db)):
     current_plan = db.query(models.WeeklyPlanEntry).all()
     
     # 3. Define all slots: Days x Meals (lunch, dinner)
-    days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+    days_map = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+    
+    # Ограничиваемся ТОЛЬКО СЕГОДНЯШНИМ ДНЕМ
+    today_index = datetime.datetime.now().weekday()
+    target_day = days_map[today_index]
+    
     meals = ['lunch', 'dinner']
     
     occupied_slots = set()
     for item in current_plan:
-        if item.meal_type in meals:
+        if item.meal_type in meals and item.day_of_week == target_day:
             occupied_slots.add((item.day_of_week, item.meal_type))
             
-    # 4. Find empty slots
+    # 4. Find empty slots (Only for Today)
     empty_slots = []
-    for d in days:
-        for m in meals:
-            if (d, m) not in occupied_slots:
-                empty_slots.append((d, m))
+    for m in meals:
+        if (target_day, m) not in occupied_slots:
+            empty_slots.append((target_day, m))
                 
     if not empty_slots:
-        raise HTTPException(status_code=400, detail="No empty slots for lunch or dinner")
+        raise HTTPException(status_code=400, detail=f"На сегодня ({target_day}) уже все запланировано!")
         
     # 5. Pick randoms
     target_slot = random.choice(empty_slots)

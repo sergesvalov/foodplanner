@@ -62,9 +62,9 @@ const HomePage = () => {
             <button
               onClick={handleAutoFillOne}
               className="px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 border border-purple-200 text-sm font-medium transition-colors flex items-center gap-1"
-              title="Добавить случайный обед или ужин"
+              title="Добавить случайный обед или ужин на сегодня"
             >
-              🪄 Авто-блюдо
+              � Что б поесть?
             </button>
             <button
               onClick={handleSavePlan}
