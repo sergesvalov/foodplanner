@@ -40,7 +40,7 @@ const HomePage = () => {
       {/* Правая колонка - Основной контент */}
       {/* flex-1: занимает всё свободное место */}
       {/* min-w-0: предотвращает "распирание" flex-контейнера */}
-      <div className="flex-1 p-4 min-w-0 flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 p-4 min-w-0 flex flex-col">
         <div className="flex justify-between items-center mb-4 shrink-0">
           <h1 className="text-2xl font-bold text-gray-800">План на неделю</h1>
           <div className="flex gap-2">
@@ -58,7 +58,7 @@ const HomePage = () => {
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="flex-1 min-h-0">
           <WeeklyGrid />
         </div>
       </div>
