@@ -33,7 +33,7 @@ const ProductsPage = () => {
       sortableItems.sort((a, b) => {
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
-        
+
         // Обработка null значений
         if (aValue === null || aValue === undefined) aValue = -1;
         if (bValue === null || bValue === undefined) bValue = -1;
@@ -129,6 +129,85 @@ const ProductsPage = () => {
         resetForm();
       }
     } catch (err) { console.error(err); }
+  };
+
+  const handleCreateRecipe = async (e) => {
+    e.preventDefault();
+    if (!window.confirm("Сохранить продукт и создать из него рецепт?")) return;
+
+    const payload = {
+      name: form.name,
+      price: parseFloat(form.price),
+      amount: parseFloat(form.amount),
+      unit: form.unit,
+      calories: form.calories ? parseFloat(form.calories) : 0,
+      proteins: form.proteins ? parseFloat(form.proteins) : null,
+      fats: form.fats ? parseFloat(form.fats) : null,
+      carbs: form.carbs ? parseFloat(form.carbs) : null
+    };
+
+    try {
+      // 1. Save/Update Product
+      let url = '/api/products/';
+      let method = 'POST';
+
+      if (editingId) {
+        url = `/api/products/${editingId}`;
+        method = 'PUT';
+      }
+
+      const resProduct = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const productData = await resProduct.json();
+
+      if (!resProduct.ok) {
+        alert("Ошибка при сохранении продукта: " + productData.detail);
+        return;
+      }
+
+      // 2. Create Recipe
+      // If we created a new product, use the returned ID. 
+      // If we updated, use editingId or returned ID (safer to use returned if available, or editingId)
+      const productId = productData.id || editingId;
+
+      const recipePayload = {
+        title: payload.name,
+        description: "Автоматически создано из продукта",
+        category: "other", // Default category
+        portions: 1,
+        ingredients: [
+          {
+            product_id: productId,
+            quantity: payload.amount // Use full package amount by default
+          }
+        ]
+      };
+
+      const resRecipe = await fetch('/api/recipes/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(recipePayload)
+      });
+
+      const recipeData = await resRecipe.json();
+
+      if (resRecipe.ok) {
+        alert(`✅ Продукт сохранен и рецепт "${recipeData.title}" создан!`);
+        fetchProducts();
+        resetForm();
+      } else {
+        alert("Продукт сохранен, но ошибка создания рецепта: " + recipeData.detail);
+        fetchProducts(); // Refresh anyway
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert("Ошибка сети");
+    }
   };
 
   const resetForm = () => {
@@ -246,46 +325,46 @@ const ProductsPage = () => {
             <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">На 100г продукта</div>
 
             <div className="grid grid-cols-2 gap-4">
-               <div>
-                  <label className="block text-sm font-medium text-gray-700">Калории (ккал)</label>
-                  <input
-                    type="number" step="1" min="0"
-                    className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
-                    placeholder="0"
-                    value={form.calories}
-                    onChange={e => setForm({ ...form, calories: e.target.value })}
-                  />
-               </div>
-               <div>
-                  <label className="block text-sm font-medium text-gray-700">Белки (г)</label>
-                  <input
-                    type="number" step="0.1" min="0"
-                    className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
-                    placeholder="—"
-                    value={form.proteins}
-                    onChange={e => setForm({ ...form, proteins: e.target.value })}
-                  />
-               </div>
-               <div>
-                  <label className="block text-sm font-medium text-gray-700">Жиры (г)</label>
-                  <input
-                    type="number" step="0.1" min="0"
-                    className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
-                    placeholder="—"
-                    value={form.fats}
-                    onChange={e => setForm({ ...form, fats: e.target.value })}
-                  />
-               </div>
-               <div>
-                  <label className="block text-sm font-medium text-gray-700">Углеводы (г)</label>
-                  <input
-                    type="number" step="0.1" min="0"
-                    className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
-                    placeholder="—"
-                    value={form.carbs}
-                    onChange={e => setForm({ ...form, carbs: e.target.value })}
-                  />
-               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Калории (ккал)</label>
+                <input
+                  type="number" step="1" min="0"
+                  className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                  placeholder="0"
+                  value={form.calories}
+                  onChange={e => setForm({ ...form, calories: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Белки (г)</label>
+                <input
+                  type="number" step="0.1" min="0"
+                  className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                  placeholder="—"
+                  value={form.proteins}
+                  onChange={e => setForm({ ...form, proteins: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Жиры (г)</label>
+                <input
+                  type="number" step="0.1" min="0"
+                  className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                  placeholder="—"
+                  value={form.fats}
+                  onChange={e => setForm({ ...form, fats: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Углеводы (г)</label>
+                <input
+                  type="number" step="0.1" min="0"
+                  className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                  placeholder="—"
+                  value={form.carbs}
+                  onChange={e => setForm({ ...form, carbs: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="flex gap-2 mt-4">
@@ -295,6 +374,15 @@ const ProductsPage = () => {
                   }`}
               >
                 {editingId ? 'Сохранить' : 'Добавить'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCreateRecipe}
+                className="w-full py-2 rounded text-indigo-700 bg-indigo-100 hover:bg-indigo-200 border border-indigo-200 font-medium shadow-sm transition-colors text-sm"
+                title="Сохранить продукт и создать рецепт с таким же именем"
+              >
+                + Рецепт
               </button>
             </div>
           </form>
@@ -319,7 +407,7 @@ const ProductsPage = () => {
                   <th className="px-2 py-3 text-center cursor-pointer hover:bg-gray-100" onClick={() => requestSort('proteins')} title="Белки">Б</th>
                   <th className="px-2 py-3 text-center cursor-pointer hover:bg-gray-100" onClick={() => requestSort('fats')} title="Жиры">Ж</th>
                   <th className="px-2 py-3 text-center cursor-pointer hover:bg-gray-100" onClick={() => requestSort('carbs')} title="Углеводы">У</th>
-                  
+
                   <th className="px-4 py-3 text-right">Действия</th>
                 </tr>
               </thead>
@@ -336,14 +424,14 @@ const ProductsPage = () => {
                     onClick={() => handleEditClick(product)}
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">
-                        <div>{product.name}</div>
-                        <div className="text-xs text-gray-400 font-normal">{product.amount} {product.unit}</div>
+                      <div>{product.name}</div>
+                      <div className="text-xs text-gray-400 font-normal">{product.amount} {product.unit}</div>
                     </td>
                     <td className="px-4 py-3">€{product.price.toFixed(2)}</td>
                     <td className="px-4 py-3">
                       {product.calories > 0 ? product.calories : '—'}
                     </td>
-                    
+
                     <td className="px-2 py-3 text-center text-xs">{product.proteins ?? '—'}</td>
                     <td className="px-2 py-3 text-center text-xs">{product.fats ?? '—'}</td>
                     <td className="px-2 py-3 text-center text-xs">{product.carbs ?? '—'}</td>
