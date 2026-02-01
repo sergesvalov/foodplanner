@@ -126,20 +126,39 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
         e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white');
         const data = e.dataTransfer.getData('recipeData');
         if (!data) return;
-        const recipe = JSON.parse(data);
 
-        // dayObj - это объект { name, dateObj, dateStr, display }
-        // Если это EXTRA_KEY (вкусняшки), у нас нет конкретной даты, можно брать сегодня или первый день недели
-        // Но логика "вкусняшек" может быть отдельной. Пока привяжем к понедельнику недели или текущей дате.
-        // Для простоты, если dayObj - строка (EXTRA_KEY), используем понедельник
-        const dateToUse = (typeof dayObj === 'string') ? weekDays[0].dateStr : dayObj.dateStr;
-        const dayName = (typeof dayObj === 'string') ? dayObj : dayObj.name;
+        try {
+            const recipe = JSON.parse(data);
+            console.log("Drop:", { dayObj, mealType, recipe });
 
-        if (selectedUser !== 'all') {
-            confirmAdd(dayName, dateToUse, mealType, recipe.id, parseInt(selectedUser));
-        } else {
-            if (users.length === 0) confirmAdd(dayName, dateToUse, mealType, recipe.id, null);
-            else setPendingDrop({ dayName, date: dateToUse, mealType, recipeId: recipe.id });
+            // dayObj - это объект { name, dateObj, dateStr, display }
+            // Если dropped on Extra key (string), use monday or today
+            let dateToUse, dayName;
+
+            if (typeof dayObj === 'string') {
+                // Это случай EXTRA_KEY ("Вкусняшки")
+                dateToUse = weekDays[0]?.dateStr || new Date().toISOString().split('T')[0];
+                dayName = dayObj;
+            } else if (dayObj) {
+                // Нормальный случай
+                dateToUse = dayObj.dateStr;
+                dayName = dayObj.name;
+            } else {
+                // Fallback (не должно случаться, но если dayObj undefined)
+                console.error("dayObj is undefined");
+                alert("Ошибка: не удалось определить дату.");
+                return;
+            }
+
+            if (selectedUser !== 'all') {
+                confirmAdd(dayName, dateToUse, mealType, recipe.id, parseInt(selectedUser));
+            } else {
+                if (users.length === 0) confirmAdd(dayName, dateToUse, mealType, recipe.id, null);
+                else setPendingDrop({ dayName, date: dateToUse, mealType, recipeId: recipe.id });
+            }
+        } catch (err) {
+            console.error("Error in handleDrop:", err);
+            alert("Ошибка при добавлении: " + err.message);
         }
     };
 
