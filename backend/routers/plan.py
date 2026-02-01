@@ -166,10 +166,11 @@ def autofill_one(req: schemas.AutoFillRequest = None, db: Session = Depends(get_
 
 @router.post("/autofill_week")
 def autofill_week(db: Session = Depends(get_db)):
-    # 0. Определяем размер семьи
-    family_size = db.query(models.FamilyMember).count()
-    if family_size == 0:
-        family_size = 1 # Дефолт, если пользователи не заведены
+    # 0. Получаем пользователей
+    family_members = db.query(models.FamilyMember).all()
+    # Если пользователей нет, будем создавать записи без family_member_id (как для одного generic едока)
+    if not family_members:
+        family_members = [None]
 
     # 1. Определяем даты следующей недели
     today = datetime.date.today()
@@ -206,50 +207,57 @@ def autofill_week(db: Session = Depends(get_db)):
 
     # Идем по слотам
     for slot in slots:
-        # 2. Проверяем, занят ли слот
-        exists = db.query(models.WeeklyPlanEntry).filter(
-            models.WeeklyPlanEntry.date == slot["date"],
-            models.WeeklyPlanEntry.meal_type == slot["meal"]
-        ).first()
-        
-        if exists:
-            # Если слот занят вручную, пропускаем не уменьшая portions_left 
-            # (предполагаем, что это "другая еда")
-            continue
-
-        # 3. Есди порций не хватает на всю семью - готовим новое
-        if portions_left < family_size:
+    # Идем по слотам
+    for slot in slots:
+        # 3. Проверяем "кастрюлю" В НАЧАЛЕ приема пищи
+        # Если еды совсем нет - готовим новое. 
+        # (Если есть хоть 1 порция - доедаем её, остальные останутся голодными в этот слот)
+        if portions_left <= 0:
             current_recipe = random.choice(candidates)
             portions_left = current_recipe.portions
-            if portions_left < family_size:
-                # Если рецепт слишком маленький даже на один раз, 
-                # то считаем, что готовим несколько порций (или игнорим и просто ставим)
-                # Для простоты: берем portions рецепта как базу.
-                pass
-        
-        # 4. Ставим рецепт в план
-        # (Если внезапно порций все еще меньше family_size, значит рецепт мелкий, 
-        # но мы все равно ставим его и обнуляем остаток)
-        portions_to_consume = min(portions_left, family_size)
-        
-        # Если мы хотим ставить "число порций по числу пользователей" как просил юзер:
-        entry_portions = family_size
+            if portions_left < 1: portions_left = 1
 
-        new_item = models.WeeklyPlanEntry(
-            day_of_week=slot["day"],
-            meal_type=slot["meal"],
-            recipe_id=current_recipe.id,
-            portions=entry_portions, 
-            family_member_id=None, # Общее блюдо
-            date=slot["date"]
-        )
-        db.add(new_item)
-        count += 1
-        
-        portions_left -= entry_portions
+        # Для каждого члена семьи
+        for member in family_members:
+            member_id = member.id if member else None
+            
+            # Проверяем занят ли слот
+            q = db.query(models.WeeklyPlanEntry).filter(
+                models.WeeklyPlanEntry.date == slot["date"],
+                models.WeeklyPlanEntry.meal_type == slot["meal"]
+            )
+            if member_id:
+                q = q.filter(models.WeeklyPlanEntry.family_member_id == member_id)
+            else:
+                q = q.filter(models.WeeklyPlanEntry.family_member_id == None)
+                
+            exists = q.first()
+            if exists:
+                continue
+            
+            # 4. Если порции есть - накладываем. Если нет - пропускаем (не готовим новое сразу)
+            if portions_left > 0:
+                new_item = models.WeeklyPlanEntry(
+                    day_of_week=slot["day"],
+                    meal_type=slot["meal"],
+                    recipe_id=current_recipe.id,
+                    portions=1,  # Всегда 1 порция на человека
+                    family_member_id=member_id,
+                    date=slot["date"]
+                )
+                db.add(new_item)
+                count += 1
+                
+                portions_left -= 1
+            else:
+                # Порции кончились прямо сейчас. 
+                # Ничего не добавляем этому пользователю.
+                # Следующее блюдо будет приготовлено только в начале СЛЕДУЮЩЕГО слота (цикла for slot).
+                pass
 
     db.commit()
-    return {"message": f"Planned {count} items for next week ({next_monday} - {next_monday+datetime.timedelta(days=6)}). Family size: {family_size}"}
+    msg = f"Planned {count} items for next week for {len(family_members)} people."
+    return {"message": msg}
 
 @router.get("/export")
 def export_plan(db: Session = Depends(get_db)):
