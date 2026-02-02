@@ -86,7 +86,17 @@ const StatisticsPage = () => {
         const qty = ing.quantity * ratio;
         const isPieces = ['шт', 'шт.', 'pcs'].includes((ing.product?.unit || '').toLowerCase());
         const p = ing.product || {};
-        const factor = isPieces ? qty : (qty / 100);
+        const weightPerPiece = p.weight_per_piece || 0;
+
+        let factor = 0;
+        if (isPieces && weightPerPiece > 0) {
+          // Если шт и есть вес -> считаем вес партии и делим на 100
+          factor = (qty * weightPerPiece) / 100;
+        } else if (isPieces) {
+          factor = qty; // Считаем за штуку
+        } else {
+          factor = qty / 100; // Считаем за граммы
+        }
 
         totalProt += (p.proteins || 0) * factor;
         totalFat += (p.fats || 0) * factor;

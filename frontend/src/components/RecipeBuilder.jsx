@@ -197,18 +197,31 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     const prodCarb = product.carbs || 0;
 
     const isPieces = ['шт', 'шт.', 'pcs', 'piece'].includes((product.unit || '').toLowerCase());
+    const weightPerPiece = product.weight_per_piece || 0;
 
     let totalCals = 0;
     let totalProt = 0;
     let totalFat = 0;
     let totalCarb = 0;
 
-    if (isPieces) {
+    // ЛОГИКА РАСЧЕТА
+    // Если это штуки И у продукта задан вес за штуку -> считаем как граммы
+    if (isPieces && weightPerPiece > 0) {
+      const totalGrams = normalizedQty * weightPerPiece;
+      totalCals = Math.round((prodCals / 100) * totalGrams);
+      totalProt = Math.round((prodProt / 100) * totalGrams);
+      totalFat = Math.round((prodFat / 100) * totalGrams);
+      totalCarb = Math.round((prodCarb / 100) * totalGrams);
+    }
+    // Если это штуки, но веса нет -> считаем что БЖУ задано НА ШТУКУ
+    else if (isPieces) {
       totalCals = Math.round(prodCals * normalizedQty);
       totalProt = Math.round(prodProt * normalizedQty);
       totalFat = Math.round(prodFat * normalizedQty);
       totalCarb = Math.round(prodCarb * normalizedQty);
-    } else {
+    }
+    // Иначе (граммы/мл) -> считаем от 100
+    else {
       totalCals = Math.round((prodCals / 100) * normalizedQty);
       totalProt = Math.round((prodProt / 100) * normalizedQty);
       totalFat = Math.round((prodFat / 100) * normalizedQty);
