@@ -234,6 +234,7 @@ const StatisticsPage = () => {
               <div className="text-3xl font-extrabold text-gray-800">
                 {stats.total.prot} <span className="text-lg text-gray-400 font-medium">/ {dailyLimit.prot * 7}г</span>
               </div>
+              <div className="text-xs text-gray-400 mt-1">Факт / Лимит</div>
             </div>
             <div className="absolute -right-4 -bottom-4 text-8xl text-blue-50 opacity-50 select-none">🥩</div>
           </div>
@@ -243,6 +244,7 @@ const StatisticsPage = () => {
               <div className="text-3xl font-extrabold text-gray-800">
                 {stats.total.fat} <span className="text-lg text-gray-400 font-medium">/ {dailyLimit.fat * 7}г</span>
               </div>
+              <div className="text-xs text-gray-400 mt-1">Факт / Лимит</div>
             </div>
             <div className="absolute -right-4 -bottom-4 text-8xl text-yellow-50 opacity-50 select-none">🧀</div>
           </div>
@@ -252,6 +254,7 @@ const StatisticsPage = () => {
               <div className="text-3xl font-extrabold text-gray-800">
                 {stats.total.carb} <span className="text-lg text-gray-400 font-medium">/ {dailyLimit.carb * 7}г</span>
               </div>
+              <div className="text-xs text-gray-400 mt-1">Факт / Лимит</div>
             </div>
             <div className="absolute -right-4 -bottom-4 text-8xl text-red-50 opacity-50 select-none">🍞</div>
           </div>
