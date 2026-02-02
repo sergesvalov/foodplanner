@@ -325,6 +325,11 @@ const StatisticsPage = () => {
                 const percent = Math.min((dayStat.cals / dailyLimit.cals) * 100, 100);
                 const isOverLimit = dayStat.cals > dailyLimit.cals;
 
+                // Percentages for nutrients
+                const protPercent = dailyLimit.prot > 0 ? Math.min((dayStat.prot / dailyLimit.prot) * 100, 100) : 0;
+                const fatPercent = dailyLimit.fat > 0 ? Math.min((dayStat.fat / dailyLimit.fat) * 100, 100) : 0;
+                const carbPercent = dailyLimit.carb > 0 ? Math.min((dayStat.carb / dailyLimit.carb) * 100, 100) : 0;
+
                 // Цвета текста и полоски
                 const textColorClass = dayStat.cals > 0
                   ? (isOverLimit ? 'text-red-600' : 'text-green-600')
@@ -363,17 +368,29 @@ const StatisticsPage = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="p-3 text-right text-blue-600 font-medium bg-blue-50/30">
-                      {dayStat.prot}
-                      <span className="text-blue-300 text-xs block">/ {dailyLimit.prot}</span>
+                    <td className="p-3 text-right bg-blue-50/30 align-middle">
+                      <div className="text-blue-600 font-medium">
+                        {dayStat.prot} <span className="text-blue-300 text-xs">/ {dailyLimit.prot}</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-blue-200/50 rounded-full overflow-hidden mt-1">
+                        <div className="h-full bg-blue-500 transition-all duration-500" style={{ width: `${protPercent}%` }}></div>
+                      </div>
                     </td>
-                    <td className="p-3 text-right text-yellow-600 font-medium bg-yellow-50/30">
-                      {dayStat.fat}
-                      <span className="text-yellow-300 text-xs block">/ {dailyLimit.fat}</span>
+                    <td className="p-3 text-right bg-yellow-50/30 align-middle">
+                      <div className="text-yellow-600 font-medium">
+                        {dayStat.fat} <span className="text-yellow-300 text-xs">/ {dailyLimit.fat}</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-yellow-200/50 rounded-full overflow-hidden mt-1">
+                        <div className="h-full bg-yellow-500 transition-all duration-500" style={{ width: `${fatPercent}%` }}></div>
+                      </div>
                     </td>
-                    <td className="p-3 text-right text-red-600 font-medium bg-red-50/30">
-                      {dayStat.carb}
-                      <span className="text-red-300 text-xs block">/ {dailyLimit.carb}</span>
+                    <td className="p-3 text-right bg-red-50/30 align-middle">
+                      <div className="text-red-600 font-medium">
+                        {dayStat.carb} <span className="text-red-300 text-xs">/ {dailyLimit.carb}</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-red-200/50 rounded-full overflow-hidden mt-1">
+                        <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${carbPercent}%` }}></div>
+                      </div>
                     </td>
                     <td className="px-6 py-4 font-mono font-bold text-green-700">
                       {dayStat.cost > 0 ? `€${dayStat.cost.toFixed(2)}` : '—'}
