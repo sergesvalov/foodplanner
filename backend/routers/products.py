@@ -106,11 +106,7 @@ def import_products(db: Session = Depends(get_db)):
             "carbs": item.get("carbs"),
             "weight_per_piece": item.get("weight_per_piece")
         }
-            "calories": float(item.get("calories", 0)),
-            "proteins": float(item.get("proteins", 0)) if item.get("proteins") is not None else None,
-            "fats": float(item.get("fats", 0)) if item.get("fats") is not None else None,
-            "carbs": float(item.get("carbs", 0)) if item.get("carbs") is not None else None
-        }
+
 
         if not db_product:
             new_product = models.Product(name=item["name"], **params)
