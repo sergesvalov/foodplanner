@@ -32,12 +32,11 @@ const RecipesPage = () => {
   const editorRef = useRef(null); // Ref for scrolling
 
   // Effect to scroll to editor when editingRecipe changes
+  // Effect to scroll to editor when editingRecipe changes
   useEffect(() => {
-    if (editingRecipe && editorRef.current) {
-      // Small timeout to allow render to complete if needed, though smooth scroll handles it well usually
-      setTimeout(() => {
-        editorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
+    if (editingRecipe) {
+      // Scroll main window to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [editingRecipe]);
 
@@ -197,8 +196,9 @@ const RecipesPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-1 overflow-hidden min-h-0">
-        <div ref={editorRef} className="overflow-y-auto pr-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-1 md:overflow-hidden overflow-y-visible min-h-0">
+        {/* Editor Column: scroll-mt-24 for header clearance */}
+        <div ref={editorRef} className="md:overflow-y-auto overflow-visible pr-2 scroll-mt-24">
           <RecipeBuilder
             onRecipeCreated={handleRecipeSaved}
             initialData={editingRecipe}
