@@ -194,7 +194,7 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
     };
 
     const handlePortionChange = async (itemId, newPortions, save = true) => {
-        if (newPortions < 1 || newPortions > 20) return;
+        if (newPortions < 1 || newPortions > 9) return;
 
         // Update local state immediately
         setPlan(prevPlan => prevPlan.map(item => item.id === itemId ? { ...item, portions: parseInt(newPortions) } : item));
@@ -468,17 +468,14 @@ const PlanItemCard = ({ item, onRemove, onPortionChange, onUserChange, calculate
                     <input
                         type="number"
                         min="1"
-                        max="20"
+                        max="9"
                         className="w-8 h-4 text-[10px] font-bold text-center border rounded focus:ring-1 focus:ring-indigo-300 outline-none p-0"
                         value={item.portions || 1}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                             const val = parseInt(e.target.value);
-                            if (val > 0) onPortionChange(item.id, val, false); // false = local only
-                        }}
-                        onBlur={(e) => {
-                            const val = parseInt(e.target.value);
-                            if (val > 0) onPortionChange(item.id, val, true); // true = save
+                            // Validates 1-9 and saves immediately
+                            if (val >= 1 && val <= 9) onPortionChange(item.id, val, true);
                         }}
                     />
                 </div>
