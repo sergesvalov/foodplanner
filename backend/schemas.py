@@ -43,7 +43,13 @@ class RecipeResponse(RecipeBase):
     ingredients: List[IngredientResponse] = []
     total_cost: float
     total_calories: float
+    total_proteins: float
+    total_fats: float
+    total_carbs: float
     calories_per_100g: float
+    proteins_per_100g: float
+    fats_per_100g: float
+    carbs_per_100g: float
     calories_per_portion: float
     weight_per_portion: float
     class Config: from_attributes = True

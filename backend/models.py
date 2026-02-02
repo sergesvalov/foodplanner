@@ -40,8 +40,7 @@ class Recipe(Base):
                 total += item.quantity * price_per_unit
         return round(total, 2)
 
-    @property
-    def total_calories(self):
+    def _calculate_nutrient(self, attr_name):
         total = 0.0
         for item in self.ingredients:
             if item.product:
@@ -51,17 +50,35 @@ class Recipe(Base):
                 if unit_lower in ["kg", "кг", "l", "л"]:
                     qty *= 1000
                 
+                value_per_unit = getattr(item.product, attr_name, 0.0) or 0.0
+
                 if is_pieces and item.product.weight_per_piece:
-                    # Если штуки и есть вес -> считаем вес партии и берем калорийность на 100г
+                    # Если штуки и есть вес -> считаем вес партии и берем нутриент на 100г
                     total_weight = qty * item.product.weight_per_piece
-                    total += (item.product.calories / 100.0) * total_weight
+                    total += (value_per_unit / 100.0) * total_weight
                 elif is_pieces:
-                    # Если штуки без веса -> калорийность за штуку
-                    total += item.product.calories * qty
+                    # Если штуки без веса -> нутриент за штуку
+                    total += value_per_unit * qty
                 else:
-                    cals_per_gram = item.product.calories / 100.0
-                    total += qty * cals_per_gram
-        return round(total)
+                    val_per_gram = value_per_unit / 100.0
+                    total += qty * val_per_gram
+        return total
+
+    @property
+    def total_calories(self):
+        return round(self._calculate_nutrient("calories"))
+
+    @property
+    def total_proteins(self):
+        return round(self._calculate_nutrient("proteins"), 1)
+
+    @property
+    def total_fats(self):
+        return round(self._calculate_nutrient("fats"), 1)
+
+    @property
+    def total_carbs(self):
+        return round(self._calculate_nutrient("carbs"), 1)
 
     @property
     def total_weight(self):
@@ -87,6 +104,30 @@ class Recipe(Base):
         weight = self.total_weight
         if weight > 0:
             return round((cals / weight) * 100)
+        return 0
+
+    @property
+    def proteins_per_100g(self):
+        val = self.total_proteins
+        weight = self.total_weight
+        if weight > 0:
+            return round((val / weight) * 100, 1)
+        return 0
+
+    @property
+    def fats_per_100g(self):
+        val = self.total_fats
+        weight = self.total_weight
+        if weight > 0:
+            return round((val / weight) * 100, 1)
+        return 0
+
+    @property
+    def carbs_per_100g(self):
+        val = self.total_carbs
+        weight = self.total_weight
+        if weight > 0:
+            return round((val / weight) * 100, 1)
         return 0
 
     @property
