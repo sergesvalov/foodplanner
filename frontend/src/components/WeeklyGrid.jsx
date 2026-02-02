@@ -202,7 +202,11 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
         if (save) {
             try {
                 const res = await fetch(`/api/plan/${itemId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portions: parseInt(newPortions) }) });
-                if (!res.ok) { console.error("Save failed", res.status); fetchPlan(); }
+                if (!res.ok) {
+                    console.error("Save failed", res.status);
+                    alert("Ошибка сохранения: " + res.status + " " + res.statusText);
+                    fetchPlan();
+                }
             } catch (e) { console.error(e); fetchPlan(); }
         }
     };
