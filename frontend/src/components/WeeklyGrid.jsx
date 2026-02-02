@@ -193,13 +193,19 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
         await fetch(`/api/plan/${itemId}`, { method: 'DELETE' }); fetchPlan();
     };
 
-    const handlePortionChange = async (itemId, newPortions) => {
+    const handlePortionChange = async (itemId, newPortions, save = true) => {
         if (newPortions < 1 || newPortions > 20) return;
-        setPlan(plan.map(item => item.id === itemId ? { ...item, portions: parseInt(newPortions) } : item));
-        try {
-            await fetch(`/api/plan/${itemId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portions: parseInt(newPortions) }) });
-        } catch (e) { fetchPlan(); }
+
+        // Update local state immediately
+        setPlan(prevPlan => prevPlan.map(item => item.id === itemId ? { ...item, portions: parseInt(newPortions) } : item));
+
+        if (save) {
+            try {
+                await fetch(`/api/plan/${itemId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portions: parseInt(newPortions) }) });
+            } catch (e) { console.error(e); }
+        }
     };
+
 
     const handleUserChange = async (itemId, userId) => {
         const parsedId = parseInt(userId);
@@ -459,7 +465,22 @@ const PlanItemCard = ({ item, onRemove, onPortionChange, onUserChange, calculate
             <div className="flex items-center gap-1 mt-1 bg-gray-50 rounded px-1 py-0.5 justify-between">
                 <div className="flex items-center gap-1">
                     <span className="text-[9px] text-gray-400">Порц:</span>
-                    <input type="number" min="1" max="20" className="w-6 h-4 text-[10px] font-bold text-center border rounded" value={item.portions || 1} onClick={(e) => e.stopPropagation()} onChange={(e) => onPortionChange(item.id, e.target.value)} />
+                    <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        className="w-8 h-4 text-[10px] font-bold text-center border rounded focus:ring-1 focus:ring-indigo-300 outline-none p-0"
+                        value={item.portions || 1}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            if (val > 0) onPortionChange(item.id, val, false); // false = local only
+                        }}
+                        onBlur={(e) => {
+                            const val = parseInt(e.target.value);
+                            if (val > 0) onPortionChange(item.id, val, true); // true = save
+                        }}
+                    />
                 </div>
                 {base > 1 && <span className="text-[8px] text-gray-400">(из {base})</span>}
             </div>
