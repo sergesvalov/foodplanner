@@ -16,6 +16,8 @@ class Product(Base):
     proteins = Column(Float, nullable=True, default=None)
     fats = Column(Float, nullable=True, default=None)
     carbs = Column(Float, nullable=True, default=None)
+    # Новое поле: вес за штуку (если unit='шт')
+    weight_per_piece = Column(Float, nullable=True)
 
 class Recipe(Base):
     __tablename__ = "recipes"

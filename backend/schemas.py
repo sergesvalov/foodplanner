@@ -12,6 +12,7 @@ class ProductBase(BaseModel):
     proteins: Optional[float] = None
     fats: Optional[float] = None
     carbs: Optional[float] = None
+    weight_per_piece: Optional[float] = None
 
 class ProductCreate(ProductBase): pass
 class ProductResponse(ProductBase):

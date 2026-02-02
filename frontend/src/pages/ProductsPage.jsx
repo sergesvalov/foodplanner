@@ -10,7 +10,7 @@ const ProductsPage = () => {
   // Форма с новыми полями
   const [form, setForm] = useState({
     name: '', price: '', amount: '1', unit: 'г', calories: '',
-    proteins: '', fats: '', carbs: ''
+    proteins: '', fats: '', carbs: '', weight_per_piece: ''
   });
 
   const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'упак'];
@@ -106,7 +106,8 @@ const ProductsPage = () => {
       // Отправляем null, если строка пустая
       proteins: form.proteins ? parseFloat(form.proteins) : null,
       fats: form.fats ? parseFloat(form.fats) : null,
-      carbs: form.carbs ? parseFloat(form.carbs) : null
+      carbs: form.carbs ? parseFloat(form.carbs) : null,
+      weight_per_piece: form.weight_per_piece ? parseFloat(form.weight_per_piece) : null
     };
 
     try {
@@ -143,7 +144,8 @@ const ProductsPage = () => {
       calories: form.calories ? parseFloat(form.calories) : 0,
       proteins: form.proteins ? parseFloat(form.proteins) : null,
       fats: form.fats ? parseFloat(form.fats) : null,
-      carbs: form.carbs ? parseFloat(form.carbs) : null
+      carbs: form.carbs ? parseFloat(form.carbs) : null,
+      weight_per_piece: form.weight_per_piece ? parseFloat(form.weight_per_piece) : null
     };
 
     try {
@@ -211,7 +213,7 @@ const ProductsPage = () => {
   };
 
   const resetForm = () => {
-    setForm({ name: '', price: '', amount: '1', unit: 'г', calories: '', proteins: '', fats: '', carbs: '' });
+    setForm({ name: '', price: '', amount: '1', unit: 'г', calories: '', proteins: '', fats: '', carbs: '', weight_per_piece: '' });
     setEditingId(null);
   };
 
@@ -225,7 +227,8 @@ const ProductsPage = () => {
       calories: product.calories || '',
       proteins: product.proteins !== null ? product.proteins : '',
       fats: product.fats !== null ? product.fats : '',
-      carbs: product.carbs !== null ? product.carbs : ''
+      carbs: product.carbs !== null ? product.carbs : '',
+      weight_per_piece: product.weight_per_piece !== null ? product.weight_per_piece : ''
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -320,6 +323,22 @@ const ProductsPage = () => {
                 </div>
               </div>
             </div>
+
+            {/* Дополнительное поле: Вес за штуку (только для шт) */}
+            {['шт', 'шт.', 'pcs', 'piece'].includes(form.unit) && (
+              <div className="mt-2 text-sm col-span-2">
+                <label className="block font-medium text-gray-700 mb-1">
+                  Вес одной штуки (г) <span className="text-gray-400 font-normal">(необязательно)</span>
+                </label>
+                <input
+                  type="number" step="0.1" min="0"
+                  className="w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
+                  placeholder="Напр. 50 (для одного яйца)"
+                  value={form.weight_per_piece}
+                  onChange={e => setForm({ ...form, weight_per_piece: e.target.value })}
+                />
+              </div>
+            )}
 
             <hr className="border-gray-100" />
             <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">На 100г продукта</div>
