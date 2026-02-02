@@ -75,6 +75,7 @@ def update_plan_item(item_id: int, item_update: schemas.PlanItemUpdate, db: Sess
     if not db_item:
         raise HTTPException(status_code=404, detail="Item not found")
     
+    print(f"DEBUG: Updating item {item_id} with {item_update.dict()}")
     if item_update.portions is not None:
         db_item.portions = item_update.portions
     if item_update.family_member_id is not None:
@@ -85,6 +86,7 @@ def update_plan_item(item_id: int, item_update: schemas.PlanItemUpdate, db: Sess
         
     db.commit()
     db.refresh(db_item)
+    print(f"DEBUG: Saved item {item_id} portions={db_item.portions}")
     return db_item
 
 @router.delete("/{item_id}")

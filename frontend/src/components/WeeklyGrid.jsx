@@ -201,8 +201,9 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
 
         if (save) {
             try {
-                await fetch(`/api/plan/${itemId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portions: parseInt(newPortions) }) });
-            } catch (e) { console.error(e); }
+                const res = await fetch(`/api/plan/${itemId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portions: parseInt(newPortions) }) });
+                if (!res.ok) { console.error("Save failed", res.status); fetchPlan(); }
+            } catch (e) { console.error(e); fetchPlan(); }
         }
     };
 
@@ -219,13 +220,13 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
         }));
 
         try {
-            await fetch(`/api/plan/${itemId}`, {
+            const res = await fetch(`/api/plan/${itemId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ family_member_id: parsedId })
             });
-            // fetchPlan(); // Can refresh to ensure consistency
-        } catch (e) { fetchPlan(); }
+            if (!res.ok) { console.error("Save failed", res.status); fetchPlan(); }
+        } catch (e) { console.error(e); fetchPlan(); }
     };
 
     const calculateItemStats = (item) => {
