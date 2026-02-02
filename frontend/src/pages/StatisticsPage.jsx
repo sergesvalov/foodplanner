@@ -236,7 +236,7 @@ const StatisticsPage = () => {
               </div>
               <div className="text-xs text-gray-400 mt-1">Факт / Лимит</div>
             </div>
-            <div className="absolute -right-4 -bottom-4 text-8xl text-blue-50 opacity-50 select-none">🥩</div>
+            <div className="absolute -right-4 -bottom-4 text-8xl text-blue-50 opacity-20 grayscale select-none">🥩</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-yellow-100 flex items-center justify-between relative overflow-hidden">
             <div className="z-10">
@@ -246,7 +246,7 @@ const StatisticsPage = () => {
               </div>
               <div className="text-xs text-gray-400 mt-1">Факт / Лимит</div>
             </div>
-            <div className="absolute -right-4 -bottom-4 text-8xl text-yellow-50 opacity-50 select-none">🧀</div>
+            <div className="absolute -right-4 -bottom-4 text-8xl text-yellow-50 opacity-20 grayscale select-none">🧀</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-red-100 flex items-center justify-between relative overflow-hidden">
             <div className="z-10">
@@ -256,7 +256,7 @@ const StatisticsPage = () => {
               </div>
               <div className="text-xs text-gray-400 mt-1">Факт / Лимит</div>
             </div>
-            <div className="absolute -right-4 -bottom-4 text-8xl text-red-50 opacity-50 select-none">🍞</div>
+            <div className="absolute -right-4 -bottom-4 text-8xl text-red-50 opacity-20 grayscale select-none">🍞</div>
           </div>
         </div>
 
@@ -284,7 +284,7 @@ const StatisticsPage = () => {
             <div className="text-4xl font-extrabold text-gray-800">€{stats.total.cost.toFixed(2)}</div>
             <div className="text-xs text-gray-400 mt-2">за текущую неделю</div>
           </div>
-          <div className="absolute -right-6 -bottom-6 text-9xl text-green-50 opacity-50 select-none">€</div>
+          <div className="absolute -right-6 -bottom-6 text-9xl text-green-50 opacity-20 grayscale select-none">€</div>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-orange-100 flex items-center justify-between relative overflow-hidden">
@@ -295,7 +295,7 @@ const StatisticsPage = () => {
               за текущую неделю (Цель: ~{dailyLimit.cals * 7})
             </div>
           </div>
-          <div className="absolute -right-6 -bottom-6 text-9xl text-orange-50 opacity-50 select-none">🔥</div>
+          <div className="absolute -right-6 -bottom-6 text-9xl text-orange-50 opacity-20 grayscale select-none">🔥</div>
         </div>
       </div>
 
