@@ -51,6 +51,9 @@ class FamilyMemberBase(BaseModel):
     name: str
     color: str
     max_calories: int = 2000
+    max_proteins: int = 135
+    max_fats: int = 100
+    max_carbs: int = 300
 class FamilyMemberCreate(FamilyMemberBase): pass
 class FamilyMemberResponse(FamilyMemberBase):
     id: int

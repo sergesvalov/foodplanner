@@ -152,19 +152,31 @@ const StatisticsPage = () => {
     };
   }, [plan, selectedUser]);
 
-  // 4. НОВОЕ: Расчет дневного лимита калорий
+  // 4. НОВОЕ: Расчет дневного лимита калорий и БЖУ
   const dailyLimit = useMemo(() => {
-    // Дефолтное значение, если у пользователя не задано
-    const DEFAULT_LIMIT = 2000;
+    // Дефолтные значения
+    const defaults = { cals: 2000, prot: 135, fat: 100, carb: 300 };
 
     if (selectedUser === 'all') {
-      // Если выбрана "Вся семья", суммируем лимиты всех пользователей
-      if (users.length === 0) return DEFAULT_LIMIT * 2; // Фоллбэк если список пуст
-      return users.reduce((sum, u) => sum + (u.max_calories || DEFAULT_LIMIT), 0);
+      const res = { cals: 0, prot: 0, fat: 0, carb: 0 };
+      if (users.length === 0) return { cals: defaults.cals * 2, prot: defaults.prot * 2, fat: defaults.fat * 2, carb: defaults.carb * 2 }; // Fallback
+
+      users.forEach(u => {
+        res.cals += (u.max_calories || defaults.cals);
+        res.prot += (u.max_proteins || defaults.prot);
+        res.fat += (u.max_fats || defaults.fat);
+        res.carb += (u.max_carbs || defaults.carb);
+      });
+      return res;
     } else {
-      // Лимит конкретного пользователя
       const user = users.find(u => u.id === parseInt(selectedUser));
-      return user ? (user.max_calories || DEFAULT_LIMIT) : DEFAULT_LIMIT;
+      if (!user) return defaults;
+      return {
+        cals: user.max_calories || defaults.cals,
+        prot: user.max_proteins || defaults.prot,
+        fat: user.max_fats || defaults.fat,
+        carb: user.max_carbs || defaults.carb
+      };
     }
   }, [users, selectedUser]);
 
@@ -209,21 +221,27 @@ const StatisticsPage = () => {
           <div className="bg-white p-6 rounded-xl shadow-sm border border-blue-100 flex items-center justify-between relative overflow-hidden">
             <div className="z-10">
               <div className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-1">Белки</div>
-              <div className="text-3xl font-extrabold text-gray-800">{stats.total.prot}г</div>
+              <div className="text-3xl font-extrabold text-gray-800">
+                {stats.total.prot} <span className="text-lg text-gray-400 font-medium">/ {dailyLimit.prot * 7}г</span>
+              </div>
             </div>
             <div className="absolute -right-4 -bottom-4 text-8xl text-blue-50 opacity-50 select-none">🥩</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-yellow-100 flex items-center justify-between relative overflow-hidden">
             <div className="z-10">
               <div className="text-sm font-bold text-yellow-600 uppercase tracking-wider mb-1">Жиры</div>
-              <div className="text-3xl font-extrabold text-gray-800">{stats.total.fat}г</div>
+              <div className="text-3xl font-extrabold text-gray-800">
+                {stats.total.fat} <span className="text-lg text-gray-400 font-medium">/ {dailyLimit.fat * 7}г</span>
+              </div>
             </div>
             <div className="absolute -right-4 -bottom-4 text-8xl text-yellow-50 opacity-50 select-none">🧀</div>
           </div>
           <div className="bg-white p-6 rounded-xl shadow-sm border border-red-100 flex items-center justify-between relative overflow-hidden">
             <div className="z-10">
               <div className="text-sm font-bold text-red-600 uppercase tracking-wider mb-1">Углеводы</div>
-              <div className="text-3xl font-extrabold text-gray-800">{stats.total.carb}г</div>
+              <div className="text-3xl font-extrabold text-gray-800">
+                {stats.total.carb} <span className="text-lg text-gray-400 font-medium">/ {dailyLimit.carb * 7}г</span>
+              </div>
             </div>
             <div className="absolute -right-4 -bottom-4 text-8xl text-red-50 opacity-50 select-none">🍞</div>
           </div>
@@ -332,9 +350,18 @@ const StatisticsPage = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-2 py-4 text-center text-sm font-bold text-blue-600">{dayStat.prot}</td>
-                    <td className="px-2 py-4 text-center text-sm font-bold text-yellow-600">{dayStat.fat}</td>
-                    <td className="px-2 py-4 text-center text-sm font-bold text-red-600">{dayStat.carb}</td>
+                    <td className="p-3 text-right text-blue-600 font-medium bg-blue-50/30">
+                      {dayStat.prot}
+                      <span className="text-blue-300 text-xs block">/ {dailyLimit.prot}</span>
+                    </td>
+                    <td className="p-3 text-right text-yellow-600 font-medium bg-yellow-50/30">
+                      {dayStat.fat}
+                      <span className="text-yellow-300 text-xs block">/ {dailyLimit.fat}</span>
+                    </td>
+                    <td className="p-3 text-right text-red-600 font-medium bg-red-50/30">
+                      {dayStat.carb}
+                      <span className="text-red-300 text-xs block">/ {dailyLimit.carb}</span>
+                    </td>
                     <td className="px-6 py-4 font-mono font-bold text-green-700">
                       {dayStat.cost > 0 ? `€${dayStat.cost.toFixed(2)}` : '—'}
                     </td>

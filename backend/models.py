@@ -104,6 +104,9 @@ class FamilyMember(Base):
     name = Column(String, index=True)
     color = Column(String, default="blue")
     max_calories = Column(Integer, default=2000)
+    max_proteins = Column(Integer, default=135)
+    max_fats = Column(Integer, default=100)
+    max_carbs = Column(Integer, default=300)
 
 class WeeklyPlanEntry(Base):
     __tablename__ = "weekly_plan"
