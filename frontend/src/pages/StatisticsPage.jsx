@@ -232,9 +232,9 @@ const StatisticsPage = () => {
             <div className="z-10">
               <div className="text-sm font-bold text-blue-600 uppercase tracking-wider mb-1">Белки</div>
               <div className="text-3xl font-extrabold text-gray-800">
-                {stats.total.prot} <span className="text-lg text-gray-400 font-medium">/ {dailyLimit.prot * 7}г</span>
+                {stats.total.prot} <span className="text-lg text-gray-500 font-medium">/ {dailyLimit.prot * 7}г</span>
               </div>
-              <div className="text-xs text-gray-400 mt-1">Факт / Лимит</div>
+              <div className="text-xs text-gray-500 font-medium mt-1">Факт / Лимит</div>
             </div>
             <div className="absolute -right-4 -bottom-4 text-8xl text-blue-50 opacity-20 grayscale select-none">🥩</div>
           </div>
@@ -242,9 +242,9 @@ const StatisticsPage = () => {
             <div className="z-10">
               <div className="text-sm font-bold text-yellow-600 uppercase tracking-wider mb-1">Жиры</div>
               <div className="text-3xl font-extrabold text-gray-800">
-                {stats.total.fat} <span className="text-lg text-gray-400 font-medium">/ {dailyLimit.fat * 7}г</span>
+                {stats.total.fat} <span className="text-lg text-gray-500 font-medium">/ {dailyLimit.fat * 7}г</span>
               </div>
-              <div className="text-xs text-gray-400 mt-1">Факт / Лимит</div>
+              <div className="text-xs text-gray-500 font-medium mt-1">Факт / Лимит</div>
             </div>
             <div className="absolute -right-4 -bottom-4 text-8xl text-yellow-50 opacity-20 grayscale select-none">🧀</div>
           </div>
@@ -252,9 +252,9 @@ const StatisticsPage = () => {
             <div className="z-10">
               <div className="text-sm font-bold text-red-600 uppercase tracking-wider mb-1">Углеводы</div>
               <div className="text-3xl font-extrabold text-gray-800">
-                {stats.total.carb} <span className="text-lg text-gray-400 font-medium">/ {dailyLimit.carb * 7}г</span>
+                {stats.total.carb} <span className="text-lg text-gray-500 font-medium">/ {dailyLimit.carb * 7}г</span>
               </div>
-              <div className="text-xs text-gray-400 mt-1">Факт / Лимит</div>
+              <div className="text-xs text-gray-500 font-medium mt-1">Факт / Лимит</div>
             </div>
             <div className="absolute -right-4 -bottom-4 text-8xl text-red-50 opacity-20 grayscale select-none">🍞</div>
           </div>
