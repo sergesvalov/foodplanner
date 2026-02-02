@@ -192,13 +192,27 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     const totalCost = (pricePerUnit * normalizedQty).toFixed(2);
 
     const prodCals = product.calories || 0;
+    const prodProt = product.proteins || 0;
+    const prodFat = product.fats || 0;
+    const prodCarb = product.carbs || 0;
+
     const isPieces = ['шт', 'шт.', 'pcs', 'piece'].includes((product.unit || '').toLowerCase());
 
     let totalCals = 0;
+    let totalProt = 0;
+    let totalFat = 0;
+    let totalCarb = 0;
+
     if (isPieces) {
       totalCals = Math.round(prodCals * normalizedQty);
+      totalProt = Math.round(prodProt * normalizedQty);
+      totalFat = Math.round(prodFat * normalizedQty);
+      totalCarb = Math.round(prodCarb * normalizedQty);
     } else {
       totalCals = Math.round((prodCals / 100) * normalizedQty);
+      totalProt = Math.round((prodProt / 100) * normalizedQty);
+      totalFat = Math.round((prodFat / 100) * normalizedQty);
+      totalCarb = Math.round((prodCarb / 100) * normalizedQty);
     }
 
     const displayQty = parseFloat(normalizedQty.toFixed(4));
@@ -211,6 +225,17 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         <span className="bg-orange-50 text-orange-700 px-1 rounded border border-orange-100 font-mono">
           {totalCals} ккал
         </span>
+        <div className="flex gap-1">
+          <span className="bg-blue-50 text-blue-700 px-1 rounded border border-blue-100 font-mono" title="Белки">
+            Б:{totalProt}
+          </span>
+          <span className="bg-yellow-50 text-yellow-700 px-1 rounded border border-yellow-100 font-mono" title="Жиры">
+            Ж:{totalFat}
+          </span>
+          <span className="bg-red-50 text-red-700 px-1 rounded border border-red-100 font-mono" title="Углеводы">
+            У:{totalCarb}
+          </span>
+        </div>
         <span className="text-gray-400">
           (за {displayQty} {product.unit})
         </span>
