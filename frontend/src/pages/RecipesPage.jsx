@@ -128,7 +128,16 @@ const RecipesPage = () => {
         const qty = ing.quantity;
         const isPieces = ['шт', 'шт.', 'pcs'].includes((ing.product?.unit || '').toLowerCase());
         const p = ing.product || {};
-        const factor = isPieces ? qty : (qty / 100);
+        const weightPerPiece = p.weight_per_piece || 0;
+
+        let factor = 0;
+        if (isPieces && weightPerPiece > 0) {
+          factor = (qty * weightPerPiece) / 100;
+        } else if (isPieces) {
+          factor = qty;
+        } else {
+          factor = qty / 100;
+        }
 
         totalProt += (p.proteins || 0) * factor;
         totalFat += (p.fats || 0) * factor;

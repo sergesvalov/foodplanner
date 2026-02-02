@@ -51,7 +51,12 @@ class Recipe(Base):
                 if unit_lower in ["kg", "кг", "l", "л"]:
                     qty *= 1000
                 
-                if is_pieces:
+                if is_pieces and item.product.weight_per_piece:
+                    # Если штуки и есть вес -> считаем вес партии и берем калорийность на 100г
+                    total_weight = qty * item.product.weight_per_piece
+                    total += (item.product.calories / 100.0) * total_weight
+                elif is_pieces:
+                    # Если штуки без веса -> калорийность за штуку
                     total += item.product.calories * qty
                 else:
                     cals_per_gram = item.product.calories / 100.0

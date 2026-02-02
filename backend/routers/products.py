@@ -42,6 +42,7 @@ def update_product(product_id: int, product: schemas.ProductCreate, db: Session 
     db_product.proteins = product.proteins
     db_product.fats = product.fats
     db_product.carbs = product.carbs
+    db_product.weight_per_piece = product.weight_per_piece
     
     db.commit()
     db.refresh(db_product)
@@ -69,7 +70,8 @@ def export_products(db: Session = Depends(get_db)):
         "calories": p.calories,
         "proteins": p.proteins,
         "fats": p.fats,
-        "carbs": p.carbs
+        "carbs": p.carbs,
+        "weight_per_piece": p.weight_per_piece
     } for p in products]
     
     try:
@@ -98,6 +100,12 @@ def import_products(db: Session = Depends(get_db)):
             "price": float(item.get("price", 0)),
             "amount": float(item.get("amount", 1.0)),
             "unit": item.get("unit", "шт"),
+            "calories": float(item.get("calories", 0)),
+            "proteins": item.get("proteins"),
+            "fats": item.get("fats"),
+            "carbs": item.get("carbs"),
+            "weight_per_piece": item.get("weight_per_piece")
+        }
             "calories": float(item.get("calories", 0)),
             "proteins": float(item.get("proteins", 0)) if item.get("proteins") is not None else None,
             "fats": float(item.get("fats", 0)) if item.get("fats") is not None else None,
