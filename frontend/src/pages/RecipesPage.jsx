@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import RecipeBuilder from '../components/RecipeBuilder';
 
 const CATEGORY_LABELS = {
@@ -28,6 +28,18 @@ const RecipesPage = () => {
   const [selectedUser, setSelectedUser] = useState('');
   const [sendingId, setSendingId] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
+
+  const editorRef = useRef(null); // Ref for scrolling
+
+  // Effect to scroll to editor when editingRecipe changes
+  useEffect(() => {
+    if (editingRecipe && editorRef.current) {
+      // Small timeout to allow render to complete if needed, though smooth scroll handles it well usually
+      setTimeout(() => {
+        editorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [editingRecipe]);
 
   const fetchRecipes = () => {
     fetch('/api/recipes/')
@@ -186,7 +198,7 @@ const RecipesPage = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-1 overflow-hidden min-h-0">
-        <div className="overflow-y-auto pr-2">
+        <div ref={editorRef} className="overflow-y-auto pr-2">
           <RecipeBuilder
             onRecipeCreated={handleRecipeSaved}
             initialData={editingRecipe}
