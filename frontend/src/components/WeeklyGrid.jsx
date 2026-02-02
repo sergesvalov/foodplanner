@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 
 const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 const EXTRA_KEY = 'Вкусняшки';
@@ -193,21 +193,41 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
         await fetch(`/api/plan/${itemId}`, { method: 'DELETE' }); fetchPlan();
     };
 
-    const handlePortionChange = async (itemId, newPortions, save = true) => {
+    const debounceTimers = useRef({});
+
+    const handlePortionChange = (itemId, newPortions, save = true) => {
         if (newPortions < 1 || newPortions > 9) return;
+        const val = parseInt(newPortions);
 
         // Update local state immediately
-        setPlan(prevPlan => prevPlan.map(item => item.id === itemId ? { ...item, portions: parseInt(newPortions) } : item));
+        setPlan(prevPlan => prevPlan.map(item => item.id === itemId ? { ...item, portions: val } : item));
 
         if (save) {
-            try {
-                const res = await fetch(`/api/plan/${itemId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portions: parseInt(newPortions) }) });
-                if (!res.ok) {
-                    console.error("Save failed", res.status);
-                    alert("Ошибка сохранения: " + res.status + " " + res.statusText);
+            // Clear previous timer for this item
+            if (debounceTimers.current[itemId]) {
+                clearTimeout(debounceTimers.current[itemId]);
+            }
+
+            // Set new timer
+            debounceTimers.current[itemId] = setTimeout(async () => {
+                try {
+                    console.log(`Saving new portions ${val} for item ${itemId}...`);
+                    const res = await fetch(`/api/plan/${itemId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ portions: val })
+                    });
+
+                    if (!res.ok) {
+                        console.error("Save failed", res.status);
+                        fetchPlan();
+                    }
+                    delete debounceTimers.current[itemId];
+                } catch (e) {
+                    console.error(e);
                     fetchPlan();
                 }
-            } catch (e) { console.error(e); fetchPlan(); }
+            }, 500); // 500ms delay
         }
     };
 
