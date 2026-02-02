@@ -69,7 +69,7 @@ def add_to_plan(item: schemas.PlanItemCreate, db: Session = Depends(get_db)):
     db.refresh(db_item)
     return db_item
 
-@router.put("/{item_id}", response_model=schemas.PlanItemResponse)
+@router.patch("/{item_id}", response_model=schemas.PlanItemResponse)
 def update_plan_item(item_id: int, item_update: schemas.PlanItemUpdate, db: Session = Depends(get_db)):
     db_item = db.query(models.WeeklyPlanEntry).filter(models.WeeklyPlanEntry.id == item_id).first()
     if not db_item:
