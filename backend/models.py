@@ -70,10 +70,15 @@ class Recipe(Base):
             if item.product:
                 unit_lower = (item.product.unit or "").lower()
                 qty = item.quantity
+                
+                is_pieces = unit_lower in ["шт", "шт.", "pcs", "piece", "stk"]
+
                 if unit_lower in ["kg", "кг", "l", "л"]:
                     weight += qty * 1000
                 elif unit_lower in ["g", "г", "ml", "мл"]:
                     weight += qty
+                elif is_pieces and item.product.weight_per_piece:
+                    weight += qty * item.product.weight_per_piece
         return weight
 
     @property
