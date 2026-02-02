@@ -8,10 +8,52 @@ const StatisticsPage = () => {
   const [selectedUser, setSelectedUser] = useState('all');
   const [loading, setLoading] = useState(true);
 
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  // Helper: Получить диапазон дат недели (Пн-Вс)
+  const getWeekRange = (baseDate) => {
+    const currentDay = baseDate.getDay();
+    const dayIndex = currentDay === 0 ? 6 : currentDay - 1; // 0=Mon, 6=Sun
+
+    const start = new Date(baseDate);
+    start.setDate(baseDate.getDate() - dayIndex);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+
+    const fmt = (d) => {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const fmtDisplay = (d) => {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      return `${dd}.${mm}`;
+    };
+
+    return {
+      start: fmt(start),
+      end: fmt(end),
+      display: `${fmtDisplay(start)} - ${fmtDisplay(end)}`
+    };
+  };
+
+  const changeWeek = (offset) => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + (offset * 7));
+    setCurrentDate(newDate);
+  };
+
   // 1. Загрузка данных
   useEffect(() => {
+    setLoading(true);
+    const { start, end } = getWeekRange(currentDate);
+
     Promise.all([
-      fetch('/api/plan/').then(res => res.json()),
+      fetch(`/api/plan/?start_date=${start}&end_date=${end}`).then(res => res.json()),
       fetch('/api/admin/family').then(res => res.json())
     ])
       .then(([planData, usersData]) => {
@@ -23,7 +65,7 @@ const StatisticsPage = () => {
         console.error(err);
         setLoading(false);
       });
-  }, []);
+  }, [currentDate]);
 
   // 2. Логика расчета стоимости одной позиции
   const calculateItemStats = (item) => {
@@ -135,7 +177,31 @@ const StatisticsPage = () => {
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-gray-200 pb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">📊 Статистика питания</h1>
-          <p className="text-gray-500">Анализ расходов и калорийности за неделю</p>
+          <div className="flex items-center gap-3 mt-2 text-gray-600 font-medium">
+            <button
+              onClick={() => changeWeek(-1)}
+              className="hover:text-gray-900 hover:bg-gray-100 p-1 rounded transition-colors text-lg"
+              title="Предыдущая неделя"
+            >
+              ◀
+            </button>
+            <span className="bg-gray-100 px-3 py-1 rounded text-sm">
+              {getWeekRange(currentDate).display}
+            </span>
+            <button
+              onClick={() => changeWeek(1)}
+              className="hover:text-gray-900 hover:bg-gray-100 p-1 rounded transition-colors text-lg"
+              title="Следующая неделя"
+            >
+              ▶
+            </button>
+            <button
+              onClick={() => setCurrentDate(new Date())}
+              className="text-xs text-blue-600 hover:underline ml-2"
+            >
+              Сегодня
+            </button>
+          </div>
         </div>
 
         {/* NUTRITION CARDS */}
