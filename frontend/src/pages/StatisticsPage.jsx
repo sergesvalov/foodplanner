@@ -279,7 +279,7 @@ const StatisticsPage = () => {
             <div className="text-sm font-bold text-orange-600 uppercase tracking-wider mb-1">Всего калорий</div>
             <div className="text-4xl font-extrabold text-gray-800">{stats.total.cals}</div>
             <div className="text-xs text-gray-400 mt-2">
-              за текущую неделю (Цель: ~{dailyLimit * 7})
+              за текущую неделю (Цель: ~{dailyLimit.cals * 7})
             </div>
           </div>
           <div className="absolute -right-6 -bottom-6 text-9xl text-orange-50 opacity-50 select-none">🔥</div>
@@ -309,8 +309,8 @@ const StatisticsPage = () => {
                 const isZero = dayStat.itemsCount === 0;
 
                 // Расчет процента заполнения и цвета
-                const percent = Math.min((dayStat.cals / dailyLimit) * 100, 100);
-                const isOverLimit = dayStat.cals > dailyLimit;
+                const percent = Math.min((dayStat.cals / dailyLimit.cals) * 100, 100);
+                const isOverLimit = dayStat.cals > dailyLimit.cals;
 
                 // Цвета текста и полоски
                 const textColorClass = dayStat.cals > 0
@@ -338,7 +338,7 @@ const StatisticsPage = () => {
                             {dayStat.cals} ккал
                           </span>
                           <span className="text-xs text-gray-400">
-                            из {dailyLimit}
+                            из {dailyLimit.cals}
                           </span>
                         </div>
                         {/* Visual Bar */}
