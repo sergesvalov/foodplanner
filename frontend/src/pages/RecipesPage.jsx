@@ -131,40 +131,16 @@ const RecipesPage = () => {
   };
 
   const calculateRecipeStats = (recipe) => {
-    let totalProt = 0;
-    let totalFat = 0;
-    let totalCarb = 0;
-
-    if (recipe.ingredients) {
-      recipe.ingredients.forEach(ing => {
-        const qty = ing.quantity;
-        const isPieces = ['шт', 'шт.', 'pcs'].includes((ing.product?.unit || '').toLowerCase());
-        const p = ing.product || {};
-        const weightPerPiece = p.weight_per_piece || 0;
-
-        let factor = 0;
-        if (isPieces && weightPerPiece > 0) {
-          factor = (qty * weightPerPiece) / 100;
-        } else if (isPieces) {
-          factor = qty;
-        } else {
-          factor = qty / 100;
-        }
-
-        totalProt += (p.proteins || 0) * factor;
-        totalFat += (p.fats || 0) * factor;
-        totalCarb += (p.carbs || 0) * factor;
-      });
-    }
-
-    // Рассчитываем на 100г или на порцию? 
+    // 2. Рассчитываем на 100г или на порцию? 
     // Обычно для рецепта полезно знать ВСЕГО или НА ПОРЦИЮ.
     // Давайте показывать НА ПОРЦИЮ, как делают диетологи.
     const portions = recipe.portions || 1;
+
+    // Используем готовые суммы с бэкенда
     return {
-      prot: Math.round(totalProt / portions),
-      fat: Math.round(totalFat / portions),
-      carb: Math.round(totalCarb / portions)
+      prot: Math.round((recipe.total_proteins || 0) / portions),
+      fat: Math.round((recipe.total_fats || 0) / portions),
+      carb: Math.round((recipe.total_carbs || 0) / portions)
     };
   };
 

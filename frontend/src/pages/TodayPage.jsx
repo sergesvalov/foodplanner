@@ -36,55 +36,18 @@ const TodayPage = () => {
 
     const calculateItemStats = (item) => {
         const recipe = item?.recipe;
-        if (!recipe) return { cost: 0, cals: 0, ratio: 1 };
+        if (!recipe) return { cost: 0, cals: 0, prot: 0, fat: 0, carb: 0, ratio: 1 };
 
         const basePortions = recipe.portions || 1;
         const targetPortions = item.portions || 1;
         const ratio = targetPortions / basePortions;
 
-        let totalCost = 0;
-        let totalCals = 0;
-        let totalProt = 0;
-        let totalFat = 0;
-        let totalCarb = 0;
-
-        if (recipe.ingredients) {
-            recipe.ingredients.forEach(ing => {
-                const qty = ing.quantity * ratio;
-                const isPieces = ['шт', 'шт.', 'pcs'].includes((ing.product?.unit || '').toLowerCase());
-                const p = ing.product || {};
-
-                const factor = isPieces ? qty : (qty / 100);
-
-                if (Number.isFinite(factor)) {
-                    totalCost += (p.price || 0) * (isPieces ? qty : (qty / (p.amount || 1) * (p.price_per_unit || 1)));
-
-                    const safeVal = (v) => {
-                        const n = parseFloat(v);
-                        return Number.isFinite(n) ? n : 0;
-                    };
-
-                    totalCals += safeVal(p.calories) * factor;
-                    totalProt += safeVal(p.proteins) * factor;
-                    totalFat += safeVal(p.fats) * factor;
-                    totalCarb += safeVal(p.carbs) * factor;
-                }
-            });
-        }
-
-        // Fallback if recipe has total_calories pre-calculated on backend but not ingredients? 
-        // The current code used `recipe.total_calories * ratio`. Let's stick to that for calories if possible, 
-        // or switch to summing ingredients if we trust them more?
-        // The user wants P/F/C which are NOT pre-calculated. So we MUST sum ingredients for them.
-        // For consistency let's use calculated cals from ingredients too? Or keep using recipe.total_calories for cals?
-        // Let's keep using recipe.total_calories for legacy reasons mostly, but calculate P/F/C.
-
         return {
             cost: (recipe.total_cost || 0) * ratio,
             cals: Math.round((recipe.total_calories || 0) * ratio),
-            prot: Math.round(totalProt),
-            fat: Math.round(totalFat),
-            carb: Math.round(totalCarb),
+            prot: Math.round((recipe.total_proteins || 0) * ratio),
+            fat: Math.round((recipe.total_fats || 0) * ratio),
+            carb: Math.round((recipe.total_carbs || 0) * ratio),
             ratio: ratio
         };
     };

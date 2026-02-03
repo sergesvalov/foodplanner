@@ -76,47 +76,12 @@ const StatisticsPage = () => {
     const targetPortions = item.portions || 1;
     const ratio = targetPortions / basePortions;
 
-    // 3.2. БЖУ считается по ингредиентам (т.к. у рецепта нет полей total_proteins...)
-    let totalProt = 0;
-    let totalFat = 0;
-    let totalCarb = 0;
-
-    if (recipe.ingredients) {
-      recipe.ingredients.forEach(ing => {
-        const qty = ing.quantity * ratio;
-        const isPieces = ['шт', 'шт.', 'pcs'].includes((ing.product?.unit || '').toLowerCase());
-        const p = ing.product || {};
-        const weightPerPiece = p.weight_per_piece || 0;
-
-        let factor = 0;
-        if (isPieces && weightPerPiece > 0) {
-          // Если шт и есть вес -> считаем вес партии и делим на 100
-          factor = (qty * weightPerPiece) / 100;
-        } else if (isPieces) {
-          factor = qty; // Считаем за штуку
-        } else {
-          factor = qty / 100; // Считаем за граммы
-        }
-
-        if (Number.isFinite(factor)) {
-          const safeVal = (v) => {
-            const n = parseFloat(v);
-            return Number.isFinite(n) ? n : 0;
-          };
-
-          totalProt += safeVal(p.proteins) * factor;
-          totalFat += safeVal(p.fats) * factor;
-          totalCarb += safeVal(p.carbs) * factor;
-        }
-      });
-    }
-
     return {
       cost: (recipe.total_cost || 0) * ratio,
       cals: Math.round((recipe.total_calories || 0) * ratio),
-      prot: Math.round(totalProt),
-      fat: Math.round(totalFat),
-      carb: Math.round(totalCarb)
+      prot: Math.round((recipe.total_proteins || 0) * ratio),
+      fat: Math.round((recipe.total_fats || 0) * ratio),
+      carb: Math.round((recipe.total_carbs || 0) * ratio)
     };
   };
 
