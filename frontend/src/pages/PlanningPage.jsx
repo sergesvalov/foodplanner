@@ -24,15 +24,15 @@ const PlanningPage = () => {
             .catch(err => console.error(err));
     }, []);
 
-    // State for hidden recipes
-    const [hiddenIds, setHiddenIds] = useState(() => {
-        const saved = localStorage.getItem('planning_hidden_recipes');
+    // State for selected recipes (Opt-in logic)
+    const [selectedIds, setSelectedIds] = useState(() => {
+        const saved = localStorage.getItem('planning_selected_recipes');
         return saved ? JSON.parse(saved) : [];
     });
 
     useEffect(() => {
-        localStorage.setItem('planning_hidden_recipes', JSON.stringify(hiddenIds));
-    }, [hiddenIds]);
+        localStorage.setItem('planning_selected_recipes', JSON.stringify(selectedIds));
+    }, [selectedIds]);
 
     // State for highlighted (pinned) recipes
     const [highlightedIds, setHighlightedIds] = useState(() => {
@@ -84,22 +84,22 @@ const PlanningPage = () => {
         );
     };
 
-    const hideRecipe = (e, id) => {
-        e.stopPropagation(); // Prevent card click
-        if (!window.confirm("Скрыть рецепт из планирования?")) return;
-        setHiddenIds(prev => [...prev, id]);
+    const toggleSelection = (e, id) => {
+        e.stopPropagation();
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
+        );
     };
 
-    const restoreAll = () => {
-        if (!window.confirm("Показать все скрытые рецепты?")) return;
-        setHiddenIds([]);
+    const clearSelection = () => {
+        if (!window.confirm("Очистить весь план?")) return;
+        setSelectedIds([]);
     };
 
     // Helper to filter recipes by multiple categories
-    const getRecipesByCategories = (categories, sectionTitle) => {
-        return recipes
+    const getRecipesByCategories = (categories, sectionTitle, sourceList) => {
+        return sourceList
             .filter(r => categories.includes(r.category))
-            .filter(r => !hiddenIds.includes(r.id)) // Filter hidden
             .sort((a, b) => {
                 const aPinned = highlightedIds.includes(a.id);
                 const bPinned = highlightedIds.includes(b.id);
@@ -113,8 +113,6 @@ const PlanningPage = () => {
                     if (ratingDiff !== 0) return ratingDiff;
 
                     // 2. Used in Breakfast this week
-                    // (Check if recipe ID is in breakfast slots of weeklyPlan)
-                    // Note: We might want ANY usage in week, or just breakfast. User said "those that were in breakfast".
                     const aUsed = weeklyPlan.some(p => p.recipe_id === a.id && p.meal_type === 'breakfast');
                     const bUsed = weeklyPlan.some(p => p.recipe_id === b.id && p.meal_type === 'breakfast');
                     if (aUsed && !bUsed) return -1;
@@ -125,24 +123,29 @@ const PlanningPage = () => {
             });
     };
 
+    const plannedRecipes = recipes.filter(r => selectedIds.includes(r.id));
+
+    // Determine which list to show based on view mode
+    const recipesToShow = viewMode === 'browse' ? recipes : plannedRecipes;
+
     // Define columns
     const sections = [
         {
             title: 'Завтрак',
             icon: '🍳',
-            items: getRecipesByCategories(['breakfast', 'snack'], 'Завтрак'),
+            items: getRecipesByCategories(['breakfast', 'snack'], 'Завтрак', recipesToShow),
             color: 'bg-yellow-50 border-yellow-200 text-yellow-800'
         },
         {
             title: 'Обед',
             icon: '🍲',
-            items: getRecipesByCategories(['soup', 'main'], 'Обед'),
+            items: getRecipesByCategories(['soup', 'main'], 'Обед', recipesToShow),
             color: 'bg-orange-50 border-orange-200 text-orange-800'
         },
         {
             title: 'Ужин',
             icon: '🍽️',
-            items: getRecipesByCategories(['main', 'side'], 'Ужин'),
+            items: getRecipesByCategories(['main', 'side'], 'Ужин', recipesToShow),
             color: 'bg-blue-50 border-blue-200 text-blue-800'
         }
     ];
@@ -182,7 +185,8 @@ const PlanningPage = () => {
         }, { calories: 0, cost: 0 });
     };
 
-    const plannedRecipes = recipes.filter(r => !hiddenIds.includes(r.id));
+    const totalStats = getTotalStats(plannedRecipes);
+
     // State for planned meals: [{ day: 0, type: 'breakfast', recipeId: 1 }, ...]
     const [plannedMeals, setPlannedMeals] = useState(() => {
         try {
@@ -236,12 +240,12 @@ const PlanningPage = () => {
                 <div className="flex items-center gap-4">
                     {viewMode === 'browse' && (
                         <>
-                            {hiddenIds.length > 0 && (
+                            {selectedIds.length > 0 && (
                                 <button
-                                    onClick={restoreAll}
-                                    className="text-sm text-indigo-600 hover:text-indigo-800 underline mr-4"
+                                    onClick={clearSelection}
+                                    className="text-sm text-red-600 hover:text-red-800 underline mr-4"
                                 >
-                                    Показать скрытые ({hiddenIds.length})
+                                    Очистить ({selectedIds.length})
                                 </button>
                             )}
                             <button
@@ -306,12 +310,15 @@ const PlanningPage = () => {
                             <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                 {section.items.map(recipe => {
                                     const isPinned = highlightedIds.includes(recipe.id);
+                                    const isSelected = selectedIds.includes(recipe.id);
                                     return (
                                         <div
                                             key={recipe.id}
+                                            onClick={(e) => viewMode === 'browse' ? toggleSelection(e, recipe.id) : null}
                                             className={`p-3 rounded-lg shadow-sm border transition-all cursor-pointer group relative
+                                            ${viewMode === 'browse' && isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/50' : ''}
                                             ${isPinned
-                                                    ? 'bg-green-50 border-green-300 shadow-md ring-1 ring-green-200'
+                                                    ? 'bg-green-50 border-green-300 shadow-md'
                                                     : 'bg-white border-black/5 hover:shadow-md'
                                                 }`}
                                         >
@@ -344,15 +351,13 @@ const PlanningPage = () => {
                                                     </span>
                                                 )}
                                             </div>
+
                                             {viewMode === 'browse' && (
-                                                <button
-                                                    onClick={(e) => hideRecipe(e, recipe.id)}
-                                                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1"
-                                                    title="Скрыть из планирования"
-                                                >
-                                                    ❌
-                                                </button>
+                                                <div className={`absolute top-2 right-2 w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-300 text-transparent hover:border-indigo-400'}`}>
+                                                    ✓
+                                                </div>
                                             )}
+
                                             {viewMode === 'browse' && (
                                                 <button
                                                     onClick={(e) => toggleHighlight(e, recipe.id)}
@@ -390,7 +395,7 @@ const PlanningPage = () => {
 
                                 {section.items.length === 0 && (
                                     <div className="text-center text-sm opacity-50 py-10 italic">
-                                        Нет рецептов
+                                        {viewMode === 'browse' ? 'Нет рецептов' : 'Ничего не выбрано'}
                                     </div>
                                 )}
                             </div>
