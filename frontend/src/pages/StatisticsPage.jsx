@@ -70,7 +70,7 @@ const StatisticsPage = () => {
   // 2. Логика расчета стоимости одной позиции
   const calculateItemStats = (item) => {
     const recipe = item.recipe;
-    if (!recipe) return { cost: 0, cals: 0 };
+    if (!recipe) return { cost: 0, cals: 0, prot: 0, fat: 0, carb: 0 };
 
     const basePortions = recipe.portions || 1;
     const targetPortions = item.portions || 1;
