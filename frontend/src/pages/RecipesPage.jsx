@@ -28,6 +28,7 @@ const RecipesPage = () => {
   const [selectedUser, setSelectedUser] = useState('');
   const [sendingId, setSendingId] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [searchTerm, setSearchTerm] = useState(""); // Search state
 
   const editorRef = useRef(null); // Ref for scrolling
 
@@ -212,21 +213,45 @@ const RecipesPage = () => {
               Каталог блюд ({recipes.length})
             </div>
 
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200"
-            >
-              <option value="all">Все категории ({recipes.length})</option>
-              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="🔍 Поиск..."
+                  className="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200 w-32 md:w-48"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="all">Все категории ({recipes.length})</option>
+                {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {Array.isArray(recipes) && recipes
-              .filter(r => selectedCategory === "all" || r.category === selectedCategory)
+              .filter(r => {
+                const matchesCategory = selectedCategory === "all" || r.category === selectedCategory;
+                const matchesSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase());
+                return matchesCategory && matchesSearch;
+              })
               .sort((a, b) => a.title.localeCompare(b.title))
               .map(recipe => (
                 <div
