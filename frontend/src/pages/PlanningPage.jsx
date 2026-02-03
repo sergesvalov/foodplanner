@@ -24,15 +24,15 @@ const PlanningPage = () => {
             .catch(err => console.error(err));
     }, []);
 
-    // State for selected recipes (Opt-in logic)
-    const [selectedIds, setSelectedIds] = useState(() => {
-        const saved = localStorage.getItem('planning_selected_recipes');
+    // State for hidden recipes
+    const [hiddenIds, setHiddenIds] = useState(() => {
+        const saved = localStorage.getItem('planning_hidden_recipes');
         return saved ? JSON.parse(saved) : [];
     });
 
     useEffect(() => {
-        localStorage.setItem('planning_selected_recipes', JSON.stringify(selectedIds));
-    }, [selectedIds]);
+        localStorage.setItem('planning_hidden_recipes', JSON.stringify(hiddenIds));
+    }, [hiddenIds]);
 
     // State for highlighted (pinned) recipes
     const [highlightedIds, setHighlightedIds] = useState(() => {
@@ -84,21 +84,15 @@ const PlanningPage = () => {
         );
     };
 
-    const toggleSelection = (e, id) => {
-        e.stopPropagation();
-        setSelectedIds(prev =>
-            prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
-        );
+    const hideRecipe = (e, id) => {
+        e.stopPropagation(); // Prevent card click
+        if (!window.confirm("Скрыть рецепт из планирования?")) return;
+        setHiddenIds(prev => [...prev, id]);
     };
 
-    const clearSelection = () => {
-        if (!window.confirm("Очистить весь план?")) return;
-        setSelectedIds([]);
-    };
-
-    const selectAll = () => {
-        if (!window.confirm("Выбрать все доступные рецепты?")) return;
-        setSelectedIds(recipes.map(r => r.id));
+    const restoreAll = () => {
+        if (!window.confirm("Показать все скрытые рецепты?")) return;
+        setHiddenIds([]);
     };
 
     const autoDistribute = () => {
@@ -122,7 +116,6 @@ const PlanningPage = () => {
                     day: randomDay,
                     type: randomType,
                     recipeId: recipe.id,
-                    // uniquely identify instance if needed, but simple obj is fine
                 });
             }
         });
@@ -157,10 +150,16 @@ const PlanningPage = () => {
             });
     };
 
-    const plannedRecipes = recipes.filter(r => selectedIds.includes(r.id));
+    const plannedRecipes = recipes.filter(r => !hiddenIds.includes(r.id));
 
-    // Determine which list to show based on view mode
-    const recipesToShow = viewMode === 'browse' ? recipes : plannedRecipes;
+    // Determine which list to show based on view mode (Always filter hidden in browse now as well? Or show slightly faded?)
+    // Previously: Browsing showed everything but had "Hide" button.
+    // Planning: Showed only planned (non-hidden).
+    // Let's stick to: Browse = !Hidden, Summary = !Hidden. 
+    // Wait, if I hide it, it disappears from Browse too? usually yes.
+    // Let's make "sourceList" for Browse be "visible recipes".
+    const visibleRecipes = recipes.filter(r => !hiddenIds.includes(r.id));
+    const recipesToShow = visibleRecipes;
 
     // Define columns
     const sections = [
@@ -274,18 +273,12 @@ const PlanningPage = () => {
                 <div className="flex items-center gap-4">
                     {viewMode === 'browse' && (
                         <>
-                            <button
-                                onClick={selectAll}
-                                className="text-sm text-indigo-600 hover:text-indigo-800 underline mr-4"
-                            >
-                                Выбрать все
-                            </button>
-                            {selectedIds.length > 0 && (
+                            {hiddenIds.length > 0 && (
                                 <button
-                                    onClick={clearSelection}
-                                    className="text-sm text-red-600 hover:text-red-800 underline mr-4"
+                                    onClick={restoreAll}
+                                    className="text-sm text-indigo-600 hover:text-indigo-800 underline mr-4"
                                 >
-                                    Очистить ({selectedIds.length})
+                                    Показать скрытые ({hiddenIds.length})
                                 </button>
                             )}
                             <button
