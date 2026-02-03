@@ -22,9 +22,9 @@ const ProductSelect = ({ products, value, onChange, onOpen }) => {
 
   // Фильтрация списка продуктов по поисковому запросу
   const filteredProducts = useMemo(() => {
-    return (products || []).filter(p =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return (products || [])
+      .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [products, searchTerm]);
 
   const handleSelect = (id) => {
