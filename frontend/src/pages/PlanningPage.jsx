@@ -177,17 +177,39 @@ const PlanningPage = () => {
     const plannedRecipes = recipes.filter(r => !hiddenIds.includes(r.id));
     const totalStats = getTotalStats(plannedRecipes);
 
+    // State for planned days { recipeId: [0, 1, 2...] } (0=Monday, 6=Sunday)
+    const [plannedDays, setPlannedDays] = useState(() => {
+        const saved = localStorage.getItem('planning_days');
+        return saved ? JSON.parse(saved) : {};
+    });
 
+    useEffect(() => {
+        localStorage.setItem('planning_days', JSON.stringify(plannedDays));
+    }, [plannedDays]);
+
+    const toggleDay = (recipeId, dayIndex) => {
+        setPlannedDays(prev => {
+            const currentDays = prev[recipeId] || [];
+            const newDays = currentDays.includes(dayIndex)
+                ? currentDays.filter(d => d !== dayIndex)
+                : [...currentDays, dayIndex].sort();
+            return { ...prev, [recipeId]: newDays };
+        });
+    };
+
+    const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
     return (
         <div className="container mx-auto max-w-7xl p-4 h-[calc(100vh-4rem)] flex flex-col">
             <div className="flex justify-between items-center mb-6 shrink-0">
                 <h2 className="text-2xl font-bold text-gray-800">
-                    {viewMode === 'browse' ? 'Планирование меню' : 'Итоговый список'}
+                    {viewMode === 'browse' && 'Планирование меню'}
+                    {viewMode === 'summary' && 'Итоговый список'}
+                    {viewMode === 'days' && 'Дни недели'}
                 </h2>
 
                 <div className="flex items-center gap-4">
-                    {viewMode === 'browse' ? (
+                    {viewMode === 'browse' && (
                         <>
                             {hiddenIds.length > 0 && (
                                 <button
@@ -204,19 +226,40 @@ const PlanningPage = () => {
                                 Далее к порциям →
                             </button>
                         </>
-                    ) : (
-                        <div className="flex items-center gap-4">
+                    )}
+                    {viewMode === 'summary' && (
+                        <>
                             <div className="text-right mr-4 text-sm hidden md:block">
                                 <span className="font-bold text-gray-900 block">€{totalStats.cost.toFixed(2)}</span>
                                 <span className="text-gray-500 block">{Math.round(totalStats.calories)} ккал</span>
                             </div>
                             <button
                                 onClick={() => setViewMode('browse')}
+                                className="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium shadow-sm mr-2"
+                            >
+                                ← Назад
+                            </button>
+                            <button
+                                onClick={() => setViewMode('days')}
+                                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm"
+                            >
+                                Далее к дням →
+                            </button>
+                        </>
+                    )}
+                    {viewMode === 'days' && (
+                        <>
+                            <div className="text-right mr-4 text-sm hidden md:block">
+                                <span className="font-bold text-gray-900 block">€{totalStats.cost.toFixed(2)}</span>
+                                <span className="text-gray-500 block">{Math.round(totalStats.calories)} ккал</span>
+                            </div>
+                            <button
+                                onClick={() => setViewMode('summary')}
                                 className="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium shadow-sm"
                             >
                                 ← Назад
                             </button>
-                        </div>
+                        </>
                     )}
                 </div>
             </div>
@@ -294,8 +337,31 @@ const PlanningPage = () => {
                                             </button>
                                         )}
 
+                                        {viewMode === 'days' && (
+                                            <div className="mt-3 flex gap-1 justify-between bg-gray-50 p-1.5 rounded-lg border border-black/5" onClick={e => e.stopPropagation()}>
+                                                {weekDays.map((day, dIdx) => {
+                                                    const isSelected = (plannedDays[recipe.id] || []).includes(dIdx);
+                                                    return (
+                                                        <button
+                                                            key={dIdx}
+                                                            onClick={() => toggleDay(recipe.id, dIdx)}
+                                                            className={`
+                                                                w-6 h-6 text-[10px] font-bold rounded flex items-center justify-center transition-all
+                                                                ${isSelected
+                                                                    ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-600'
+                                                                    : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-100 hover:border-gray-300'}
+                                                            `}
+                                                            title={day}
+                                                        >
+                                                            {day[0]}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
                                         <div className="flex flex-wrap gap-1 mt-2">
-                                            {viewMode === 'summary' ? (
+                                            {viewMode === 'summary' || viewMode === 'days' ? (
                                                 <>
                                                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
                                                         {Math.round(recipe.calories_per_portion * (plannedPortions[recipe.id] || getDefaultPortion(recipe)))} ккал
