@@ -460,7 +460,7 @@ const PlanningPage = () => {
 
     const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     const mealTypes = [
-        { id: 'breakfast', title: 'Завтрак', categories: ['breakfast', 'snack'] },
+        { id: 'breakfast', title: 'Завтрак', categories: ['breakfast'] },
         { id: 'lunch', title: 'Обед', categories: ['soup', 'main'] },
         { id: 'dinner', title: 'Ужин', categories: ['main', 'side'] }
     ];
