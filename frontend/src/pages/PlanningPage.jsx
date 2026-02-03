@@ -210,6 +210,8 @@ const PlanningPage = () => {
                 //    Wait, user said "if portion is only one.. assign to random eater".
                 //    So we should check availability for EACH consumer in the slot.
 
+                let placedType = null;
+
                 let placedCountInChunk = 0;
                 let foundSlot = false;
                 let attempts = 0;
@@ -270,6 +272,7 @@ const PlanningPage = () => {
 
                             remaining -= countToPlace;
                             placedCountInChunk = countToPlace;
+                            placedType = type;
                             foundSlot = true;
                             break;
                         }
@@ -286,12 +289,19 @@ const PlanningPage = () => {
                     break;
                 }
 
-                // If we placed some, we continue loop with new remaining. 
-                // Ideally, try next day for next chunk to spread out?
-                // Or fill same day other types?
-                // Usually spread out.
-                if (placedCountInChunk > 0) {
-                    currentDay = getNextDay(currentDay);
+                // Refined Logic (Split by Type):
+                if (foundSlot) {
+                    if (placedType === 'breakfast') {
+                        // Breakfast: Randomize next step to scatter portions
+                        currentDay = Math.floor(Math.random() * 7);
+                    } else {
+                        // Lunch/Dinner: Strict Packing order
+                        // If leftovers (less than full group) -> Force next day.
+                        // If full meal remains -> Stay on current day to try filling Dinner after Lunch.
+                        if (remaining > 0 && remaining < consumers.length) {
+                            currentDay = getNextDay(currentDay);
+                        }
+                    }
                 }
 
                 recipeAttempts++;
