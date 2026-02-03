@@ -135,17 +135,57 @@ const PlanningPage = () => {
         setHiddenIds([]);
     };
 
+    // Family Members
+    const [familyMembers, setFamilyMembers] = useState([]);
+
+    useEffect(() => {
+        // Fetch family for "consumers" logic
+        fetch('/api/admin/family')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setFamilyMembers(data);
+            })
+            .catch(console.error);
+    }, []);
+
+    // Sync eatersCount with family size if available (optional, but good for consistency)
+    useEffect(() => {
+        if (familyMembers.length > 0 && localStorage.getItem('planning_eaters_count') === null) {
+            setEatersCount(familyMembers.length);
+        }
+    }, [familyMembers]);
+
     const autoDistribute = () => {
         if (plannedMeals.length > 0 && !window.confirm("Это действие перезапишет текущее расписание по дням. Продолжить?")) return;
 
         const newMeals = [];
-        const usedSlots = new Set(); // Key: "day-type"
+        // Track usage: "day-type-memberId" -> true
+        const usedSlots = new Set();
+
+        // Define consumers: either Real Family Members or Mock IDs based on eatersCount
+        let consumers = [];
+        if (familyMembers.length > 0) {
+            // Use active family members up to eatersCount? Or just all family members?
+            // User requirement: "eaters who are accounted for in the system".
+            // If eatersCount is manually reduced, we should probably pick the first N members?
+            // Or just use all family members if they exist?
+            // "eatersCount" is manually adjustable in UI. 
+            // If I set Eaters=1 but have 2 family members, who eats?
+            // Let's take the first `eatersCount` members from family list.
+            consumers = familyMembers.slice(0, eatersCount);
+        }
+
+        // If we still don't have enough consumers (e.g. eatersCount > family.length, or no family), fill with mocks
+        while (consumers.length < eatersCount) {
+            const id = `mock-${consumers.length + 1}`;
+            consumers.push({ id: id, name: `Едок ${consumers.length + 1}`, color: 'gray' });
+        }
 
         // Helper to get next day index (0-6)
         const getNextDay = (currentDay) => (currentDay + 1) % 7;
 
         plannedRecipes.forEach(recipe => {
-            const totalPortions = Math.round(plannedPortions[recipe.id] || getDefaultPortion(recipe));
+            let remaining = Math.round(plannedPortions[recipe.id] || getDefaultPortion(recipe));
 
             // Determine valid meal types specific to this recipe
             const validTypes = mealTypes
@@ -154,60 +194,71 @@ const PlanningPage = () => {
 
             if (validTypes.length === 0) return;
 
-            // Chunk portions by eatersCount
-            let remaining = totalPortions;
             let currentDay = Math.floor(Math.random() * 7); // Start random day
 
             while (remaining > 0) {
-                const chunk = Math.min(eatersCount, remaining); // Can be less than eatersCount if leftover
+                // Strategy: 
+                // 1. Try to place as many as possible in one slot (Day + Type) for ALL consumers.
+                // 2. If valid slot found (e.g. 2 of 2 consumers free), place 2 portions.
+                // 3. If only partial availability (e.g. 1 of 2 free), place 1 portion?
+                //    Wait, user said "if portion is only one.. assign to random eater".
+                //    So we should check availability for EACH consumer in the slot.
 
-                // Try to find a free slot for this chunk
-                // We prefer to keep the same type if possible for the sequence? 
-                // Or just pick a valid type?
-                // Let's iterate days until we find a free slot of ANY valid type for this recipe.
-                // Or better: Try currentDay with random valid type, if busy, try next type, if all types busy, next day.
-
-                let placed = false;
+                let placedCountInChunk = 0;
+                let foundSlot = false;
                 let attempts = 0;
 
-                // Try to find a slot starting from currentDay
-                while (!placed && attempts < 14) { // Limit attempts to avoid infinite loop (2 weeks scan)
-                    // Shuffle valid types to avoid bias? Or sequential? Random is fine.
-                    // Let's try all valid types for this day.
+                while (!foundSlot && attempts < 14) {
+                    // Try random/shuffled types for currentDay
                     const shuffledTypes = [...validTypes].sort(() => 0.5 - Math.random());
 
                     for (const type of shuffledTypes) {
-                        const slotKey = `${currentDay}-${type}`;
-                        if (!usedSlots.has(slotKey)) {
-                            // Found a free slot!
-                            usedSlots.add(slotKey);
+                        // Check which consumers are free in this slot
+                        const freeConsumers = consumers.filter(c => !usedSlots.has(`${currentDay}-${type}-${c.id}`));
 
-                            // Add 'chunk' entries
-                            for (let i = 0; i < chunk; i++) {
+                        if (freeConsumers.length > 0) {
+                            // We can place some portions here!
+                            // How many? Min(remaining, freeConsumers.length)
+                            const countToPlace = Math.min(remaining, freeConsumers.length);
+
+                            // Assign to the first 'countToPlace' free consumers
+                            // (Randomize selection of free consumers to be fair?)
+                            // User: "assign to random eater" if one portion.
+                            const targets = freeConsumers.sort(() => 0.5 - Math.random()).slice(0, countToPlace);
+
+                            targets.forEach(consumer => {
+                                usedSlots.add(`${currentDay}-${type}-${consumer.id}`);
                                 newMeals.push({
                                     day: currentDay,
                                     type: type,
                                     recipeId: recipe.id,
+                                    memberId: consumer.id
                                 });
-                            }
+                            });
 
-                            placed = true;
+                            remaining -= countToPlace;
+                            placedCountInChunk = countToPlace;
+                            foundSlot = true;
                             break;
                         }
                     }
 
-                    if (!placed) {
+                    if (!foundSlot) {
                         currentDay = getNextDay(currentDay);
                         attempts++;
                     }
                 }
 
-                // If we couldn't place it after scanning, we skip or force? 
-                // With current logic, we skip.
+                if (!foundSlot) {
+                    // Could not place remaining portions anywhere? Break to avoid loop.
+                    break;
+                }
 
-                remaining -= chunk;
-                // Prepare for next chunk: preferably next day
-                if (placed) {
+                // If we placed some, we continue loop with new remaining. 
+                // Ideally, try next day for next chunk to spread out?
+                // Or fill same day other types?
+                // Usually spread out.
+                if (placedCountInChunk > 0) {
                     currentDay = getNextDay(currentDay);
                 }
             }
@@ -568,12 +619,36 @@ const PlanningPage = () => {
                                                 {mealsInSlot.map((pm, pmIdx) => {
                                                     const r = recipes.find(x => x.id === pm.recipeId);
                                                     if (!r) return null;
+
+                                                    // Find member info if present
+                                                    const member = familyMembers.find(f => f.id === pm.memberId);
+                                                    const colorClass = member ? `bg-${member.color}-500` : 'bg-gray-400';
+                                                    const letter = member ? member.name[0] : (pm.memberId ? '?' : '');
+
                                                     return (
                                                         <div key={pmIdx} className="flex justify-between items-center bg-indigo-50 border border-indigo-100 p-2 rounded text-sm relative group">
-                                                            <span className="truncate pr-4" title={r.title}>{r.title}</span>
+                                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                                {letter && (
+                                                                    <div className={`w-5 h-5 rounded-full ${colorClass} text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-sm`} title={member?.name}>
+                                                                        {letter}
+                                                                    </div>
+                                                                )}
+                                                                <span className="truncate" title={r.title}>{r.title}</span>
+                                                            </div>
                                                             <button
-                                                                onClick={() => removeMeal(dIdx, mType.id, r.id)}
-                                                                className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                                                                onClick={() => {
+                                                                    // Remove specific entry (matched by reference or index? We don't have IDs on meals)
+                                                                    // Use filter by index in the global array? 
+                                                                    // Easier: remove match by properties including memberId.
+                                                                    // Or just remove this specific instance.
+                                                                    // We handle removal by filtering out ONE instance.
+                                                                    setPlannedMeals(prev => {
+                                                                        const idx = prev.indexOf(pm);
+                                                                        if (idx === -1) return prev;
+                                                                        return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+                                                                    });
+                                                                }}
+                                                                className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 ml-1"
                                                             >
                                                                 ×
                                                             </button>
