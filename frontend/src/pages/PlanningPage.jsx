@@ -44,13 +44,21 @@ const PlanningPage = () => {
         localStorage.setItem('planning_highlighted_recipes', JSON.stringify(highlightedIds));
     }, [highlightedIds]);
 
-    // View Mode: 'browse' | 'summary'
+    // View Mode: 'browse' | 'summary' | 'days'
     const [viewMode, setViewMode] = useState('browse');
+
+    console.log('PlanningPage render, viewMode:', viewMode);
 
     // Planned Portions { recipeId: number }
     const [plannedPortions, setPlannedPortions] = useState(() => {
-        const saved = localStorage.getItem('planning_portions');
-        return saved ? JSON.parse(saved) : {};
+        try {
+            const saved = localStorage.getItem('planning_portions');
+            const parsed = saved ? JSON.parse(saved) : {};
+            return (typeof parsed === 'object' && parsed !== null) ? parsed : {};
+        } catch (e) {
+            console.error('Error parsing planning_portions', e);
+            return {};
+        }
     });
 
     useEffect(() => {
@@ -177,8 +185,14 @@ const PlanningPage = () => {
     const plannedRecipes = recipes.filter(r => !hiddenIds.includes(r.id));
     // State for planned meals: [{ day: 0, type: 'breakfast', recipeId: 1 }, ...]
     const [plannedMeals, setPlannedMeals] = useState(() => {
-        const saved = localStorage.getItem('planning_meals');
-        return saved ? JSON.parse(saved) : [];
+        try {
+            const saved = localStorage.getItem('planning_meals');
+            const parsed = saved ? JSON.parse(saved) : [];
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            console.error('Error parsing planning_meals', e);
+            return [];
+        }
     });
 
     useEffect(() => {
