@@ -110,12 +110,12 @@ const ProductsPage = () => {
       price: parseFloat(form.price),
       amount: parseFloat(form.amount),
       unit: form.unit,
-      calories: form.calories ? parseFloat(form.calories) : 0,
-      // Отправляем null, если строка пустая
-      proteins: form.proteins ? parseFloat(form.proteins) : null,
-      fats: form.fats ? parseFloat(form.fats) : null,
-      carbs: form.carbs ? parseFloat(form.carbs) : null,
-      weight_per_piece: form.weight_per_piece ? parseFloat(form.weight_per_piece) : null
+      calories: form.calories !== '' ? parseFloat(form.calories) : 0,
+      // Отправляем null, только если строка пустая (''). Ноль (0 или "0") отправляем как число.
+      proteins: form.proteins !== '' && form.proteins !== null ? parseFloat(form.proteins) : null,
+      fats: form.fats !== '' && form.fats !== null ? parseFloat(form.fats) : null,
+      carbs: form.carbs !== '' && form.carbs !== null ? parseFloat(form.carbs) : null,
+      weight_per_piece: form.weight_per_piece !== '' && form.weight_per_piece !== null ? parseFloat(form.weight_per_piece) : null
     };
 
     try {
