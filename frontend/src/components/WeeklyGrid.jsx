@@ -522,20 +522,31 @@ const PlanItemCard = ({ item, onRemove, onPortionChange, onUserChange, calculate
             )}
             <div className="flex items-center gap-1 mt-1 bg-gray-50 rounded px-1 py-0.5 justify-between">
                 <div className="flex items-center gap-1">
-                    <span className="text-[9px] text-gray-400">Порц:</span>
+                    <span
+                        className="text-[9px] text-gray-400 cursor-pointer hover:text-indigo-600 border-b border-transparent hover:border-indigo-300 transition-colors"
+                        title="Нажми чтобы переключить 0.5 / 1 порцию"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            const current = parseFloat(item.portions);
+                            // Toggle: if 0.5 -> 1.0, otherwise -> 0.5
+                            onPortionChange(item.id, current === 0.5 ? 1.0 : 0.5, true);
+                        }}
+                    >
+                        Порц:
+                    </span>
                     <input
                         type="number"
-                        min="0.1"
+                        min="0"
                         step="0.5"
                         max="99"
                         className="w-10 h-4 text-[10px] font-bold text-center border rounded focus:ring-1 focus:ring-indigo-300 outline-none p-0"
-                        value={item.portions || 1}
+                        value={item.portions}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                             const val = parseFloat(e.target.value);
-                            // Validates: not NaN, range 0.1-99, and STRICTLY 0.5 step (0.5, 1.0, 1.5...)
-                            // (val * 2) % 1 === 0 detects 0.5 steps robustly
-                            if (!isNaN(val) && val > 0 && val <= 99 && (val * 2) % 1 === 0) {
+                            // Validates: allow 0 (while typing 0.5), allow decimals.
+                            if (!isNaN(val) && val >= 0 && val <= 99) {
+                                // Save immediately (debounced by parent)
                                 onPortionChange(item.id, val, true);
                             }
                         }}
