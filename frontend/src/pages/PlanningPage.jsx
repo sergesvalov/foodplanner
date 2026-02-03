@@ -162,6 +162,9 @@ const PlanningPage = () => {
         // Track usage: "day-type-memberId" -> true
         const usedSlots = new Set();
 
+        // Track recipe locks: "day-type" -> recipeId (Only for Lunch/Dinner)
+        const slotLocks = new Map();
+
         // Define consumers: either Real Family Members or Mock IDs based on eatersCount
         let consumers = [];
         if (familyMembers.length > 0) {
@@ -196,7 +199,10 @@ const PlanningPage = () => {
 
             let currentDay = Math.floor(Math.random() * 7); // Start random day
 
-            while (remaining > 0) {
+            // Limit attempts to place recipe to avoid infinite loop
+            let recipeAttempts = 0;
+
+            while (remaining > 0 && recipeAttempts < 50) {
                 // Strategy: 
                 // 1. Try to place as many as possible in one slot (Day + Type) for ALL consumers.
                 // 2. If valid slot found (e.g. 2 of 2 consumers free), place 2 portions.
@@ -213,6 +219,18 @@ const PlanningPage = () => {
                     const shuffledTypes = [...validTypes].sort(() => 0.5 - Math.random());
 
                     for (const type of shuffledTypes) {
+                        // Check Slot Locking (Exclusive Lunch/Dinner)
+                        const slotKey = `${currentDay}-${type}`;
+                        const isExclusive = type === 'lunch' || type === 'dinner';
+
+                        if (isExclusive) {
+                            const lockedBy = slotLocks.get(slotKey);
+                            if (lockedBy && lockedBy !== recipe.id) {
+                                // Busied by another recipe -> skip
+                                continue;
+                            }
+                        }
+
                         // Check which consumers are free in this slot
                         const freeConsumers = consumers.filter(c => !usedSlots.has(`${currentDay}-${type}-${c.id}`));
 
@@ -235,6 +253,11 @@ const PlanningPage = () => {
                                     memberId: consumer.id
                                 });
                             });
+
+                            // Lock the slot if it's lunch/dinner
+                            if (isExclusive) {
+                                slotLocks.set(slotKey, recipe.id);
+                            }
 
                             remaining -= countToPlace;
                             placedCountInChunk = countToPlace;
@@ -261,6 +284,8 @@ const PlanningPage = () => {
                 if (placedCountInChunk > 0) {
                     currentDay = getNextDay(currentDay);
                 }
+
+                recipeAttempts++;
             }
         });
 
