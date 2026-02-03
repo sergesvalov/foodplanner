@@ -240,8 +240,8 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
     const debounceTimers = useRef({});
 
     const handlePortionChange = (itemId, newPortions, save = true) => {
-        if (newPortions < 1 || newPortions > 9) return;
-        const val = parseInt(newPortions);
+        if (newPortions < 0.1 || newPortions > 99) return;
+        const val = parseFloat(newPortions);
 
         // Update local state immediately
         setPlan(prevPlan => prevPlan.map(item => item.id === itemId ? { ...item, portions: val } : item));
@@ -525,15 +525,16 @@ const PlanItemCard = ({ item, onRemove, onPortionChange, onUserChange, calculate
                     <span className="text-[9px] text-gray-400">Порц:</span>
                     <input
                         type="number"
-                        min="1"
-                        max="9"
-                        className="w-8 h-4 text-[10px] font-bold text-center border rounded focus:ring-1 focus:ring-indigo-300 outline-none p-0"
+                        min="0.1"
+                        step="0.5"
+                        max="99"
+                        className="w-10 h-4 text-[10px] font-bold text-center border rounded focus:ring-1 focus:ring-indigo-300 outline-none p-0"
                         value={item.portions || 1}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
-                            const val = parseInt(e.target.value);
-                            // Validates 1-9 and saves immediately
-                            if (val >= 1 && val <= 9) onPortionChange(item.id, val, true);
+                            const val = parseFloat(e.target.value);
+                            // Validates and saves immediately
+                            if (!isNaN(val) && val > 0 && val <= 99) onPortionChange(item.id, val, true);
                         }}
                     />
                 </div>

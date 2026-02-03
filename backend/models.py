@@ -167,7 +167,7 @@ class WeeklyPlanEntry(Base):
     day_of_week = Column(String)
     meal_type = Column(String)
     recipe_id = Column(Integer, ForeignKey("recipes.id"))
-    portions = Column(Integer, default=1)
+    portions = Column(Float, default=1.0)
     family_member_id = Column(Integer, ForeignKey("family_members.id"), nullable=True)
 
     # --- НОВОЕ ПОЛЕ ---

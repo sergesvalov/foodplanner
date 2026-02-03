@@ -70,12 +70,12 @@ class PlanItemBase(BaseModel):
     day_of_week: str
     meal_type: str
     recipe_id: int
-    portions: int = 1
+    portions: float = 1.0
     family_member_id: Optional[int] = None
     date: Optional[datetime.date] = None
 class PlanItemCreate(PlanItemBase): pass
 class PlanItemUpdate(BaseModel):
-    portions: Optional[int] = None
+    portions: Optional[float] = None
     family_member_id: Optional[int] = None
     date: Optional[datetime.date] = None
     meal_type: Optional[str] = None
