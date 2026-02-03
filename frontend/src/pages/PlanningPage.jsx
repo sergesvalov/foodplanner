@@ -14,7 +14,9 @@ const PlanningPage = () => {
 
     // Helper to filter recipes by multiple categories
     const getRecipesByCategories = (categories) => {
-        return recipes.filter(r => categories.includes(r.category));
+        return recipes
+            .filter(r => categories.includes(r.category))
+            .sort((a, b) => (b.rating || 0) - (a.rating || 0));
     };
 
     // Define columns
