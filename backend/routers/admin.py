@@ -202,3 +202,13 @@ def create_db_backup(db: Session = Depends(get_db)):
         return {"status": "ok", "message": f"Бэкап создан: {backup_filename}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Backup failed: {str(e)}")
+
+# Force Migration (Temporary/Admin Tool)
+@router.post("/db/migrate")
+def run_migrations():
+    try:
+        import fast_migrate
+        fast_migrate.run_auto_migrations()
+        return {"status": "ok", "message": "Миграции выполнены успешно"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Migration failed: {str(e)}")

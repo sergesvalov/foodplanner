@@ -51,7 +51,8 @@ def run_migrations_online() -> None:
             connection=connection, 
             target_metadata=target_metadata,
             # Добавляем хук здесь:
-            process_revision_directives=process_revision_directives
+            process_revision_directives=process_revision_directives,
+            render_as_batch=True
         )
 
         with context.begin_transaction():
