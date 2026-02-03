@@ -22,6 +22,44 @@ const PlanningPage = () => {
         localStorage.setItem('planning_hidden_recipes', JSON.stringify(hiddenIds));
     }, [hiddenIds]);
 
+    // State for highlighted (pinned) recipes
+    const [highlightedIds, setHighlightedIds] = useState(() => {
+        const saved = localStorage.getItem('planning_highlighted_recipes');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('planning_highlighted_recipes', JSON.stringify(highlightedIds));
+    }, [highlightedIds]);
+
+    // View Mode: 'browse' | 'summary'
+    const [viewMode, setViewMode] = useState('browse');
+
+    // Planned Portions { recipeId: number }
+    const [plannedPortions, setPlannedPortions] = useState(() => {
+        const saved = localStorage.getItem('planning_portions');
+        return saved ? JSON.parse(saved) : {};
+    });
+
+    useEffect(() => {
+        localStorage.setItem('planning_portions', JSON.stringify(plannedPortions));
+    }, [plannedPortions]);
+
+    const updatePortion = (id, change) => {
+        setPlannedPortions(prev => {
+            const current = prev[id] || 1;
+            const newVal = Math.max(0.5, current + change);
+            return { ...prev, [id]: newVal };
+        });
+    };
+
+    const toggleHighlight = (e, id) => {
+        e.stopPropagation();
+        setHighlightedIds(prev =>
+            prev.includes(id) ? prev.filter(hid => hid !== id) : [...prev, id]
+        );
+    };
+
     const hideRecipe = (e, id) => {
         e.stopPropagation(); // Prevent card click
         if (!window.confirm("Скрыть рецепт из планирования?")) return;
@@ -38,7 +76,13 @@ const PlanningPage = () => {
         return recipes
             .filter(r => categories.includes(r.category))
             .filter(r => !hiddenIds.includes(r.id)) // Filter hidden
-            .sort((a, b) => (b.rating || 0) - (a.rating || 0));
+            .sort((a, b) => {
+                const aPinned = highlightedIds.includes(a.id);
+                const bPinned = highlightedIds.includes(b.id);
+                if (aPinned && !bPinned) return -1;
+                if (!aPinned && bPinned) return 1;
+                return (b.rating || 0) - (a.rating || 0);
+            });
     };
 
     // Define columns
@@ -63,18 +107,64 @@ const PlanningPage = () => {
         }
     ];
 
+    // Calculate totals for summary
+    const getTotalStats = (categoryRecipes) => {
+        return categoryRecipes.reduce((acc, recipe) => {
+            const portion = plannedPortions[recipe.id] || 1;
+            // Scale by portion ratio if needed, for now linear
+            // Assuming default portion is 1
+            return {
+                calories: acc.calories + (recipe.calories_per_portion * portion),
+                cost: acc.cost + (recipe.total_cost * portion)
+            };
+        }, { calories: 0, cost: 0 });
+    };
+
+    const plannedRecipes = recipes.filter(r => !hiddenIds.includes(r.id));
+    const totalStats = getTotalStats(plannedRecipes);
+
+
+
     return (
         <div className="container mx-auto max-w-7xl p-4 h-[calc(100vh-4rem)] flex flex-col">
             <div className="flex justify-between items-center mb-6 shrink-0">
-                <h2 className="text-2xl font-bold text-gray-800">Планирование меню</h2>
-                {hiddenIds.length > 0 && (
-                    <button
-                        onClick={restoreAll}
-                        className="text-sm text-indigo-600 hover:text-indigo-800 underline"
-                    >
-                        Показать скрытые ({hiddenIds.length})
-                    </button>
-                )}
+                <h2 className="text-2xl font-bold text-gray-800">
+                    {viewMode === 'browse' ? 'Планирование меню' : 'Итоговый список'}
+                </h2>
+
+                <div className="flex items-center gap-4">
+                    {viewMode === 'browse' ? (
+                        <>
+                            {hiddenIds.length > 0 && (
+                                <button
+                                    onClick={restoreAll}
+                                    className="text-sm text-indigo-600 hover:text-indigo-800 underline mr-4"
+                                >
+                                    Показать скрытые ({hiddenIds.length})
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setViewMode('summary')}
+                                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm"
+                            >
+                                Далее к порциям →
+                            </button>
+                        </>
+                    ) : (
+                        <div className="flex items-center gap-4">
+                            <div className="text-right mr-4 text-sm hidden md:block">
+                                <span className="font-bold text-gray-900 block">€{totalStats.cost.toFixed(2)}</span>
+                                <span className="text-gray-500 block">{Math.round(totalStats.calories)} ккал</span>
+                            </div>
+                            <button
+                                onClick={() => setViewMode('browse')}
+                                className="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium shadow-sm"
+                            >
+                                ← Назад
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 min-h-0">
@@ -91,36 +181,87 @@ const PlanningPage = () => {
 
                         {/* List */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                            {section.items.map(recipe => (
-                                <div key={recipe.id} className="bg-white p-3 rounded-lg shadow-sm border border-black/5 hover:shadow-md transition-shadow cursor-pointer group">
-                                    <div className="flex justify-between items-start">
-                                        <h4 className="font-semibold text-gray-800 leading-tight group-hover:text-indigo-600 transition-colors">
-                                            {recipe.title}
-                                        </h4>
-                                        {recipe.rating > 0 && (
-                                            <span className="text-[10px] text-yellow-500 shrink-0 ml-1">
-                                                {'⭐'.repeat(recipe.rating)}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <button
-                                        onClick={(e) => hideRecipe(e, recipe.id)}
-                                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1"
-                                        title="Скрыть из планирования"
+                            {section.items.map(recipe => {
+                                const isPinned = highlightedIds.includes(recipe.id);
+                                return (
+                                    <div
+                                        key={recipe.id}
+                                        className={`p-3 rounded-lg shadow-sm border transition-all cursor-pointer group relative
+                                        ${isPinned
+                                                ? 'bg-green-50 border-green-300 shadow-md ring-1 ring-green-200'
+                                                : 'bg-white border-black/5 hover:shadow-md'
+                                            }`}
                                     >
-                                        ❌
-                                    </button>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h4 className="font-semibold text-gray-800 leading-tight group-hover:text-indigo-600 transition-colors">
+                                                    {recipe.title}
+                                                </h4>
+                                                {viewMode === 'summary' && (
+                                                    <div className="mt-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            className="w-6 h-6 rounded bg-gray-100 border flex items-center justify-center hover:bg-gray-200"
+                                                            onClick={() => updatePortion(recipe.id, -0.5)}
+                                                        >-</button>
+                                                        <span className="text-sm font-medium w-8 text-center">{plannedPortions[recipe.id] || 1}</span>
+                                                        <button
+                                                            className="w-6 h-6 rounded bg-gray-100 border flex items-center justify-center hover:bg-gray-200"
+                                                            onClick={() => updatePortion(recipe.id, 0.5)}
+                                                        >+</button>
+                                                        <span className="text-xs text-gray-500 ml-1">порций</span>
+                                                    </div>
+                                                )}
+                                            </div>
 
-                                    <div className="flex flex-wrap gap-1 mt-2">
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
-                                            {recipe.calories_per_portion} ккал
-                                        </span>
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
-                                            €{recipe.total_cost}
-                                        </span>
+                                            {recipe.rating > 0 && (
+                                                <span className="text-[10px] text-yellow-500 shrink-0 ml-1">
+                                                    {'⭐'.repeat(recipe.rating)}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {viewMode === 'browse' && (
+                                            <button
+                                                onClick={(e) => hideRecipe(e, recipe.id)}
+                                                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1"
+                                                title="Скрыть из планирования"
+                                            >
+                                                ❌
+                                            </button>
+                                        )}
+                                        {viewMode === 'browse' && (
+                                            <button
+                                                onClick={(e) => toggleHighlight(e, recipe.id)}
+                                                className={`absolute top-2 right-8 transition-all p-1 ${isPinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 grayscale hover:grayscale-0'}`}
+                                                title={isPinned ? "Открепить" : "Закрепить"}
+                                            >
+                                                📌
+                                            </button>
+                                        )}
+
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                            {viewMode === 'summary' ? (
+                                                <>
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                                                        {Math.round(recipe.calories_per_portion * (plannedPortions[recipe.id] || 1))} ккал
+                                                    </span>
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">
+                                                        €{(recipe.total_cost * (plannedPortions[recipe.id] || 1)).toFixed(2)}
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
+                                                        {recipe.calories_per_portion} ккал
+                                                    </span>
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
+                                                        €{recipe.total_cost}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
 
                             {section.items.length === 0 && (
                                 <div className="text-center text-sm opacity-50 py-10 italic">
