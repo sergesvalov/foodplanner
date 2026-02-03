@@ -444,7 +444,7 @@ const PlanningPage = () => {
                     ))}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-1 overflow-y-auto pb-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-1 overflow-y-auto pb-10 items-start">
                     {weekDays.map((dayName, dIdx) => (
                         <div key={dIdx} className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
                             <div className="bg-gray-50 p-3 border-b text-center font-bold text-gray-700">
