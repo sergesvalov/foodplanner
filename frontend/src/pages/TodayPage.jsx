@@ -56,14 +56,14 @@ const TodayPage = () => {
 
                 const factor = isPieces ? qty : (qty / 100);
 
-                totalCost += (p.price || 0) * (isPieces ? qty : (qty / (p.amount || 1) * (p.price_per_unit || 1))); // Price logic is tricky here, actually cost is on recipe? 
-                // Wait, logic above was: cost: (recipe.total_cost || 0) * ratio. It uses pre-calculated total cost.
-                // But for P/F/C we don't have pre-calculated totals in recipe response. We must sum ingredients.
+                if (!isNaN(factor)) {
+                    totalCost += (p.price || 0) * (isPieces ? qty : (qty / (p.amount || 1) * (p.price_per_unit || 1)));
 
-                totalCals += (p.calories || 0) * factor;
-                totalProt += (p.proteins || 0) * factor;
-                totalFat += (p.fats || 0) * factor;
-                totalCarb += (p.carbs || 0) * factor;
+                    totalCals += (p.calories || 0) * factor;
+                    totalProt += (p.proteins || 0) * factor;
+                    totalFat += (p.fats || 0) * factor;
+                    totalCarb += (p.carbs || 0) * factor;
+                }
             });
         }
 
