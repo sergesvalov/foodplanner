@@ -8,6 +8,7 @@ import ShoppingListPage from './pages/ShoppingListPage';
 import TodayPage from './pages/TodayPage';
 import AdminPage from './pages/AdminPage';
 import AboutPage from './pages/AboutPage';
+import PlanningPage from './pages/PlanningPage';
 import StatisticsPage from './pages/StatisticsPage';
 
 function App() {
@@ -15,7 +16,7 @@ function App() {
     <Router>
       {/* ИЗМЕНЕНИЕ: min-h-screen вместо h-screen, чтобы страница могла расти */}
       <div className="flex flex-col min-h-screen bg-gray-100">
-        
+
         {/* Navbar sticky, чтобы он оставался сверху при скролле */}
         <div className="shrink-0 z-50 sticky top-0">
           <Navbar />
@@ -29,6 +30,7 @@ function App() {
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/recipes" element={<RecipesPage />} />
             <Route path="/shopping-list" element={<ShoppingListPage />} />
+            <Route path="/planning" element={<PlanningPage />} />
             <Route path="/stats" element={<StatisticsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/about" element={<AboutPage />} />

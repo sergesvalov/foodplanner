@@ -16,7 +16,7 @@ const Navbar = () => {
             <Link to="/" className="text-white font-bold text-xl flex items-center gap-2 mr-8">
               📅 FoodPlanner
             </Link>
-            
+
             <div className="flex items-baseline space-x-4 flex-1">
               <Link to="/today" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/today')}`}>
                 ☀️ Сегодня
@@ -25,9 +25,13 @@ const Navbar = () => {
               <Link to="/" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/')}`}>
                 План на неделю
               </Link>
-              
+
               <Link to="/shopping-list" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/shopping-list')}`}>
                 🛒 Покупки
+              </Link>
+
+              <Link to="/planning" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/planning')}`}>
+                📋 Планирование
               </Link>
 
               <Link to="/stats" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/stats')}`}>
@@ -37,7 +41,7 @@ const Navbar = () => {
               <Link to="/products" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/products')}`}>
                 📦 Продукты
               </Link>
-              
+
               <Link to="/recipes" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/recipes')}`}>
                 🍳 Рецепты
               </Link>
@@ -45,23 +49,23 @@ const Navbar = () => {
 
             {/* Right side icons */}
             <div className="flex items-center space-x-2">
-                {/* About Link */}
-                <Link 
-                  to="/about" 
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/about')}`} 
-                  title="About"
-                >
-                  ℹ️
-                </Link>
+              {/* About Link */}
+              <Link
+                to="/about"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/about')}`}
+                title="About"
+              >
+                ℹ️
+              </Link>
 
-                {/* Admin Link */}
-                <Link 
-                  to="/admin" 
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/admin')}`} 
-                  title="Администрирование"
-                >
-                  ⚙️
-                </Link>
+              {/* Admin Link */}
+              <Link
+                to="/admin"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/admin')}`}
+                title="Администрирование"
+              >
+                ⚙️
+              </Link>
             </div>
           </div>
         </div>
