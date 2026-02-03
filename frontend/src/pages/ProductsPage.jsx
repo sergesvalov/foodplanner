@@ -135,6 +135,7 @@ const ProductsPage = () => {
 
       if (res.ok) {
         fetchProducts();
+        alert("Продукт сохранен!");
         // resetForm(); // Убрали очистку по просьбе пользователя
       }
     } catch (err) { console.error(err); }
