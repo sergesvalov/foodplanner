@@ -34,7 +34,9 @@ class RecipeBase(BaseModel):
     title: str
     description: Optional[str] = None
     portions: int = 1
-    category: str = "other" 
+    portions: int = 1
+    category: str = "other"
+    rating: Optional[int] = 0 
 
 class RecipeCreate(RecipeBase):
     ingredients: List[IngredientCreate] = []

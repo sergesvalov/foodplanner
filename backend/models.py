@@ -26,7 +26,9 @@ class Recipe(Base):
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     portions = Column(Integer, default=1)
-    category = Column(String, default="other") 
+    portions = Column(Integer, default=1)
+    category = Column(String, default="other")
+    rating = Column(Integer, default=0) # 0-5 
 
     ingredients = relationship("RecipeIngredient", back_populates="recipe", cascade="all, delete-orphan")
 

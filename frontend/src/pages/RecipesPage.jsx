@@ -252,6 +252,12 @@ const RecipesPage = () => {
                         <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ml-2 ${CATEGORY_COLORS[recipe.category] || CATEGORY_COLORS.other}`}>
                           {CATEGORY_LABELS[recipe.category] || CATEGORY_LABELS.other}
                         </span>
+                        {/* Rating */}
+                        {recipe.rating > 0 && (
+                          <span className="text-xs text-yellow-600 ml-2" title={`Оценка: ${recipe.rating}/5`}>
+                            {'⭐'.repeat(recipe.rating)}
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap gap-2 mt-1">

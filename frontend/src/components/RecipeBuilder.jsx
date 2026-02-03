@@ -9,6 +9,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
   const [portions, setPortions] = useState(1);
   // ИЗМЕНЕНИЕ: По умолчанию 'other'
   const [category, setCategory] = useState('other');
+  const [rating, setRating] = useState(0);
 
   // ИЗМЕНЕНИЕ: Добавлена категория 'Другое'
   const CATEGORIES = [
@@ -47,6 +48,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       setPortions(initialData.portions || 1);
       // Если у редактируемого рецепта нет категории, ставим 'other'
       setCategory(initialData.category || 'other');
+      setRating(initialData.rating || 0);
 
       const mapped = (initialData.ingredients || []).map(i => {
         const prod = i.product;
@@ -70,6 +72,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     setPortions(1);
     // Сброс на 'other'
     setCategory('other');
+    setRating(0);
   };
 
   const addIngredient = () => {
@@ -161,6 +164,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       description,
       portions: parseInt(portions),
       category,
+      rating: parseInt(rating),
       ingredients: validIngredients
     };
 
@@ -311,6 +315,25 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
               value={portions}
               onChange={e => setPortions(e.target.value)}
             />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Оценка</label>
+          <div className="flex gap-1 mt-1">
+            {[0, 1, 2, 3, 4, 5].map(val => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setRating(val)}
+                className={`px-3 py-1 rounded border text-sm font-medium transition-colors ${rating === val
+                  ? 'bg-yellow-100 border-yellow-300 text-yellow-700'
+                  : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                  }`}
+              >
+                {val === 0 ? 'Без оценки' : '⭐'.repeat(val)}
+              </button>
+            ))}
           </div>
         </div>
 
