@@ -59,7 +59,11 @@ const PlanningPage = () => {
 
     const updatePortion = (id, change) => {
         setPlannedPortions(prev => {
-            const current = prev[id] || 1;
+            let current = prev[id];
+            if (current === undefined) {
+                const recipe = recipes.find(r => r.id === id);
+                current = recipe ? (recipe.portions || 1) : 1;
+            }
             const newVal = Math.max(0.5, current + change);
             return { ...prev, [id]: newVal };
         });
@@ -137,11 +141,7 @@ const PlanningPage = () => {
 
     // Helper for default portion
     const getDefaultPortion = (recipe) => {
-        // For Lunch/Dinner categories, default to full recipe yield
-        if (['soup', 'main', 'side'].includes(recipe.category)) {
-            return recipe.portions || 1;
-        }
-        return 1;
+        return recipe.portions || 1;
     };
 
     // Calculate totals for summary
