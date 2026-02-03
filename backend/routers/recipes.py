@@ -25,8 +25,6 @@ def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
     db_recipe = models.Recipe(
         title=recipe.title, 
         description=recipe.description,
-        title=recipe.title, 
-        description=recipe.description,
         portions=recipe.portions,
         category=recipe.category, # <-- Сохраняем категорию
         rating=recipe.rating # <-- Сохраняем рейтинг
@@ -50,8 +48,6 @@ def update_recipe(recipe_id: int, recipe: schemas.RecipeCreate, db: Session = De
     if not db_recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
 
-    db_recipe.title = recipe.title
-    db_recipe.description = recipe.description
     db_recipe.title = recipe.title
     db_recipe.description = recipe.description
     db_recipe.portions = recipe.portions
@@ -85,7 +81,6 @@ def export_recipes(db: Session = Depends(get_db)):
     recipes = db.query(models.Recipe).all()
     # Добавляем category в экспорт
     data = [{
-        "title": r.title, 
         "title": r.title, 
         "description": r.description,
         "portions": r.portions,
