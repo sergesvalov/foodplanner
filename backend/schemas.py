@@ -78,6 +78,8 @@ class PlanItemUpdate(BaseModel):
     portions: Optional[int] = None
     family_member_id: Optional[int] = None
     date: Optional[datetime.date] = None
+    meal_type: Optional[str] = None
+    day_of_week: Optional[str] = None
 class AutoFillRequest(BaseModel):
     family_member_id: Optional[int] = None
 class PlanItemResponse(PlanItemBase):

@@ -131,12 +131,56 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
     const handleDrop = (e, dayObj, mealType) => {
         e.preventDefault();
         e.currentTarget.classList.remove('ring-2', 'ring-indigo-300', 'bg-white');
+        const itemData = e.dataTransfer.getData('planItemData');
+
+        // --- SCENARIO 1: MOVING EXISTING ITEM ---
+        if (itemData) {
+            try {
+                const item = JSON.parse(itemData);
+                console.log("Moving item:", item);
+
+                let dateToUse, dayName;
+                if (typeof dayObj === 'string') {
+                    dateToUse = weekDays[0]?.dateStr || new Date().toISOString().split('T')[0];
+                    dayName = dayObj;
+                } else if (dayObj) {
+                    dateToUse = dayObj.dateStr;
+                    dayName = dayObj.name;
+                } else {
+                    return;
+                }
+
+                // If moving to same slot, do nothing
+                if (item.date === dateToUse && item.meal_type === mealType && item.day_of_week === dayName) {
+                    return;
+                }
+
+                // Update item
+                fetch(`/api/plan/${item.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        day_of_week: dayName,
+                        date: dateToUse,
+                        meal_type: mealType
+                    })
+                }).then(res => {
+                    if (res.ok) fetchPlan();
+                });
+
+            } catch (err) {
+                console.error("Error moving item:", err);
+            }
+            return;
+        }
+
+        // --- SCENARIO 2: ADDING NEW RECIPE ---
         const data = e.dataTransfer.getData('recipeData');
         if (!data) return;
 
         try {
             const recipe = JSON.parse(data);
-            console.log("Drop:", { dayObj, mealType, recipe });
+            console.log("Drop New Recipe:", { dayObj, mealType, recipe });
 
             // dayObj - это объект { name, dateObj, dateStr, display }
             // Если dropped on Extra key (string), use monday or today
@@ -451,7 +495,13 @@ const PlanItemCard = ({ item, onRemove, onPortionChange, onUserChange, calculate
     const u = item.family_member;
 
     return (
-        <div className={`relative flex flex-col bg-white rounded border border-gray-200 shadow-sm p-1.5 group/item hover:border-indigo-300 ${u ? `border-l-4 border-l-${u.color}-500` : ''}`}>
+        <div
+            draggable={true}
+            onDragStart={(e) => {
+                e.dataTransfer.setData('planItemData', JSON.stringify(item));
+                e.dataTransfer.effectAllowed = 'move';
+            }}
+            className={`cursor-move relative flex flex-col bg-white rounded border border-gray-200 shadow-sm p-1.5 group/item hover:border-indigo-300 ${u ? `border-l-4 border-l-${u.color}-500` : ''}`}>
             <button onClick={(e) => { e.stopPropagation(); onRemove(item.id); }} className="absolute -top-1.5 -right-1.5 bg-red-100 text-red-500 rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold opacity-0 group-hover/item:opacity-100 shadow-sm hover:bg-red-500 hover:text-white z-20">×</button>
             <span className="text-[11px] text-gray-800 font-medium leading-tight line-clamp-2" title={item.recipe.title}>{item.recipe.title}</span>
             {u ? (

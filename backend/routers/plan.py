@@ -84,6 +84,10 @@ def update_plan_item(item_id: int, item_update: schemas.PlanItemUpdate, db: Sess
         db_item.family_member_id = item_update.family_member_id
     if item_update.date is not None:
         db_item.date = item_update.date
+    if item_update.meal_type is not None:
+        db_item.meal_type = item_update.meal_type
+    if item_update.day_of_week is not None:
+        db_item.day_of_week = item_update.day_of_week
         
     db.commit()
     db.refresh(db_item)
