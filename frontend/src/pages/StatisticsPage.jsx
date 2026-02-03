@@ -98,9 +98,16 @@ const StatisticsPage = () => {
           factor = qty / 100; // Считаем за граммы
         }
 
-        totalProt += (p.proteins || 0) * factor;
-        totalFat += (p.fats || 0) * factor;
-        totalCarb += (p.carbs || 0) * factor;
+        if (Number.isFinite(factor)) {
+          const safeVal = (v) => {
+            const n = parseFloat(v);
+            return Number.isFinite(n) ? n : 0;
+          };
+
+          totalProt += safeVal(p.proteins) * factor;
+          totalFat += safeVal(p.fats) * factor;
+          totalCarb += safeVal(p.carbs) * factor;
+        }
       });
     }
 
