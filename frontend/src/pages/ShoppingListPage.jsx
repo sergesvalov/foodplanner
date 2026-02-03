@@ -9,23 +9,73 @@ const ShoppingListPage = () => {
   const [selectedUser, setSelectedUser] = useState('');
   const [sending, setSending] = useState(false);
 
+  // --- Date Logic (copied from StatisticsPage) ---
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  const getWeekRange = (baseDate) => {
+    const currentDay = baseDate.getDay();
+    const dayIndex = currentDay === 0 ? 6 : currentDay - 1; // 0=Mon, 6=Sun
+
+    const start = new Date(baseDate);
+    start.setDate(baseDate.getDate() - dayIndex);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+
+    const fmt = (d) => {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const fmtDisplay = (d) => {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      return `${dd}.${mm}`;
+    };
+
+    return {
+      start: fmt(start),
+      end: fmt(end),
+      display: `${fmtDisplay(start)} - ${fmtDisplay(end)}`
+    };
+  };
+
+  const changeWeek = (offset) => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + (offset * 7));
+    setCurrentDate(newDate);
+  };
+  // ----------------------------------------
+
   useEffect(() => {
-    fetch('/api/shopping-list/')
+    setLoading(true);
+    const { start, end } = getWeekRange(currentDate);
+
+    // Pass date range to API
+    fetch(`/api/shopping-list/?start_date=${start}&end_date=${end}`)
       .then(res => res.json())
       .then(data => {
         setItems(data);
         setLoading(false);
       })
-      .catch(err => console.error(err));
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
 
-    fetch('/api/admin/telegram/users')
-      .then(res => res.json())
-      .then(data => {
-        setTgUsers(data);
-        if (data.length > 0) setSelectedUser(data[0].chat_id);
-      })
-      .catch(err => console.error(err));
-  }, []);
+    // Telegram users only need to be fetched once
+    if (tgUsers.length === 0) {
+      fetch('/api/admin/telegram/users')
+        .then(res => res.json())
+        .then(data => {
+          setTgUsers(data);
+          if (data.length > 0) setSelectedUser(data[0].chat_id);
+        })
+        .catch(err => console.error(err));
+    }
+  }, [currentDate]);
 
   const toggleCheck = (id) => {
     setCheckedItems(prev => ({
@@ -36,35 +86,36 @@ const ShoppingListPage = () => {
 
   const handleSendTelegram = async () => {
     if (!selectedUser) {
-        alert("Выберите получателя");
-        return;
+      alert("Выберите получателя");
+      return;
     }
 
-    // UX FIX: Предупреждение если есть галочки
     const hasCheckedItems = Object.values(checkedItems).some(val => val === true);
     if (hasCheckedItems) {
-        const confirmSend = window.confirm(
-            "Внимание: Вы отметили некоторые товары как купленные, но в Telegram будет отправлен ПОЛНЫЙ список. Продолжить?"
-        );
-        if (!confirmSend) return;
+      const confirmSend = window.confirm(
+        "Внимание: Вы отметили некоторые товары как купленные, но в Telegram будет отправлен ПОЛНЫЙ список. Продолжить?"
+      );
+      if (!confirmSend) return;
     }
-    
+
     setSending(true);
     try {
-        const res = await fetch('/api/shopping-list/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: selectedUser })
-        });
-        const data = await res.json();
-        
-        if (res.ok) alert("✅ " + data.message);
-        else alert("❌ Ошибка: " + data.detail);
-        
+      const { start, end } = getWeekRange(currentDate);
+      // Pass dates to Telegram endpoint too so it sends the CORRECT list
+      const res = await fetch(`/api/shopping-list/send?start_date=${start}&end_date=${end}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: selectedUser })
+      });
+      const data = await res.json();
+
+      if (res.ok) alert("✅ " + data.message);
+      else alert("❌ Ошибка: " + data.detail);
+
     } catch (e) {
-        alert("Ошибка сети");
+      alert("Ошибка сети");
     } finally {
-        setSending(false);
+      setSending(false);
     }
   };
 
@@ -73,19 +124,53 @@ const ShoppingListPage = () => {
   if (loading) return <div className="p-10 text-center text-gray-500">Загрузка списка...</div>;
 
   return (
-    // ИСПРАВЛЕНИЕ: h-full и overflow-y-auto для скролла только этого контейнера
     <div className="container mx-auto max-w-4xl p-4 h-full flex flex-col">
-      <div className="flex justify-between items-end mb-6 shrink-0">
-        <h1 className="text-3xl font-bold text-gray-800">Список покупок</h1>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 shrink-0">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Список покупок</h1>
+
+          {/* Week Selector */}
+          <div className="flex items-center gap-3 mt-2 text-gray-600 font-medium">
+            <button
+              onClick={() => changeWeek(-1)}
+              className="hover:text-gray-900 hover:bg-gray-100 p-1 rounded transition-colors text-lg"
+              title="Предыдущая неделя"
+            >
+              ◀
+            </button>
+            <span className="bg-gray-100 px-3 py-1 rounded text-sm whitespace-nowrap">
+              {getWeekRange(currentDate).display}
+            </span>
+            <button
+              onClick={() => changeWeek(1)}
+              className="hover:text-gray-900 hover:bg-gray-100 p-1 rounded transition-colors text-lg"
+              title="Следующая неделя"
+            >
+              ▶
+            </button>
+            <button
+              onClick={() => setCurrentDate(new Date())}
+              className="text-xs text-blue-600 hover:underline ml-2"
+            >
+              Сегодня
+            </button>
+          </div>
+        </div>
+
         <div className="text-right">
           <div className="text-sm text-gray-500">Примерная стоимость</div>
           <div className="text-2xl font-bold text-green-600">€{totalCost.toFixed(2)}</div>
         </div>
       </div>
 
+      <div className="mb-4 text-sm text-blue-600 bg-blue-50 border border-blue-100 p-3 rounded">
+        📝 Список формируется на основе плана питания за выбранную неделю.
+        Товары суммируются.
+      </div>
+
       {items.length === 0 ? (
         <div className="bg-white p-10 rounded-lg shadow text-center text-gray-500">
-          Ваше меню на неделю пусто. Добавьте рецепты в план, чтобы сформировать список покупок.
+          План питания на этот период пуст.
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200 flex-1 overflow-y-auto">
@@ -102,17 +187,16 @@ const ShoppingListPage = () => {
               {items.map(item => {
                 const isChecked = !!checkedItems[item.id];
                 return (
-                  <tr 
-                    key={item.id} 
+                  <tr
+                    key={item.id}
                     className={`hover:bg-gray-50 transition-colors cursor-pointer select-none ${isChecked ? 'bg-green-50/50' : ''}`}
                     onClick={() => toggleCheck(item.id)}
                   >
                     <td className="px-6 py-4 text-center">
-                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                          isChecked 
-                          ? 'bg-green-500 border-green-500 text-white' 
+                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isChecked
+                          ? 'bg-green-500 border-green-500 text-white'
                           : 'border-gray-300 bg-white'
-                      }`}>
+                        }`}>
                         {isChecked && "✓"}
                       </div>
                     </td>
@@ -134,44 +218,44 @@ const ShoppingListPage = () => {
       )}
 
       <div className="mt-6 bg-white p-4 rounded-lg shadow border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
-        <button 
-            onClick={() => window.print()}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200 transition-colors flex items-center gap-2 font-medium w-full md:w-auto justify-center"
+        <button
+          onClick={() => window.print()}
+          className="px-4 py-2 bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200 transition-colors flex items-center gap-2 font-medium w-full md:w-auto justify-center"
         >
-            <span>🖨</span> Печать / PDF
+          <span>🖨</span> Печать / PDF
         </button>
 
         <div className="flex items-center gap-2 w-full md:w-auto">
-            {tgUsers.length === 0 ? (
-                <span className="text-xs text-gray-400">Добавьте пользователей в Админке для отправки</span>
-            ) : (
-                <>
-                    <select 
-                        className="border border-gray-300 rounded px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200"
-                        value={selectedUser}
-                        onChange={e => setSelectedUser(e.target.value)}
-                    >
-                        {tgUsers.map(u => (
-                            <option key={u.id} value={u.chat_id}>{u.name}</option>
-                        ))}
-                    </select>
+          {tgUsers.length === 0 ? (
+            <span className="text-xs text-gray-400">Добавьте пользователей в Админке для отправки</span>
+          ) : (
+            <>
+              <select
+                className="border border-gray-300 rounded px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200"
+                value={selectedUser}
+                onChange={e => setSelectedUser(e.target.value)}
+              >
+                {tgUsers.map(u => (
+                  <option key={u.id} value={u.chat_id}>{u.name}</option>
+                ))}
+              </select>
 
-                    <button 
-                        onClick={handleSendTelegram}
-                        disabled={sending}
-                        className={`
+              <button
+                onClick={handleSendTelegram}
+                disabled={sending}
+                className={`
                             px-4 py-2 text-white rounded shadow transition-colors flex items-center gap-2 font-bold
                             ${sending ? 'bg-blue-400 cursor-wait' : 'bg-blue-500 hover:bg-blue-600'}
                         `}
-                    >
-                        {sending ? 'Отправка...' : (
-                            <>
-                                <span>✈️</span> Отправить
-                            </>
-                        )}
-                    </button>
-                </>
-            )}
+              >
+                {sending ? 'Отправка...' : (
+                  <>
+                    <span>✈️</span> Отправить
+                  </>
+                )}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
