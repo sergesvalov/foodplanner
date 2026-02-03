@@ -173,3 +173,32 @@ def import_settings(db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+# Database Backup
+@router.post("/db/backup")
+def create_db_backup(db: Session = Depends(get_db)):
+    import shutil
+    import datetime
+
+    DB_PATH = "/app/data/menu_planner.db"
+    BACKUP_DIR = "/app/data/backup"
+
+    if not os.path.exists(DB_PATH):
+        raise HTTPException(status_code=404, detail="Database file not found")
+
+    try:
+        # Ensure backup dir exists
+        if not os.path.exists(BACKUP_DIR):
+            os.makedirs(BACKUP_DIR)
+
+        # Generate filename
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_filename = f"menu_planner_{timestamp}.db"
+        backup_path = os.path.join(BACKUP_DIR, backup_filename)
+
+        # Copy file (SQLite safe-ish for simple hot backup, especially with WAL)
+        shutil.copy2(DB_PATH, backup_path)
+
+        return {"status": "ok", "message": f"Бэкап создан: {backup_filename}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Backup failed: {str(e)}")

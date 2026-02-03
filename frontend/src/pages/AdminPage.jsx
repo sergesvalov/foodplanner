@@ -129,9 +129,9 @@ const AdminPage = () => {
         }
     };
 
-    const triggerExport = async (endpoint) => {
-        if (!window.confirm("Сохранить?")) return;
-        const res = await fetch(endpoint);
+    const triggerExport = async (endpoint, options = {}) => {
+        if (!window.confirm("Выполнить действие?")) return;
+        const res = await fetch(endpoint, options);
         alert((await res.json()).message);
     };
     const triggerImport = async (endpoint) => {
@@ -370,6 +370,13 @@ const AdminPage = () => {
                                 <div className="flex gap-3 text-sm">
                                     <button onClick={() => triggerExport('/api/admin/settings/export')} className="text-indigo-700 font-bold hover:underline">Сохранить всё</button>
                                     <button onClick={() => triggerImport('/api/admin/settings/import')} className="text-gray-600 hover:text-black hover:underline">Восстановить</button>
+                                </div>
+                            </div>
+
+                            <div className="border border-green-300 bg-green-50 p-4 rounded">
+                                <div className="font-bold mb-3 text-green-900">🗄️ База Данных</div>
+                                <div className="flex gap-3 text-sm">
+                                    <button onClick={() => triggerExport('/api/admin/db/backup', { method: 'POST' })} className="text-green-700 font-bold hover:underline">💾 Создать копию</button>
                                 </div>
                             </div>
                         </div>
