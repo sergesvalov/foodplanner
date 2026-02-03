@@ -351,15 +351,12 @@ const PlanningPage = () => {
                             <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                 {section.items.map(recipe => {
                                     const isPinned = highlightedIds.includes(recipe.id);
-                                    const isSelected = selectedIds.includes(recipe.id);
                                     return (
                                         <div
                                             key={recipe.id}
-                                            onClick={(e) => viewMode === 'browse' ? toggleSelection(e, recipe.id) : null}
                                             className={`p-3 rounded-lg shadow-sm border transition-all cursor-pointer group relative
-                                            ${viewMode === 'browse' && isSelected ? 'ring-2 ring-indigo-500 bg-indigo-50/50' : ''}
                                             ${isPinned
-                                                    ? 'bg-green-50 border-green-300 shadow-md'
+                                                    ? 'bg-green-50 border-green-300 shadow-md ring-1 ring-green-200'
                                                     : 'bg-white border-black/5 hover:shadow-md'
                                                 }`}
                                         >
@@ -392,11 +389,14 @@ const PlanningPage = () => {
                                                     </span>
                                                 )}
                                             </div>
-
                                             {viewMode === 'browse' && (
-                                                <div className={`absolute top-2 right-2 w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-300 text-transparent hover:border-indigo-400'}`}>
-                                                    ✓
-                                                </div>
+                                                <button
+                                                    onClick={(e) => hideRecipe(e, recipe.id)}
+                                                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1"
+                                                    title="Скрыть из планирования"
+                                                >
+                                                    ❌
+                                                </button>
                                             )}
 
                                             {viewMode === 'browse' && (
