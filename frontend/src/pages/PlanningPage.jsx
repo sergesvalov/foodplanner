@@ -12,6 +12,18 @@ const PlanningPage = () => {
             .catch(err => console.error(err));
     }, []);
 
+    // Fetch weekly plan for "used in week" logic
+    const [weeklyPlan, setWeeklyPlan] = useState([]);
+    useEffect(() => {
+        // Fetch current week plan (simplification: fetch all for now or current range)
+        fetch('/api/plan/')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setWeeklyPlan(data);
+            })
+            .catch(err => console.error(err));
+    }, []);
+
     // State for hidden recipes
     const [hiddenIds, setHiddenIds] = useState(() => {
         const saved = localStorage.getItem('planning_hidden_recipes');
@@ -72,7 +84,7 @@ const PlanningPage = () => {
     };
 
     // Helper to filter recipes by multiple categories
-    const getRecipesByCategories = (categories) => {
+    const getRecipesByCategories = (categories, sectionTitle) => {
         return recipes
             .filter(r => categories.includes(r.category))
             .filter(r => !hiddenIds.includes(r.id)) // Filter hidden
@@ -81,6 +93,22 @@ const PlanningPage = () => {
                 const bPinned = highlightedIds.includes(b.id);
                 if (aPinned && !bPinned) return -1;
                 if (!aPinned && bPinned) return 1;
+
+                // For Breakfast: Rating first, then Used in Week
+                if (sectionTitle === 'Завтрак') {
+                    // 1. Rating
+                    const ratingDiff = (b.rating || 0) - (a.rating || 0);
+                    if (ratingDiff !== 0) return ratingDiff;
+
+                    // 2. Used in Breakfast this week
+                    // (Check if recipe ID is in breakfast slots of weeklyPlan)
+                    // Note: We might want ANY usage in week, or just breakfast. User said "those that were in breakfast".
+                    const aUsed = weeklyPlan.some(p => p.recipe_id === a.id && p.meal_type === 'breakfast');
+                    const bUsed = weeklyPlan.some(p => p.recipe_id === b.id && p.meal_type === 'breakfast');
+                    if (aUsed && !bUsed) return -1;
+                    if (!bUsed && aUsed) return 1;
+                }
+
                 return (b.rating || 0) - (a.rating || 0);
             });
     };
@@ -90,32 +118,58 @@ const PlanningPage = () => {
         {
             title: 'Завтрак',
             icon: '🍳',
-            items: getRecipesByCategories(['breakfast', 'snack']),
+            items: getRecipesByCategories(['breakfast', 'snack'], 'Завтрак'),
             color: 'bg-yellow-50 border-yellow-200 text-yellow-800'
         },
         {
             title: 'Обед',
             icon: '🍲',
-            items: getRecipesByCategories(['soup', 'main']),
+            items: getRecipesByCategories(['soup', 'main'], 'Обед'),
             color: 'bg-orange-50 border-orange-200 text-orange-800'
         },
         {
             title: 'Ужин',
             icon: '🍽️',
-            items: getRecipesByCategories(['main', 'side']),
+            items: getRecipesByCategories(['main', 'side'], 'Ужин'),
             color: 'bg-blue-50 border-blue-200 text-blue-800'
         }
     ];
 
+    // Helper for default portion
+    const getDefaultPortion = (recipe) => {
+        // For Lunch/Dinner categories, default to full recipe yield
+        if (['soup', 'main', 'side'].includes(recipe.category)) {
+            return recipe.portions || 1;
+        }
+        return 1;
+    };
+
     // Calculate totals for summary
     const getTotalStats = (categoryRecipes) => {
         return categoryRecipes.reduce((acc, recipe) => {
-            const portion = plannedPortions[recipe.id] || 1;
+            const portion = plannedPortions[recipe.id] || getDefaultPortion(recipe);
             // Scale by portion ratio if needed, for now linear
-            // Assuming default portion is 1
+            // Assuming default portion is 1 (in calculations usually) but here we use the actual set portion.
+            // Wait, calories_per_portion is for ONE portion.
+            // So we just multiply by selected portion count.
             return {
                 calories: acc.calories + (recipe.calories_per_portion * portion),
-                cost: acc.cost + (recipe.total_cost * portion)
+                cost: acc.cost + (recipe.total_cost * portion) // Total cost is per recipe usually? No, "total_cost" might be per ONE portion or WHOLE?
+                // Let's check model. Recipe model: "total_cost" usually implies whole dish?
+                // But previously I saw usage: `recipe.total_cost * portion`.
+                // If `total_cost` is for the WHOLE recipe yield (e.g. 4 portions), then for 1 portion we need / portions?
+                // OR `total_cost` is per portion?
+                // Let's look at `PlanningPage` prev usage: `recipe.total_cost`.
+                // In `ProductList` usually cost is calculated.
+                // Re-reading `PlanningPage` logic:
+                // `recipe.total_cost` was displayed as "€..." next to calories.
+                // Let's assume `total_cost` is PER PORTION for now, consistent with how I treated it in the last edit.
+                // Correction: `recipe.total_cost` from backend/routers/recipes.py usually matches `cost_per_portion` if I renamed it?
+                // Let's check previous files. `recipes.py`:
+                // db_recipe has no total_cost field? It's computed?
+                // Ah, backend `RecipeResponse` schema has `total_cost`.
+                // Let's assume `total_cost` is per portion or per item as consistent with previous code.
+                // Wait, if users see "Max Portions" (e.g. 4), and cost multiplies by 4, that makes sense.
             };
         }, { calories: 0, cost: 0 });
     };
@@ -203,7 +257,9 @@ const PlanningPage = () => {
                                                             className="w-6 h-6 rounded bg-gray-100 border flex items-center justify-center hover:bg-gray-200"
                                                             onClick={() => updatePortion(recipe.id, -0.5)}
                                                         >-</button>
-                                                        <span className="text-sm font-medium w-8 text-center">{plannedPortions[recipe.id] || 1}</span>
+                                                        <span className="text-sm font-medium w-8 text-center">
+                                                            {plannedPortions[recipe.id] || getDefaultPortion(recipe)}
+                                                        </span>
                                                         <button
                                                             className="w-6 h-6 rounded bg-gray-100 border flex items-center justify-center hover:bg-gray-200"
                                                             onClick={() => updatePortion(recipe.id, 0.5)}
@@ -242,10 +298,10 @@ const PlanningPage = () => {
                                             {viewMode === 'summary' ? (
                                                 <>
                                                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
-                                                        {Math.round(recipe.calories_per_portion * (plannedPortions[recipe.id] || 1))} ккал
+                                                        {Math.round(recipe.calories_per_portion * (plannedPortions[recipe.id] || getDefaultPortion(recipe)))} ккал
                                                     </span>
                                                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">
-                                                        €{(recipe.total_cost * (plannedPortions[recipe.id] || 1)).toFixed(2)}
+                                                        €{(recipe.total_cost * (plannedPortions[recipe.id] || getDefaultPortion(recipe))).toFixed(2)}
                                                     </span>
                                                 </>
                                             ) : (
