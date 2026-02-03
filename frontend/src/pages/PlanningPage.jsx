@@ -65,6 +65,46 @@ const PlanningPage = () => {
         localStorage.setItem('planning_portions', JSON.stringify(plannedPortions));
     }, [plannedPortions]);
 
+    // Eaters Count
+    const [eatersCount, setEatersCount] = useState(() => {
+        const saved = localStorage.getItem('planning_eaters_count');
+        return saved ? parseInt(saved) : 2;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('planning_eaters_count', eatersCount);
+    }, [eatersCount]);
+
+    useEffect(() => {
+        // Try to fetch family count if not manually set (or just always fetch to verify default if needed, 
+        // but here we only set if localStorage was empty? No, we set default 2. 
+        // Let's check: if localStorage had nothing, we want to maybe fetch.
+        // Or better: just fetch and if user hasn't interactively changed it? 
+        // Simplest: Fetch, and if current state is equal to default 2 (likely unconfigured), update it?
+        // Or just let user invoke it? 
+        // Requirement: "default eaters count equals defined users in admin".
+        // So on mount, if we don't have a strong user preference saved, or maybe even if we do?
+        // Let's trust localStorage if it exists. If not (or if it's default 2?), maybe check?
+        // Actually, user said "default equals...", implying if I reset or first load.
+        // Let's do: if localStorage was empty (detected by some flag?) -> we already set 2.
+        // Let's refine initial state:
+        // We can't easily detect "empty localStorage" inside useState callback side effects.
+        // Let's do a fetch inside useEffect and setEatersCount if we want to sync.
+        // User might be annoyed if he set it to 1 and we force it to 3.
+        // Only set if we haven't saved a preference? 
+        // Let's assume if localStorage.getItem('planning_eaters_count') is null, we fetch.
+        if (localStorage.getItem('planning_eaters_count') === null) {
+            fetch('/api/admin/family')
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data) && data.length > 0) {
+                        setEatersCount(data.length);
+                    }
+                })
+                .catch(console.error);
+        }
+    }, []);
+
     const updatePortion = (id, change) => {
         setPlannedPortions(prev => {
             let current = prev[id];
@@ -99,8 +139,14 @@ const PlanningPage = () => {
         if (plannedMeals.length > 0 && !window.confirm("Это действие перезапишет текущее расписание по дням. Продолжить?")) return;
 
         const newMeals = [];
+        const usedSlots = {}; // Key: "day-type", Value: true (to avoid overwriting if we wanted unique slots, but we allow multiple?)
+        // Actually, previous logic didn't check for collisions, just pushed.
+
+        // Helper to get next day index (0-6)
+        const getNextDay = (currentDay) => (currentDay + 1) % 7;
+
         plannedRecipes.forEach(recipe => {
-            const count = Math.round(plannedPortions[recipe.id] || getDefaultPortion(recipe));
+            const totalPortions = Math.round(plannedPortions[recipe.id] || getDefaultPortion(recipe));
 
             // Determine valid meal types specific to this recipe
             const validTypes = mealTypes
@@ -109,14 +155,42 @@ const PlanningPage = () => {
 
             if (validTypes.length === 0) return;
 
-            for (let i = 0; i < count; i++) {
-                const randomDay = Math.floor(Math.random() * 7);
-                const randomType = validTypes[Math.floor(Math.random() * validTypes.length)];
-                newMeals.push({
-                    day: randomDay,
-                    type: randomType,
-                    recipeId: recipe.id,
-                });
+            // Chunk portions by eatersCount
+            // Example: 6 portions, 2 eaters -> [2, 2, 2] -> 3 meals
+            // Example: 5 portions, 2 eaters -> [2, 2, 1] -> 3 meals
+            let remaining = totalPortions;
+            let currentDay = Math.floor(Math.random() * 7); // Start random day
+
+            while (remaining > 0) {
+                // If we have distinct types (e.g. Lunch/Dinner), we might want to stick to one type for the sequence?
+                // Or allows switching? Typically "Leftovers" are same type.
+                // Let's pick a random type for the START of the sequence, and try to stick to it?
+                // Or just random every time? Sequential usually implies consistency.
+                const type = validTypes[Math.floor(Math.random() * validTypes.length)];
+
+                const chunk = Math.min(eatersCount, remaining);
+
+                // Add 'chunk' meals to 'currentDay'
+                // Note: our data model maps 1 meal item = 1 portion? or 1 recipe instance?
+                // The current model: `plannedMeals` is a list of objects.
+                // Rendering: `mealsInSlot.map(...)`.
+                // If I add 2 entries of same recipe to same day/type, it shows twice.
+                // "Porions" implies specific count.
+                // If I have 2 eaters, and I add this recipe to Monday Lunch, do I add it once (implying shared)?
+                // The UI `addMeal` does: `setPlannedMeals(prev => [...prev, { day, type, recipeId }])`.
+                // And rendering counts items.
+                // So for 2 eaters, we need to add 2 ENTRIES to the array.
+
+                for (let i = 0; i < chunk; i++) {
+                    newMeals.push({
+                        day: currentDay,
+                        type: type,
+                        recipeId: recipe.id,
+                    });
+                }
+
+                remaining -= chunk;
+                currentDay = getNextDay(currentDay);
             }
         });
 
@@ -311,6 +385,18 @@ const PlanningPage = () => {
                     )}
                     {viewMode === 'days' && (
                         <>
+                            <div className="flex items-center gap-2 mr-4 bg-white border rounded px-2 py-1">
+                                <span className="text-xs text-gray-500 font-bold">Едоков:</span>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    value={eatersCount}
+                                    onChange={(e) => setEatersCount(parseInt(e.target.value) || 1)}
+                                    className="w-10 text-sm border-none outline-none text-center font-bold text-gray-700 p-0"
+                                />
+                            </div>
+
                             <button
                                 onClick={autoDistribute}
                                 className="text-sm bg-purple-100 text-purple-700 px-3 py-1.5 rounded hover:bg-purple-200 mr-4 font-medium transition-colors"
