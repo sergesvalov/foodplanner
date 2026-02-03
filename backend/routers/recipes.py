@@ -26,7 +26,9 @@ def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):
         title=recipe.title, 
         description=recipe.description,
         portions=recipe.portions,
-        category=recipe.category # <-- Сохраняем категорию
+        portions=recipe.portions,
+        category=recipe.category, # <-- Сохраняем категорию
+        rating=recipe.rating # <-- Сохраняем рейтинг
     )
     db.add(db_recipe)
     db.commit()
@@ -50,7 +52,9 @@ def update_recipe(recipe_id: int, recipe: schemas.RecipeCreate, db: Session = De
     db_recipe.title = recipe.title
     db_recipe.description = recipe.description
     db_recipe.portions = recipe.portions
+    db_recipe.portions = recipe.portions
     db_recipe.category = recipe.category # <-- Обновляем категорию
+    db_recipe.rating = recipe.rating # <-- Обновляем рейтинг
     
     db.query(models.RecipeIngredient).filter(models.RecipeIngredient.recipe_id == recipe_id).delete()
     for item in recipe.ingredients:
@@ -82,7 +86,9 @@ def export_recipes(db: Session = Depends(get_db)):
         "title": r.title, 
         "description": r.description,
         "portions": r.portions,
-        "category": r.category 
+        "portions": r.portions,
+        "category": r.category,
+        "rating": r.rating 
     } for r in recipes]
     try:
         with open(EXPORT_PATH, "w", encoding="utf-8") as f:
@@ -116,7 +122,10 @@ def import_recipes(db: Session = Depends(get_db)):
                 title=title, 
                 description=description, 
                 portions=portions,
-                category=category
+                description=description, 
+                portions=portions,
+                category=category,
+                rating=item.get("rating", 0)
             )
             db.add(new_recipe)
             created += 1
@@ -130,6 +139,11 @@ def import_recipes(db: Session = Depends(get_db)):
                 updated_flag = True
             if db_recipe.category != category:
                 db_recipe.category = category
+                updated_flag = True
+            
+            rating = item.get("rating", 0)
+            if db_recipe.rating != rating:
+                db_recipe.rating = rating
                 updated_flag = True
             
             if updated_flag:
