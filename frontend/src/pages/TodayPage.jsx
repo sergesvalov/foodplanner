@@ -56,13 +56,18 @@ const TodayPage = () => {
 
                 const factor = isPieces ? qty : (qty / 100);
 
-                if (!isNaN(factor)) {
+                if (Number.isFinite(factor)) {
                     totalCost += (p.price || 0) * (isPieces ? qty : (qty / (p.amount || 1) * (p.price_per_unit || 1)));
 
-                    totalCals += (p.calories || 0) * factor;
-                    totalProt += (p.proteins || 0) * factor;
-                    totalFat += (p.fats || 0) * factor;
-                    totalCarb += (p.carbs || 0) * factor;
+                    const safeVal = (v) => {
+                        const n = parseFloat(v);
+                        return Number.isFinite(n) ? n : 0;
+                    };
+
+                    totalCals += safeVal(p.calories) * factor;
+                    totalProt += safeVal(p.proteins) * factor;
+                    totalFat += safeVal(p.fats) * factor;
+                    totalCarb += safeVal(p.carbs) * factor;
                 }
             });
         }
