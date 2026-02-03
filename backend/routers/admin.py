@@ -86,8 +86,11 @@ def add_family_member(member: schemas.FamilyMemberCreate, db: Session = Depends(
     new_member = models.FamilyMember(
         name=member.name, 
         color=member.color,
-        # Сохраняем калории
-        max_calories=member.max_calories
+        # Сохраняем калории и БЖУ
+        max_calories=member.max_calories,
+        max_proteins=member.max_proteins,
+        max_fats=member.max_fats,
+        max_carbs=member.max_carbs
     )
     db.add(new_member)
     db.commit()
@@ -103,10 +106,14 @@ def update_family_member(member_id: int, member: schemas.FamilyMemberCreate, db:
     
     db_member.name = member.name
     db_member.color = member.color
-    # Обновляем калории
+    # Обновляем калории и БЖУ
     db_member.max_calories = member.max_calories
+    db_member.max_proteins = member.max_proteins
+    db_member.max_fats = member.max_fats
+    db_member.max_carbs = member.max_carbs
     
     db.commit()
+    db_member.max_proteins = member.max_proteins
     db.refresh(db_member)
     return db_member
 # -----------------------------------------
@@ -126,7 +133,14 @@ def export_settings(db: Session = Depends(get_db)):
         data = {
             "app_settings": [{"key": s.key, "value": s.value} for s in db.query(models.AppSetting).all()],
             "telegram_users": [{"name": u.name, "chat_id": u.chat_id} for u in db.query(models.TelegramUser).all()],
-            "family_members": [{"name": f.name, "color": f.color, "max_calories": f.max_calories} for f in db.query(models.FamilyMember).all()]
+            "family_members": [{
+                "name": f.name, 
+                "color": f.color, 
+                "max_calories": f.max_calories,
+                "max_proteins": f.max_proteins,
+                "max_fats": f.max_fats,
+                "max_carbs": f.max_carbs
+            } for f in db.query(models.FamilyMember).all()]
         }
         with open(SETTINGS_BACKUP_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
@@ -148,7 +162,10 @@ def import_settings(db: Session = Depends(get_db)):
             db.add(models.FamilyMember(
                 name=f["name"], 
                 color=f["color"],
-                max_calories=f.get("max_calories", 2000)
+                max_calories=f.get("max_calories", 2000),
+                max_proteins=f.get("max_proteins", 135),
+                max_fats=f.get("max_fats", 100),
+                max_carbs=f.get("max_carbs", 300)
             ))
         
         db.commit()
