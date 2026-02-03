@@ -12,10 +12,32 @@ const PlanningPage = () => {
             .catch(err => console.error(err));
     }, []);
 
+    // State for hidden recipes
+    const [hiddenIds, setHiddenIds] = useState(() => {
+        const saved = localStorage.getItem('planning_hidden_recipes');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('planning_hidden_recipes', JSON.stringify(hiddenIds));
+    }, [hiddenIds]);
+
+    const hideRecipe = (e, id) => {
+        e.stopPropagation(); // Prevent card click
+        if (!window.confirm("Скрыть рецепт из планирования?")) return;
+        setHiddenIds(prev => [...prev, id]);
+    };
+
+    const restoreAll = () => {
+        if (!window.confirm("Показать все скрытые рецепты?")) return;
+        setHiddenIds([]);
+    };
+
     // Helper to filter recipes by multiple categories
     const getRecipesByCategories = (categories) => {
         return recipes
             .filter(r => categories.includes(r.category))
+            .filter(r => !hiddenIds.includes(r.id)) // Filter hidden
             .sort((a, b) => (b.rating || 0) - (a.rating || 0));
     };
 
@@ -43,7 +65,17 @@ const PlanningPage = () => {
 
     return (
         <div className="container mx-auto max-w-7xl p-4 h-[calc(100vh-4rem)] flex flex-col">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 shrink-0">Планирование меню</h2>
+            <div className="flex justify-between items-center mb-6 shrink-0">
+                <h2 className="text-2xl font-bold text-gray-800">Планирование меню</h2>
+                {hiddenIds.length > 0 && (
+                    <button
+                        onClick={restoreAll}
+                        className="text-sm text-indigo-600 hover:text-indigo-800 underline"
+                    >
+                        Показать скрытые ({hiddenIds.length})
+                    </button>
+                )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 min-h-0">
                 {sections.map((section, idx) => (
@@ -71,6 +103,13 @@ const PlanningPage = () => {
                                             </span>
                                         )}
                                     </div>
+                                    <button
+                                        onClick={(e) => hideRecipe(e, recipe.id)}
+                                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1"
+                                        title="Скрыть из планирования"
+                                    >
+                                        ❌
+                                    </button>
 
                                     <div className="flex flex-wrap gap-1 mt-2">
                                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
