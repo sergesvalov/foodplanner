@@ -135,7 +135,7 @@ const ProductsPage = () => {
 
       if (res.ok) {
         fetchProducts();
-        resetForm();
+        // resetForm(); // Убрали очистку по просьбе пользователя
       }
     } catch (err) { console.error(err); }
   };
@@ -208,7 +208,7 @@ const ProductsPage = () => {
       if (resRecipe.ok) {
         alert(`✅ Продукт сохранен и рецепт "${recipeData.title}" создан!`);
         fetchProducts();
-        resetForm();
+        // resetForm(); // Убрали очистку
       } else {
         alert("Продукт сохранен, но ошибка создания рецепта: " + recipeData.detail);
         fetchProducts(); // Refresh anyway
@@ -279,9 +279,9 @@ const ProductsPage = () => {
             <span className={editingId ? "text-yellow-600" : "text-indigo-600"}>
               {editingId ? 'Редактирование' : 'Новый продукт'}
             </span>
-            {editingId && (
+            {(editingId || form.name) && (
               <button onClick={resetForm} className="text-xs text-gray-500 hover:text-gray-800 underline">
-                Отмена
+                {editingId ? 'Отмена' : 'Очистить'}
               </button>
             )}
           </h3>
