@@ -533,8 +533,11 @@ const PlanItemCard = ({ item, onRemove, onPortionChange, onUserChange, calculate
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                             const val = parseFloat(e.target.value);
-                            // Validates and saves immediately
-                            if (!isNaN(val) && val > 0 && val <= 99) onPortionChange(item.id, val, true);
+                            // Validates: not NaN, range 0.1-99, and STRICTLY 0.5 step (0.5, 1.0, 1.5...)
+                            // (val * 2) % 1 === 0 detects 0.5 steps robustly
+                            if (!isNaN(val) && val > 0 && val <= 99 && (val * 2) % 1 === 0) {
+                                onPortionChange(item.id, val, true);
+                            }
                         }}
                     />
                 </div>
