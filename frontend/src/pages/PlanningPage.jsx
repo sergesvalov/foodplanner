@@ -139,8 +139,7 @@ const PlanningPage = () => {
         if (plannedMeals.length > 0 && !window.confirm("Это действие перезапишет текущее расписание по дням. Продолжить?")) return;
 
         const newMeals = [];
-        const usedSlots = {}; // Key: "day-type", Value: true (to avoid overwriting if we wanted unique slots, but we allow multiple?)
-        // Actually, previous logic didn't check for collisions, just pushed.
+        const usedSlots = new Set(); // Key: "day-type"
 
         // Helper to get next day index (0-6)
         const getNextDay = (currentDay) => (currentDay + 1) % 7;
@@ -156,41 +155,61 @@ const PlanningPage = () => {
             if (validTypes.length === 0) return;
 
             // Chunk portions by eatersCount
-            // Example: 6 portions, 2 eaters -> [2, 2, 2] -> 3 meals
-            // Example: 5 portions, 2 eaters -> [2, 2, 1] -> 3 meals
             let remaining = totalPortions;
             let currentDay = Math.floor(Math.random() * 7); // Start random day
 
             while (remaining > 0) {
-                // If we have distinct types (e.g. Lunch/Dinner), we might want to stick to one type for the sequence?
-                // Or allows switching? Typically "Leftovers" are same type.
-                // Let's pick a random type for the START of the sequence, and try to stick to it?
-                // Or just random every time? Sequential usually implies consistency.
-                const type = validTypes[Math.floor(Math.random() * validTypes.length)];
+                const chunk = Math.min(eatersCount, remaining); // Can be less than eatersCount if leftover
 
-                const chunk = Math.min(eatersCount, remaining);
+                // Try to find a free slot for this chunk
+                // We prefer to keep the same type if possible for the sequence? 
+                // Or just pick a valid type?
+                // Let's iterate days until we find a free slot of ANY valid type for this recipe.
+                // Or better: Try currentDay with random valid type, if busy, try next type, if all types busy, next day.
 
-                // Add 'chunk' meals to 'currentDay'
-                // Note: our data model maps 1 meal item = 1 portion? or 1 recipe instance?
-                // The current model: `plannedMeals` is a list of objects.
-                // Rendering: `mealsInSlot.map(...)`.
-                // If I add 2 entries of same recipe to same day/type, it shows twice.
-                // "Porions" implies specific count.
-                // If I have 2 eaters, and I add this recipe to Monday Lunch, do I add it once (implying shared)?
-                // The UI `addMeal` does: `setPlannedMeals(prev => [...prev, { day, type, recipeId }])`.
-                // And rendering counts items.
-                // So for 2 eaters, we need to add 2 ENTRIES to the array.
+                let placed = false;
+                let attempts = 0;
 
-                for (let i = 0; i < chunk; i++) {
-                    newMeals.push({
-                        day: currentDay,
-                        type: type,
-                        recipeId: recipe.id,
-                    });
+                // Try to find a slot starting from currentDay
+                while (!placed && attempts < 14) { // Limit attempts to avoid infinite loop (2 weeks scan)
+                    // Shuffle valid types to avoid bias? Or sequential? Random is fine.
+                    // Let's try all valid types for this day.
+                    const shuffledTypes = [...validTypes].sort(() => 0.5 - Math.random());
+
+                    for (const type of shuffledTypes) {
+                        const slotKey = `${currentDay}-${type}`;
+                        if (!usedSlots.has(slotKey)) {
+                            // Found a free slot!
+                            usedSlots.add(slotKey);
+
+                            // Add 'chunk' entries
+                            for (let i = 0; i < chunk; i++) {
+                                newMeals.push({
+                                    day: currentDay,
+                                    type: type,
+                                    recipeId: recipe.id,
+                                });
+                            }
+
+                            placed = true;
+                            break;
+                        }
+                    }
+
+                    if (!placed) {
+                        currentDay = getNextDay(currentDay);
+                        attempts++;
+                    }
                 }
 
+                // If we couldn't place it after scanning, we skip or force? 
+                // With current logic, we skip.
+
                 remaining -= chunk;
-                currentDay = getNextDay(currentDay);
+                // Prepare for next chunk: preferably next day
+                if (placed) {
+                    currentDay = getNextDay(currentDay);
+                }
             }
         });
 
