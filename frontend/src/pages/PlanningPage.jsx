@@ -165,6 +165,9 @@ const PlanningPage = () => {
         // Track recipe locks: "day-type" -> recipeId (Only for Lunch/Dinner)
         const slotLocks = new Map();
 
+        // Track member history to enforce consistency: MemberID -> Set<RecipeID>
+        const memberRecipeStats = new Map();
+
         // Define consumers: either Real Family Members or Mock IDs based on eatersCount
         let consumers = [];
         if (familyMembers.length > 0) {
@@ -183,6 +186,9 @@ const PlanningPage = () => {
             const id = `mock-${consumers.length + 1}`;
             consumers.push({ id: id, name: `Едок ${consumers.length + 1}`, color: 'gray' });
         }
+
+        // Initialize stats
+        consumers.forEach(c => memberRecipeStats.set(c.id, new Set()));
 
         // Helper to get next day index (0-6)
         const getNextDay = (currentDay) => (currentDay + 1) % 7;
@@ -211,7 +217,6 @@ const PlanningPage = () => {
                 //    So we should check availability for EACH consumer in the slot.
 
                 let placedType = null;
-
                 let placedCountInChunk = 0;
                 let foundSlot = false;
                 let attempts = 0;
@@ -234,29 +239,45 @@ const PlanningPage = () => {
                         }
 
                         // Check which consumers are free in this slot
-                        const freeConsumers = consumers.filter(c => !usedSlots.has(`${currentDay}-${type}-${c.id}`));
+                        let freeConsumers = consumers.filter(c => !usedSlots.has(`${currentDay}-${type}-${c.id}`));
 
-                        // Strict Group Dining:
-                        // Ideally we want to place 'min(remaining, consumers.length)' portions.
-                        // If we cannot place ALL of them in this slot, we SKIP this slot (unless remaining itself is small).
-                        const desiredChunk = Math.min(remaining, consumers.length);
+                        // Logic Branch: Type-Specific Behavior
+                        let desiredChunk = 0;
+                        let targets = [];
 
-                        if (freeConsumers.length < desiredChunk) {
-                            // Not enough space for the whole group (or the whole remainder).
-                            // Skip this slot to prevent splitting the group.
-                            continue;
+                        if (type === 'breakfast') {
+                            // Breakfast: High Continuity (User Preference) but Mixed Dining allowed
+                            // Sort free consumers: Priority to those who already ate this recipe
+                            freeConsumers.sort((a, b) => {
+                                const hasA = memberRecipeStats.get(a.id).has(recipe.id) ? 1 : 0;
+                                const hasB = memberRecipeStats.get(b.id).has(recipe.id) ? 1 : 0;
+                                // If affinity differs, prioritize affinity. Else random.
+                                if (hasA !== hasB) return hasB - hasA;
+                                return 0.5 - Math.random();
+                            });
+
+                            // For breakfast, we can place individual portions.
+                            desiredChunk = Math.min(remaining, freeConsumers.length);
+                            if (desiredChunk > 0) {
+                                targets = freeConsumers.slice(0, desiredChunk);
+                            }
+
+                        } else {
+                            // Lunch/Dinner: Strict Group Dining (No Split unless leftover)
+                            desiredChunk = Math.min(remaining, consumers.length);
+
+                            if (freeConsumers.length >= desiredChunk) {
+                                // We have enough space for the Strict Group
+                                // Randomize targets from the free ones? Or just take first N?
+                                // Since we require group size availability, usually freeConsumers == group size.
+                                targets = freeConsumers.sort(() => 0.5 - Math.random()).slice(0, desiredChunk);
+                            }
                         }
 
-                        if (freeConsumers.length > 0) {
-                            const countToPlace = desiredChunk;
-
-                            // Assign to the first 'countToPlace' free consumers
-                            // (Randomize selection of free consumers to be fair?)
-                            // User: "assign to random eater" if one portion.
-                            const targets = freeConsumers.sort(() => 0.5 - Math.random()).slice(0, countToPlace);
-
+                        if (targets.length > 0) {
                             targets.forEach(consumer => {
                                 usedSlots.add(`${currentDay}-${type}-${consumer.id}`);
+                                memberRecipeStats.get(consumer.id).add(recipe.id); // Mark history
                                 newMeals.push({
                                     day: currentDay,
                                     type: type,
@@ -270,8 +291,8 @@ const PlanningPage = () => {
                                 slotLocks.set(slotKey, recipe.id);
                             }
 
-                            remaining -= countToPlace;
-                            placedCountInChunk = countToPlace;
+                            remaining -= targets.length;
+                            placedCountInChunk = targets.length;
                             placedType = type;
                             foundSlot = true;
                             break;
