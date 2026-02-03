@@ -26,7 +26,8 @@ const TodayPage = () => {
         fetch('/api/plan/')
             .then(res => res.json())
             .then(data => {
-                const filtered = (Array.isArray(data) ? data : []).filter(item => item.day_of_week === todayName);
+                const filtered = (Array.isArray(data) ? data : [])
+                    .filter(item => item.day_of_week === todayName && item.recipe);
                 setTodayItems(filtered);
                 setLoading(false);
             })
