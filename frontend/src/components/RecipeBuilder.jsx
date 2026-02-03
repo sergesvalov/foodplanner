@@ -126,9 +126,16 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     const spoon = SPOON_UNITS.find(s => s.label === currentUnit);
     if (spoon) {
       const isBigUnit = ['л', 'кг', 'l', 'kg'].includes(baseUnitLower);
-
       const factor = isBigUnit ? spoon.value / 1000 : spoon.value;
       return parseFloat(qty) * factor;
+    }
+
+    // Обработка "1 стакан" (150 г/мл)
+    if (currentUnit === '1 стакан') {
+      const isBigUnit = ['л', 'кг', 'l', 'kg'].includes(baseUnitLower);
+      // Если литры/кг -> 0.15, если мл/г -> 150
+      const amount = isBigUnit ? 0.150 : 150;
+      return parseFloat(qty) * amount;
     }
 
     return parseFloat(qty);
@@ -328,6 +335,11 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
             if (['g', 'г'].includes(baseUnitLower)) availableUnits.push('кг');
             if (['l', 'л'].includes(baseUnitLower)) availableUnits.push('мл');
             if (['ml', 'мл'].includes(baseUnitLower)) availableUnits.push('л');
+
+            // Добавляем опцию "1 стакан" для жидких/сыпучих (по весу)
+            if (['l', 'л', 'ml', 'мл', 'g', 'г', 'kg', 'кг'].includes(baseUnitLower)) {
+              availableUnits.push('1 стакан');
+            }
 
             if (!isPieces) {
               availableUnits = [...availableUnits, ...SPOON_UNITS.map(s => s.label)];
