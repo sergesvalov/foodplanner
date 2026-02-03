@@ -234,10 +234,19 @@ const PlanningPage = () => {
                         // Check which consumers are free in this slot
                         const freeConsumers = consumers.filter(c => !usedSlots.has(`${currentDay}-${type}-${c.id}`));
 
+                        // Strict Group Dining:
+                        // Ideally we want to place 'min(remaining, consumers.length)' portions.
+                        // If we cannot place ALL of them in this slot, we SKIP this slot (unless remaining itself is small).
+                        const desiredChunk = Math.min(remaining, consumers.length);
+
+                        if (freeConsumers.length < desiredChunk) {
+                            // Not enough space for the whole group (or the whole remainder).
+                            // Skip this slot to prevent splitting the group.
+                            continue;
+                        }
+
                         if (freeConsumers.length > 0) {
-                            // We can place some portions here!
-                            // How many? Min(remaining, freeConsumers.length)
-                            const countToPlace = Math.min(remaining, freeConsumers.length);
+                            const countToPlace = desiredChunk;
 
                             // Assign to the first 'countToPlace' free consumers
                             // (Randomize selection of free consumers to be fair?)
