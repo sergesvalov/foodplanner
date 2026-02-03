@@ -227,12 +227,19 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
       totalFat = Math.round(prodFat * normalizedQty);
       totalCarb = Math.round(prodCarb * normalizedQty);
     }
-    // Иначе (граммы/мл) -> считаем от 100
+    // Иначе (граммы/мл/кг/л) -> считаем от 100
     else {
-      totalCals = Math.round((prodCals / 100) * normalizedQty);
-      totalProt = Math.round((prodProt / 100) * normalizedQty);
-      totalFat = Math.round((prodFat / 100) * normalizedQty);
-      totalCarb = Math.round((prodCarb / 100) * normalizedQty);
+      // КОРРЕКЦИЯ: Если база в КГ или Л, переводим в Г/МЛ для формулы
+      let calcQty = normalizedQty;
+      const u = (product.unit || '').toLowerCase();
+      if (['kg', 'кг', 'l', 'л'].includes(u)) {
+        calcQty = normalizedQty * 1000;
+      }
+
+      totalCals = Math.round((prodCals / 100) * calcQty);
+      totalProt = Math.round((prodProt / 100) * calcQty);
+      totalFat = Math.round((prodFat / 100) * calcQty);
+      totalCarb = Math.round((prodCarb / 100) * calcQty);
     }
 
     const displayQty = parseFloat(normalizedQty.toFixed(4));
