@@ -96,6 +96,40 @@ const PlanningPage = () => {
         setSelectedIds([]);
     };
 
+    const selectAll = () => {
+        if (!window.confirm("Выбрать все доступные рецепты?")) return;
+        setSelectedIds(recipes.map(r => r.id));
+    };
+
+    const autoDistribute = () => {
+        if (plannedMeals.length > 0 && !window.confirm("Это действие перезапишет текущее расписание по дням. Продолжить?")) return;
+
+        const newMeals = [];
+        plannedRecipes.forEach(recipe => {
+            const count = Math.round(plannedPortions[recipe.id] || getDefaultPortion(recipe));
+
+            // Determine valid meal types specific to this recipe
+            const validTypes = mealTypes
+                .filter(mt => mt.categories.includes(recipe.category))
+                .map(mt => mt.id);
+
+            if (validTypes.length === 0) return;
+
+            for (let i = 0; i < count; i++) {
+                const randomDay = Math.floor(Math.random() * 7);
+                const randomType = validTypes[Math.floor(Math.random() * validTypes.length)];
+                newMeals.push({
+                    day: randomDay,
+                    type: randomType,
+                    recipeId: recipe.id,
+                    // uniquely identify instance if needed, but simple obj is fine
+                });
+            }
+        });
+
+        setPlannedMeals(newMeals);
+    };
+
     // Helper to filter recipes by multiple categories
     const getRecipesByCategories = (categories, sectionTitle, sourceList) => {
         return sourceList
@@ -240,6 +274,12 @@ const PlanningPage = () => {
                 <div className="flex items-center gap-4">
                     {viewMode === 'browse' && (
                         <>
+                            <button
+                                onClick={selectAll}
+                                className="text-sm text-indigo-600 hover:text-indigo-800 underline mr-4"
+                            >
+                                Выбрать все
+                            </button>
                             {selectedIds.length > 0 && (
                                 <button
                                     onClick={clearSelection}
@@ -278,6 +318,14 @@ const PlanningPage = () => {
                     )}
                     {viewMode === 'days' && (
                         <>
+                            <button
+                                onClick={autoDistribute}
+                                className="text-sm bg-purple-100 text-purple-700 px-3 py-1.5 rounded hover:bg-purple-200 mr-4 font-medium transition-colors"
+                                title="Случайно распределить выбранные блюда по дням"
+                            >
+                                🪄 Авто-распределение
+                            </button>
+
                             <div className="text-right mr-4 text-sm hidden md:block">
                                 <span className="font-bold text-gray-900 block">€{totalStats.cost.toFixed(2)}</span>
                                 <span className="text-gray-500 block">{Math.round(totalStats.calories)} ккал</span>
