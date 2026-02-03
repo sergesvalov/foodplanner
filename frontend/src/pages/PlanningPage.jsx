@@ -480,18 +480,6 @@ const PlanningPage = () => {
                     )}
                     {viewMode === 'days' && (
                         <>
-                            <div className="flex items-center gap-2 mr-4 bg-white border rounded px-2 py-1">
-                                <span className="text-xs text-gray-500 font-bold">Едоков:</span>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="10"
-                                    value={eatersCount}
-                                    onChange={(e) => setEatersCount(parseInt(e.target.value) || 1)}
-                                    className="w-10 text-sm border-none outline-none text-center font-bold text-gray-700 p-0"
-                                />
-                            </div>
-
                             <button
                                 onClick={autoDistribute}
                                 className="text-sm bg-purple-100 text-purple-700 px-3 py-1.5 rounded hover:bg-purple-200 mr-4 font-medium transition-colors"
@@ -628,7 +616,7 @@ const PlanningPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-1 overflow-y-auto pb-10 items-start">
                     {weekDays.map((dayName, dIdx) => (
                         <div key={dIdx} className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-                            <div className="bg-gray-50 p-3 border-b text-center font-bold text-gray-700">
+                            <div className="bg-gray-50 sticky top-0 z-10 p-3 border-b text-center font-bold text-gray-700">
                                 {dayName}
                             </div>
                             <div className="flex-1 p-3 space-y-4">
