@@ -1,5 +1,18 @@
 # QA Guide for AI Agents
 
+## 0. AGENT DIRECTIVE (CRITICAL)
+**IF YOU ARE ASKED TO VERIFY BACKEND CHANGES:**
+You STRICTLY MUST NOT assume it works based on code analysis alone.
+**You MUST write a new test case** (or run existing ones) to prove it works.
+
+**Workflow:**
+1.  **Write Test**: Create `qa/tests/test_verify_fix.py` covering the specific logic.
+2.  **Run**: Execute the QA container.
+3.  **Check**: Analyze the report.
+4.  **Clean**: Ensure your test deletes any data it creates.
+
+---
+
 This document describes the automated testing infrastructure for the `FoodPlanner` backend.
 **Context:** The tests run in an isolated Docker container on a **remote production/staging server**.
 
