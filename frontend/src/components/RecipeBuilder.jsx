@@ -19,6 +19,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
     { id: 'soup', label: 'Первое' },
     { id: 'side', label: 'Гарнир' },
     { id: 'yummy', label: 'Вкусняшки' },
+    { id: 'drink', label: 'Напитки' },
     { id: 'other', label: 'Другое' },
   ];
 

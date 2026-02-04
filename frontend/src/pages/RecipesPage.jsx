@@ -8,6 +8,7 @@ const CATEGORY_LABELS = {
   soup: 'Первое',
   side: 'Гарнир',
   yummy: 'Вкусняшки',
+  drink: 'Напитки',
   other: 'Другое' // Добавлено явно
 };
 
@@ -18,6 +19,7 @@ const CATEGORY_COLORS = {
   soup: 'bg-red-100 text-red-800 border-red-200',
   side: 'bg-green-100 text-green-800 border-green-200',
   yummy: 'bg-pink-100 text-pink-800 border-pink-200',
+  drink: 'bg-teal-100 text-teal-800 border-teal-200',
   other: 'bg-gray-100 text-gray-800 border-gray-200'
 };
 
