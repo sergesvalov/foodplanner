@@ -23,15 +23,12 @@ def test_calorie_calculation_integrity():
     This test verifies that the recipe calories are correctly derived from ingredients.
     """
     # 1. Create Ingredients with known calories
-    p1 = create_product({"name": "RefactorSafeP1", "calories": 100, "price": 10, "unit": "kg", "amount": 1}) # 100 kcal/100g (usually) or per unit depending on logic
-    # CAUTION: The API logic for ingredients needs to be understood. 
-    # Usually: product.calories is per 100g.
-    # RecipeIngredient.quantity is in grams?
+    # P1: 1000g (1kg) pack costs 10. Unit is 'g'.
+    p1 = create_product({"name": "RefactorSafeP1", "calories": 100, "price": 10, "unit": "g", "amount": 1000}) 
     
-    # Let's assume standard logic: 
+    # Logic expectation:
     # Product: 100 kcal / 100g.
-    # Recipe uses: 500g.
-    # Total calories should be 500.
+    # Price: 10 euro / 1000g = 0.01 euro/g.
     
     try:
         recipe_data = {
@@ -41,7 +38,7 @@ def test_calorie_calculation_integrity():
             "category": "other",
             "rating": 0,
             "ingredients": [
-                {"product_id": p1["id"], "quantity": 500} 
+                {"product_id": p1["id"], "quantity": 500} # 500g
             ]
         }
         

@@ -50,7 +50,8 @@ def test_create_recipe(product_fixture):
     
     assert created_recipe["title"] == title
     assert len(created_recipe["ingredients"]) == 1
-    assert created_recipe["ingredients"][0]["product_id"] == product_fixture["id"]
+    # Schema returns nested product object, not 'product_id' at top level
+    assert created_recipe["ingredients"][0]["product"]["id"] == product_fixture["id"]
     
     recipe_id = created_recipe["id"]
     
