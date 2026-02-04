@@ -152,18 +152,14 @@ def import_recipes(db: Session = Depends(get_db)):
 class TelegramSendRequest(BaseModel):
     chat_id: str
 
+from services.telegram import send_telegram_message
+
 @router.post("/{recipe_id}/send")
 def send_recipe_telegram(recipe_id: int, body: TelegramSendRequest, db: Session = Depends(get_db)):
     db_recipe = db.query(models.Recipe).filter(models.Recipe.id == recipe_id).first()
     if not db_recipe:
         raise HTTPException(status_code=404, detail="Рецепт не найден")
 
-    setting = db.query(models.AppSetting).filter(models.AppSetting.key == "bot_token").first()
-    if not setting or not setting.value:
-        raise HTTPException(status_code=400, detail="Токен бота не настроен")
-    
-    bot_token = setting.value
-    
     # Формирование сообщения
     lines = [
         f"🍳 *{db_recipe.title}*",
@@ -180,17 +176,7 @@ def send_recipe_telegram(recipe_id: int, body: TelegramSendRequest, db: Session 
             lines.append(f"— {ing.product.name}: {ing.quantity} {ing.product.unit}")
             
     message_text = "\n".join(lines)
-    telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     
-    try:
-        resp = requests.post(telegram_url, json={
-            "chat_id": body.chat_id,
-            "text": message_text,
-            "parse_mode": "Markdown"
-        })
-        if resp.status_code != 200:
-            raise HTTPException(status_code=500, detail=f"Telegram Error: {resp.text}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Connection Error: {str(e)}")
+    send_telegram_message(db, body.chat_id, message_text)
 
     return {"status": "ok", "message": "Рецепт отправлен"}
