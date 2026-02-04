@@ -204,7 +204,7 @@ const TodayPage = () => {
                         const member = selectedPlanItem.family_member;
 
                         return (
-                            <div className="max-w-4xl mx-auto">
+                            <div className="w-full h-full">
 
                                 {/* Morning Takeaway List */}
                                 {(() => {
