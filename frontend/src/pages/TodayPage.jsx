@@ -281,9 +281,9 @@ const TodayPage = () => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                    {/* Ingredients */}
-                                    <div>
+                                <div className="flex flex-col md:flex-row gap-10 items-start">
+                                    {/* Ingredients - Fixed width sidebar */}
+                                    <div className="w-full md:w-80 shrink-0">
                                         <h3 className="font-bold text-gray-800 text-lg mb-4 border-b pb-2">Ингредиенты</h3>
                                         {!hasIngredients ? (
                                             <div className="text-gray-400 italic">В этом рецепте нет ингредиентов.</div>
@@ -317,8 +317,8 @@ const TodayPage = () => {
                                         )}
                                     </div>
 
-                                    {/* Instructions */}
-                                    <div>
+                                    {/* Instructions - Takes remaining space */}
+                                    <div className="flex-1">
                                         <h3 className="font-bold text-gray-800 text-lg mb-4 border-b pb-2">Способ приготовления</h3>
                                         <p className="text-gray-600 whitespace-pre-wrap leading-relaxed">
                                             {recipe.description || "Описание приготовления отсутствует."}
