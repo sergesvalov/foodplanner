@@ -96,7 +96,7 @@ const TodayPage = () => {
         <div className="flex h-[calc(100vh-64px)] bg-gray-100 overflow-hidden">
 
             {/* ЛЕВАЯ ПАНЕЛЬ: СТАТИСТИКА + РАСПИСАНИЕ (СПИСОК) */}
-            <div className="w-1/3 min-w-[350px] bg-white border-r border-gray-200 flex flex-col shadow-xl z-10">
+            <div className="w-1/4 min-w-[320px] bg-white border-r border-gray-200 flex flex-col shadow-xl z-10">
 
                 {/* СТАТИСТИКА СЕМЬИ (Фиксирована сверху) */}
                 <div className="p-4 bg-gray-50 border-b border-gray-200 shrink-0">
@@ -205,6 +205,50 @@ const TodayPage = () => {
 
                         return (
                             <div className="max-w-4xl mx-auto">
+
+                                {/* Morning Takeaway List */}
+                                {(() => {
+                                    const currentHour = new Date().getHours();
+                                    const isMorning = currentHour >= 0 && currentHour < 9;
+                                    const takeawayItems = todayItems.filter(item => item.meal_type === 'takeaway');
+
+                                    if (isMorning && takeawayItems.length > 0) {
+                                        return (
+                                            <div className="mb-8 bg-blue-50 border border-blue-100 rounded-xl p-6 shadow-sm">
+                                                <h3 className="text-sm font-bold text-blue-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                                    <span>🎒</span> Не забыть взять с собой!
+                                                </h3>
+                                                <div className="space-y-3">
+                                                    {takeawayItems.map(tItem => {
+                                                        const tRecipe = tItem.recipe;
+                                                        const tMember = tItem.family_member;
+                                                        return (
+                                                            <div key={tItem.id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-blue-100">
+                                                                <div className="flex items-center gap-3">
+                                                                    <input type="checkbox" className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300" />
+                                                                    <div>
+                                                                        <span className="font-bold text-gray-800 block text-sm">{tRecipe.title}</span>
+                                                                        {tMember && (
+                                                                            <span className={`text-[10px] font-bold text-white px-1.5 py-0.5 rounded bg-${tMember.color}-500`}>
+                                                                                {tMember.name}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <span className="text-xs font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                                                                    {tItem.portions} шт.
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+
+
                                 <div className="mb-8 border-b border-gray-100 pb-6">
                                     <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-2 block">
                                         Детали рецепта
