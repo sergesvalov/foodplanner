@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  qa:
+    build: .
+    container_name: foodplanner_qa
+    environment:
+      # Change this to the actual URL of your backend.
+      # If running on the same server as the backend containers:
+      # 1. Inspect the backend container network: docker inspect menu_backend
+      # 2. Or use the container name if on the same network.
+      # Defaulting to host.docker.internal for local testing, or assuming 'menu_backend' if added to network.
+      - API_URL=http://menu_backend:8000
+    # Optional: Connect to the same network as your app. 
+    # You usually need to know the name of the network created by the main docker-compose.
+    # Often it is 'foodplanner_default' or similar.
+    # networks:
+    #   - foodplanner_default
+
+    # For simple "run once and exit" usage:
+    # docker-compose -f qa/docker-compose.yml run --rm qa
