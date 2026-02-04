@@ -31,14 +31,28 @@ const TodayPage = () => {
                 setTodayItems(filtered);
 
                 // Auto-select first item
+                // Auto-select logic
                 let defaultId = null;
-                for (const meal of MEALS_ORDER) {
-                    const mealItem = filtered.find(item => item.meal_type === meal.id);
-                    if (mealItem) {
-                        defaultId = mealItem.id;
-                        break;
+                const currentHour = new Date().getHours();
+                const isMorning = currentHour >= 0 && currentHour < 9;
+
+                if (isMorning) {
+                    const breakfastItem = filtered.find(item => item.meal_type === 'breakfast');
+                    if (breakfastItem) {
+                        defaultId = breakfastItem.id;
                     }
                 }
+
+                if (!defaultId) {
+                    for (const meal of MEALS_ORDER) {
+                        const mealItem = filtered.find(item => item.meal_type === meal.id);
+                        if (mealItem) {
+                            defaultId = mealItem.id;
+                            break;
+                        }
+                    }
+                }
+
                 if (defaultId) setSelectedItemId(defaultId);
 
                 setLoading(false);
