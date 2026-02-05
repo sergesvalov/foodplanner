@@ -42,11 +42,6 @@ const ShoppingListPage = () => {
     };
   };
 
-  const changeWeek = (offset) => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + (offset * 7));
-    setCurrentDate(newDate);
-  };
   // ----------------------------------------
 
   useEffect(() => {
@@ -128,32 +123,10 @@ const ShoppingListPage = () => {
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Список покупок</h1>
-
-          {/* Week Selector */}
-          <div className="flex items-center gap-3 mt-2 text-gray-600 font-medium">
-            <button
-              onClick={() => changeWeek(-1)}
-              className="hover:text-gray-900 hover:bg-gray-100 p-1 rounded transition-colors text-lg"
-              title="Предыдущая неделя"
-            >
-              ◀
-            </button>
+          <div className="mt-2 text-gray-600 font-medium">
             <span className="bg-gray-100 px-3 py-1 rounded text-sm whitespace-nowrap">
-              {getWeekRange(currentDate).display}
+              Текущая неделя ({getWeekRange(new Date()).display})
             </span>
-            <button
-              onClick={() => changeWeek(1)}
-              className="hover:text-gray-900 hover:bg-gray-100 p-1 rounded transition-colors text-lg"
-              title="Следующая неделя"
-            >
-              ▶
-            </button>
-            <button
-              onClick={() => setCurrentDate(new Date())}
-              className="text-xs text-blue-600 hover:underline ml-2"
-            >
-              Сегодня
-            </button>
           </div>
         </div>
 
@@ -194,8 +167,8 @@ const ShoppingListPage = () => {
                   >
                     <td className="px-6 py-4 text-center">
                       <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isChecked
-                          ? 'bg-green-500 border-green-500 text-white'
-                          : 'border-gray-300 bg-white'
+                        ? 'bg-green-500 border-green-500 text-white'
+                        : 'border-gray-300 bg-white'
                         }`}>
                         {isChecked && "✓"}
                       </div>
