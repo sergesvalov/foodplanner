@@ -19,6 +19,7 @@ const DraggableRecipeList = () => {
     { id: 'side', label: '🍚 Гарнир' },
     { id: 'snack', label: '🥪 Перекус' },
     { id: 'yummy', label: '🍪 Вкусняшки' },
+    { id: 'drink', label: '🥤 Напитки' },
     { id: 'other', label: '📦 Другое' }
   ];
 
