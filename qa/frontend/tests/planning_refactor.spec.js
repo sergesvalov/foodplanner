@@ -22,9 +22,6 @@ test.describe('Planning Page Refactor Verification', () => {
         await expect(page.getByText('Ужин')).toBeVisible();
         await expect(page.getByText('Напитки')).not.toBeVisible();
 
-        // Click "Завтрак" to expand it
-        await page.getByText('Завтрак').click();
-
         // Check at least one "Hide" button exists (implies recipes are rendered)
         // Note: This depends on recipes existing in the backend. 
         // If no recipes, it shows "Нет рецептов".
