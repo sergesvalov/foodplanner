@@ -5,7 +5,7 @@ test('has title', async ({ page }) => {
 
     // Expect a title "to contain" a substring.
     // We might need to adjust this depending on the actual app title
-    await expect(page).toHaveTitle(/FoodPlanner/i);
+    await expect(page).toHaveTitle(/Food Planner/i);
 });
 
 test('shows login or main page', async ({ page }) => {
