@@ -19,3 +19,20 @@ services:
 
     # For simple "run once and exit" usage:
     # docker-compose -f qa/docker-compose.yml run --rm qa
+
+  frontend-qa:
+    build: ./frontend
+    container_name: foodplanner_frontend_qa
+    environment:
+      - BASE_URL=http://menu_frontend:80
+    # Connect to the same network as the app so we can reach menu_frontend
+    networks:
+      - foodplanner_default
+    depends_on:
+      - qa
+        # Optional, just to group them if needed, or better depend on frontend if we knew its service name here.
+        # Ideally this docker-compose should join the main network.
+
+networks:
+  foodplanner_default:
+    external: true

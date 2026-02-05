@@ -1,0 +1,13 @@
+{
+    "name": "foodplanner-frontend-qa",
+    "version": "1.0.0",
+    "description": "End-to-End tests for FoodPlanner Frontend",
+    "main": "index.js",
+    "scripts": {
+        "test": "npx playwright test"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.42.1",
+        "@types/node": "^20.11.24"
+    }
+}
