@@ -341,27 +341,24 @@ const StatisticsPage = () => {
                       </div>
                     </td>
                     <td className="p-3 text-right bg-blue-50/30 align-middle">
-                      <div className="text-blue-600 font-medium flex justify-between">
-                        <span>{dayStat.prot} <span className="text-blue-300 text-xs">/ {dailyLimit.prot}</span></span>
-                        <span className="text-xs font-bold text-blue-400">{Math.round(protPercent)}%</span>
+                      <div className="text-blue-600 font-medium text-xs whitespace-nowrap">
+                        {dayStat.prot} / <span className="text-blue-400">{dailyLimit.prot}</span> <span className="text-blue-500 font-bold ml-1">({Math.round(protPercent)}%)</span>
                       </div>
                       <div className="w-full h-1.5 bg-blue-200/50 rounded-full overflow-hidden mt-1">
                         <div className="h-full bg-blue-500 transition-all duration-500" style={{ width: `${protPercent}%` }}></div>
                       </div>
                     </td>
                     <td className="p-3 text-right bg-yellow-50/30 align-middle">
-                      <div className="text-yellow-600 font-medium flex justify-between">
-                        <span>{dayStat.fat} <span className="text-yellow-300 text-xs">/ {dailyLimit.fat}</span></span>
-                        <span className="text-xs font-bold text-yellow-400">{Math.round(fatPercent)}%</span>
+                      <div className="text-yellow-600 font-medium text-xs whitespace-nowrap">
+                        {dayStat.fat} / <span className="text-yellow-400">{dailyLimit.fat}</span> <span className="text-yellow-500 font-bold ml-1">({Math.round(fatPercent)}%)</span>
                       </div>
                       <div className="w-full h-1.5 bg-yellow-200/50 rounded-full overflow-hidden mt-1">
                         <div className="h-full bg-yellow-500 transition-all duration-500" style={{ width: `${fatPercent}%` }}></div>
                       </div>
                     </td>
                     <td className="p-3 text-right bg-red-50/30 align-middle">
-                      <div className="text-red-600 font-medium flex justify-between">
-                        <span>{dayStat.carb} <span className="text-red-300 text-xs">/ {dailyLimit.carb}</span></span>
-                        <span className="text-xs font-bold text-red-400">{Math.round(carbPercent)}%</span>
+                      <div className="text-red-600 font-medium text-xs whitespace-nowrap">
+                        {dayStat.carb} / <span className="text-red-400">{dailyLimit.carb}</span> <span className="text-red-500 font-bold ml-1">({Math.round(carbPercent)}%)</span>
                       </div>
                       <div className="w-full h-1.5 bg-red-200/50 rounded-full overflow-hidden mt-1">
                         <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${carbPercent}%` }}></div>
