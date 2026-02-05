@@ -384,15 +384,45 @@ const StatisticsPage = () => {
                       {/* Macro Balance Warning: if max diff > 5% */}
                       {(() => {
                         if (dayStat.itemsCount === 0) return null;
-                        const f = Math.min(fatPercent, 100);
-                        const c = Math.min(carbPercent, 100);
 
-                        // Fat vs Carb logic
-                        if (f < c - 5) {
-                          return <div className="text-orange-500 font-bold text-xs mt-1">недостаток жиров</div>;
-                        }
-                        if (f > c + 5) {
-                          return <div className="text-yellow-600 font-bold text-xs mt-1">избыток жиров</div>;
+                        // Calculate calories from each macro based on standard conversion
+                        // Protein = 4, Fat = 9, Carb = 4
+                        const pCal = dayStat.prot * 4;
+                        const fCal = dayStat.fat * 9;
+                        const cCal = dayStat.carb * 4;
+                        const totalCalcCals = pCal + fCal + cCal;
+
+                        if (totalCalcCals === 0) return null;
+
+                        const pPct = (pCal / totalCalcCals) * 100;
+                        const fPct = (fCal / totalCalcCals) * 100;
+                        const cPct = (cCal / totalCalcCals) * 100;
+
+                        const warnings = [];
+
+                        // 1. Proteins: 15-20%
+                        if (pPct < 15) warnings.push("Мало белков");
+                        // if (pPct > 20) warnings.push("Много белков"); // Optional
+
+                        // 2. Fats: 30% (buffer 25-35%)
+                        if (fPct < 25) warnings.push("Мало жиров");
+                        if (fPct > 35) warnings.push("Много жиров");
+
+                        // 3. Carbs: 50-55%
+                        if (cPct < 50) warnings.push("Мало углеводов");
+                        if (cPct > 55) warnings.push("Много углеводов");
+
+                        if (warnings.length > 0) {
+                          return (
+                            <div className="flex flex-col gap-0.5 mt-1">
+                              {warnings.map((w, i) => (
+                                <div key={i} className="text-orange-500 font-bold text-xs leading-tight">
+                                  {w}
+                                </div>
+                              ))}
+                              {/* <div className="text-[10px] text-gray-300">{Math.round(pPct)}/{Math.round(fPct)}/{Math.round(cPct)}</div> */}
+                            </div>
+                          );
                         }
                         return null;
                       })()}
