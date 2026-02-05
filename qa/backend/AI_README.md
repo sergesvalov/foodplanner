@@ -6,9 +6,10 @@ You STRICTLY MUST NOT assume it works based on code analysis alone.
 **You MUST write a new test case** (or run existing ones) to prove it works.
 
 **Workflow:**
-1.  **Write Test**: Create `qa/tests/test_verify_fix.py` covering the specific logic.
-2.  **Run**: Execute the QA container.
-3.  **Check**: Analyze the report.
+When you need to make changes and test them:
+1.  **Create Verification Test**: Create a test to verify the current behavior (reproduce the issue or check base state).
+2.  **Implement Change**: Make the change based on the test results.
+3.  **Verify Change**: Verify the change using the test.
 4.  **Clean**: Ensure your test deletes any data it creates.
 
 ---

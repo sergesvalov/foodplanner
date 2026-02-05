@@ -17,12 +17,12 @@ The tests run inside a Docker container (`frontend-qa`) to ensure consistency an
 If you make changes to the frontend or need to verify UI functionality (e.g., "Check if the login button works", "Verify the list is empty"), you **MUST** create and run an automated test. Do not rely on assumption.
 
 **Workflow:**
-1.  **Create a Test**: Create a new file in `qa/frontend/tests/<feature_name>.spec.js`.
-2.  **Write Code**: Use the Playwright syntax (see "How to Add Tests" below).
-3.  **Run**: Execute `docker compose -f qa/docker-compose.yml run --rm frontend-qa`.
-4.  **Verify**: Check the console output.
-    *   `passed`: The feature works as expected.
-    *   `failed`: Analyze the error log, fix the frontend code or the test, and retry.
+When you need to make changes and test them:
+1.  **Create Verification Test**: Create a test (e.g., in `qa/frontend/tests/<feature_name>.spec.js`) to verify the current behavior (reproduce the issue or check base state).
+2.  **Implement Change**: Make the change based on the test results.
+3.  **Verify Change**: Execute `docker compose -f qa/docker-compose.yml run --rm frontend-qa` to verify the change using the test.
+    *   `passed`: The change works as expected.
+    *   `failed`: Analyze the error log, fix the code or the test, and retry.
 
 ## How to Run Tests
 
