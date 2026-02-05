@@ -10,7 +10,11 @@ const ShoppingListPage = () => {
   const [sending, setSending] = useState(false);
 
   // --- Date Logic (copied from StatisticsPage) ---
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7); // Всегда следующая неделя
+    return d;
+  });
 
   const getWeekRange = (baseDate) => {
     const currentDay = baseDate.getDay();
@@ -125,7 +129,7 @@ const ShoppingListPage = () => {
           <h1 className="text-3xl font-bold text-gray-800">Список покупок</h1>
           <div className="mt-2 text-gray-600 font-medium">
             <span className="bg-gray-100 px-3 py-1 rounded text-sm whitespace-nowrap">
-              Текущая неделя ({getWeekRange(new Date()).display})
+              Будущая неделя ({getWeekRange(currentDate).display})
             </span>
           </div>
         </div>
