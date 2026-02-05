@@ -468,7 +468,8 @@ const PlanningPage = () => {
     const mealTypes = [
         { id: 'breakfast', title: 'Завтрак', categories: ['breakfast'] },
         { id: 'lunch', title: 'Обед', categories: ['soup', 'main'] },
-        { id: 'dinner', title: 'Ужин', categories: ['main', 'side'] }
+        { id: 'dinner', title: 'Ужин', categories: ['main', 'side'] },
+        { id: 'snack', title: 'Перекус/Напитки', categories: ['snack', 'drink'] }
     ];
 
     // Helper to get available options for a slot
