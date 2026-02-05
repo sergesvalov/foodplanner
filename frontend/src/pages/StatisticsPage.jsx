@@ -369,7 +369,11 @@ const StatisticsPage = () => {
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-400 hidden md:table-cell">
                       {isOverLimit && dayStat.cals > 0 && (
-                        <span className="text-red-500 font-bold">Превышение!</span>
+                        <div className="text-red-500 font-bold">Превышение!</div>
+                      )}
+                      {/* Ratio Check: 2 Fat : 3 Carb */}
+                      {dayStat.itemsCount > 0 && Math.abs(dayStat.fat * 3 - dayStat.carb * 2) > 5 && (
+                        <div className="text-orange-500 font-bold">проблема бжу</div>
                       )}
                     </td>
                   </tr>
