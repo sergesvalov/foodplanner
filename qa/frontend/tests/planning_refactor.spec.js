@@ -8,7 +8,7 @@ test.describe('Planning Page Refactor Verification', () => {
 
     test('should navigate to planning page and show browse mode', async ({ page }) => {
         // Click Planning link in navbar
-        await page.getByText('Planning').click();
+        await page.getByText('Планирование').click();
 
         // Verify URL
         await expect(page).toHaveURL(/.*planning/);
