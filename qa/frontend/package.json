@@ -7,7 +7,7 @@
         "test": "npx playwright test"
     },
     "devDependencies": {
-        "@playwright/test": "1.58.1",
+        "@playwright/test": "1.42.1",
         "@types/node": "^20.11.24"
     }
 }
