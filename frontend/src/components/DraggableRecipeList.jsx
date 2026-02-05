@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { CATEGORIES } from '../constants/categories';
 
 const DraggableRecipeList = () => {
   const [recipes, setRecipes] = useState([]);
@@ -12,16 +13,7 @@ const DraggableRecipeList = () => {
   };
 
   // Порядок и названия категорий
-  const CATEGORIES_ORDER = [
-    { id: 'breakfast', label: '🍳 Завтрак' },
-    { id: 'soup', label: '🍲 Первое' },
-    { id: 'main', label: '🍗 Второе' },
-    { id: 'side', label: '🍚 Гарнир' },
-    { id: 'snack', label: '🥪 Перекус' },
-    { id: 'yummy', label: '🍪 Вкусняшки' },
-    { id: 'drink', label: '🥤 Напитки' },
-    { id: 'other', label: '📦 Другое' }
-  ];
+  // Используем общий список
 
   useEffect(() => {
     fetch('/api/recipes/')
@@ -64,14 +56,14 @@ const DraggableRecipeList = () => {
             Ничего не найдено
           </div>
         ) : (
-          CATEGORIES_ORDER.map(category => {
+          CATEGORIES.map(category => {
             // Фильтруем рецепты для текущей категории
             const categoryRecipes = filteredRecipes.filter(r => {
               const rCat = r.category || 'other'; // Если категории нет, считаем 'other'
 
               // Если это категория 'other', собираем все, что помечено как 'other' ИЛИ имеет неизвестную категорию
               if (category.id === 'other') {
-                const knownIds = CATEGORIES_ORDER.map(c => c.id).filter(id => id !== 'other');
+                const knownIds = CATEGORIES.map(c => c.id).filter(id => id !== 'other');
                 return rCat === 'other' || !knownIds.includes(rCat);
               }
 
@@ -88,7 +80,7 @@ const DraggableRecipeList = () => {
                   className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1 sticky top-0 bg-white/95 backdrop-blur py-1 z-10 border-b border-transparent cursor-pointer hover:text-indigo-600 transition-colors flex justify-between items-center pr-2"
                   onClick={() => toggleCategory(category.id)}
                 >
-                  <span>{category.label} <span className="text-gray-300 font-normal">({categoryRecipes.length})</span></span>
+                  <span>{category.icon} {category.label} <span className="text-gray-300 font-normal">({categoryRecipes.length})</span></span>
                   <span>{expandedCategories.includes(category.id) ? '▲' : '▼'}</span>
                 </h3>
 

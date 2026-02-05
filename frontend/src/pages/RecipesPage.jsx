@@ -1,27 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import RecipeBuilder from '../components/RecipeBuilder';
 
-const CATEGORY_LABELS = {
-  breakfast: 'Завтрак',
-  snack: 'Перекус',
-  main: 'Второе',
-  soup: 'Первое',
-  side: 'Гарнир',
-  yummy: 'Вкусняшки',
-  drink: 'Напитки',
-  other: 'Другое' // Добавлено явно
-};
+import { CATEGORIES, getCategoryLabel, getCategoryStyle } from '../constants/categories';
 
-const CATEGORY_COLORS = {
-  breakfast: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  snack: 'bg-purple-100 text-purple-800 border-purple-200',
-  main: 'bg-orange-100 text-orange-800 border-orange-200',
-  soup: 'bg-red-100 text-red-800 border-red-200',
-  side: 'bg-green-100 text-green-800 border-green-200',
-  yummy: 'bg-pink-100 text-pink-800 border-pink-200',
-  drink: 'bg-teal-100 text-teal-800 border-teal-200',
-  other: 'bg-gray-100 text-gray-800 border-gray-200'
-};
+// Local helpers for compatibility if needed, or replace usages directly
 
 const RecipesPage = () => {
   const [recipes, setRecipes] = useState([]);
@@ -216,8 +198,8 @@ const RecipesPage = () => {
                 className="border border-gray-300 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200"
               >
                 <option value="all">Все категории ({recipes.length})</option>
-                {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
+                {CATEGORIES.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.label}</option>
                 ))}
               </select>
             </div>
@@ -251,8 +233,8 @@ const RecipesPage = () => {
                         >
                           {recipe.title}
                         </h4>
-                        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ml-2 ${CATEGORY_COLORS[recipe.category] || CATEGORY_COLORS.other}`}>
-                          {CATEGORY_LABELS[recipe.category] || CATEGORY_LABELS.other}
+                        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ml-2 ${getCategoryStyle(recipe.category)}`}>
+                          {getCategoryLabel(recipe.category)}
                         </span>
                         {/* Rating */}
                         {recipe.rating > 0 && (
