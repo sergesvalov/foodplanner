@@ -7,17 +7,23 @@ test.describe('Core User Flows', () => {
 
         await page.goto('/recipes');
 
-        // 1. Create
-        // Need to find where to put title. 
-        // Based on RecipeBuilder, there is an initial state or "New Recipe" might be needed?
-        // RecipesPage has <RecipeBuilder initialData={editingRecipe} ... />
-        // But how do I start creating? 
-        // Ah, RecipeBuilder is always visible in the left column on desktop? 
-        // Let's check RecipesPage code. Yes, <RecipeBuilder ... /> is rendered.
-        // And it has a "Название рецепта" input.
+        // 1. Create - Target inputs inside the RecipeBuilder form
+        // Title input has placeholder 'Напр. Овсянка'
+        await page.getByPlaceholder('Напр. Овсянка').fill(recipeTitle);
 
-        await page.getByPlaceholder('Название рецепта').fill(recipeTitle);
-        await page.getByText('🍳 Завтрак').click(); // Select category
+        // Select Category: Target the select inside the form area
+        // We can scope it to the "Создать рецепт" card context/form
+        const form = page.locator('form');
+        await form.getByRole('combobox', { name: 'Категория' }).selectOption('breakfast');
+        // Note: Label is 'Категория', so ensure getByRole correlates or use specific locator
+        // Fallback if label association is weak: form.locator('select').first() (Category is the first select in form)
+        // Let's use label text correlation if possible, or just simpler text locator first
+        if (await page.getByLabel('Категория').count() > 0) {
+            await page.getByLabel('Категория').selectOption('breakfast');
+        } else {
+            // Fallback: title is 'Категория' above the select
+            await form.locator('select').first().selectOption('breakfast');
+        }
 
         // Add ingredient
         await page.getByPlaceholder('Найти продукт...').fill('test product');
@@ -30,25 +36,22 @@ test.describe('Core User Flows', () => {
         // Let's check RecipeBuilder validation logic?
         // Assuming we can save a simple recipe.
 
-        await page.getByPlaceholder('Описание приготовления...').fill('Test description');
+        await page.getByPlaceholder('Опишите процесс...').fill('Test description');
 
-        // Click Save (assuming button text is 'Сохранить рецепт')
-        await page.getByText('Сохранить рецепт').click();
+        // Submit
+        await page.getByRole('button', { name: 'Создать рецепт' }).click();
 
         // 2. Verify in list
         // Filter by title
         await page.getByPlaceholder('🔍 Поиск...').fill(recipeTitle);
-        await expect(page.getByText(recipeTitle)).toBeVisible();
+        // Wait for list to update
+        await expect(page.getByText(recipeTitle).first()).toBeVisible();
 
         // 3. Delete
-        // Find the delete button for this recipe card
-        // The card should be visible. Layout: [ Edit | Delete ] buttons.
-        // We need to target the specific card.
-        const card = page.locator('div').filter({ hasText: recipeTitle }).first();
+        const card = page.locator('div').filter({ hasText: recipeTitle }).last(); // Use last() just in case multiple matches, card is likely distinct
 
         // Handle confirm dialog
         page.on('dialog', dialog => dialog.accept());
-
         await card.getByText('Удалить').click();
 
         // Verify gone
@@ -58,17 +61,13 @@ test.describe('Core User Flows', () => {
     test('Flow 2: Filter Recipes by Category', async ({ page }) => {
         await page.goto('/recipes');
 
-        // Select 'Soup' category
-        await page.getByRole('combobox').selectOption('soup');
+        // Select 'Soup' category. Use specific locator for the Top Filter Bar.
+        // It's in the header block "Каталог блюд".
+        // Use filter by text option content
+        const filterSelect = page.locator('select').filter({ hasText: 'Все категории' });
+        await filterSelect.selectOption('soup');
 
-        // Check local constant for soup label... 'Первое'
-        // Cards should have 'Первое' badge.
-        // Also 'Завтрак' should NOT be visible (unless it's in the select option itself)
-        // Let's just check that we see some soups or empty state, 
-        // and do NOT see a known breakfast item if we knew one.
-        // Better: Check the endpoint or resulting UI state.
-        // We can check that the filter dropdown has value 'soup'.
-        await expect(page.getByRole('combobox')).toHaveValue('soup');
+        await expect(filterSelect).toHaveValue('soup');
     });
 
     test('Flow 3: Home Page Category Interaction', async ({ page }) => {
