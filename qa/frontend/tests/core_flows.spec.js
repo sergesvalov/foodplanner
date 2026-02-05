@@ -40,7 +40,9 @@ test.describe('Core User Flows', () => {
         await expect(page.getByText(recipeTitle).first()).toBeVisible();
 
         // 3. Delete
-        const card = page.locator('div').filter({ hasText: recipeTitle }).last(); // Use last() just in case multiple matches, card is likely distinct
+        // Use more specific locator for the card to avoid matching search inputs or other containers
+        // RecipeCard has classes 'p-4 rounded-lg border'
+        const card = page.locator('div.p-4.rounded-lg.border').filter({ hasText: recipeTitle }).first();
 
         // Handle confirm dialog
         page.on('dialog', dialog => dialog.accept());
