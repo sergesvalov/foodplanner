@@ -46,6 +46,11 @@ const ShoppingListPage = () => {
     };
   };
 
+  const changeWeek = (offset) => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + (offset * 7));
+    setCurrentDate(newDate);
+  };
   // ----------------------------------------
 
   useEffect(() => {
@@ -127,10 +132,30 @@ const ShoppingListPage = () => {
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Список покупок</h1>
-          <div className="mt-2 text-gray-600 font-medium">
+          <div className="flex items-center gap-3 mt-2 text-gray-600 font-medium">
+            <button
+              onClick={() => changeWeek(-1)}
+              className="hover:text-gray-900 hover:bg-gray-100 p-1 rounded transition-colors text-lg"
+              title="Предыдущая неделя"
+            >
+              ◀
+            </button>
             <span className="bg-gray-100 px-3 py-1 rounded text-sm whitespace-nowrap">
-              Будущая неделя ({getWeekRange(currentDate).display})
+              {getWeekRange(currentDate).display}
             </span>
+            <button
+              onClick={() => changeWeek(1)}
+              className="hover:text-gray-900 hover:bg-gray-100 p-1 rounded transition-colors text-lg"
+              title="Следующая неделя"
+            >
+              ▶
+            </button>
+            <button
+              onClick={() => setCurrentDate(new Date())}
+              className="text-xs text-blue-600 hover:underline ml-2"
+            >
+              Сегодня
+            </button>
           </div>
         </div>
 
