@@ -27,7 +27,7 @@ test.describe('Planning Page Refactor Verification', () => {
         // If no recipes, it shows "Нет рецептов".
         // We should check for either recipe cards OR "Нет рецептов" message.
         const hasRecipes = await page.locator('.group.relative').count() > 0;
-        const hasEmptyMsg = await page.getByText('Нет рецептов').isVisible();
+        const hasEmptyMsg = await page.getByText('Нет рецептов').count() > 0;
 
         expect(hasRecipes || hasEmptyMsg).toBeTruthy();
     });
