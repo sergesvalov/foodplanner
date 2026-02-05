@@ -83,7 +83,7 @@ const HomePage = () => {
       {/* min-w-0: предотвращает "распирание" flex-контейнера */}
       <div className="flex-1 p-4 min-w-0 flex flex-col">
         <div className="flex justify-between items-center mb-4 shrink-0">
-          <h1 className="text-2xl font-bold text-gray-800">План на неделю</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Неделя</h1>
           <div className="flex gap-2">
             <button
               onClick={handleAutoPlanWeek}

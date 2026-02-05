@@ -23,7 +23,7 @@ const Navbar = () => {
               </Link>
 
               <Link to="/" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/')}`}>
-                План на неделю
+                Неделя
               </Link>
 
               <Link to="/shopping-list" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/shopping-list')}`}>
