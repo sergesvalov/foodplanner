@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   qa:
-    build: .
+    build: ./backend
     container_name: foodplanner_qa
     environment:
       # Change this to the actual URL of your backend.
