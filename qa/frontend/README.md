@@ -11,6 +11,19 @@ The tests run inside a Docker container (`frontend-qa`) to ensure consistency an
 - `tests/`: Directory containing test files (`*.spec.js`).
 - `README.md`: This file.
 
+## 🤖 Instructions for AI Agents
+
+**When to use:**
+If you make changes to the frontend or need to verify UI functionality (e.g., "Check if the login button works", "Verify the list is empty"), you **MUST** create and run an automated test. Do not rely on assumption.
+
+**Workflow:**
+1.  **Create a Test**: Create a new file in `qa/frontend/tests/<feature_name>.spec.js`.
+2.  **Write Code**: Use the Playwright syntax (see "How to Add Tests" below).
+3.  **Run**: Execute `docker compose -f qa/docker-compose.yml run --rm frontend-qa`.
+4.  **Verify**: Check the console output.
+    *   `passed`: The feature works as expected.
+    *   `failed`: Analyze the error log, fix the frontend code or the test, and retry.
+
 ## How to Run Tests
 
 **Pre-requisite:** The main application stack (Frontend + Backend) must be running.
