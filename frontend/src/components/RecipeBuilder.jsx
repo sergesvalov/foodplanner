@@ -284,8 +284,9 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
 
         <div className="flex gap-4">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700">Название блюда</label>
+            <label htmlFor="recipe-title" className="block text-sm font-medium text-gray-700">Название блюда</label>
             <input
+              id="recipe-title"
               type="text" required
               className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none"
               placeholder="Напр. Овсянка"
@@ -297,8 +298,9 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
 
         <div className="flex gap-4">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700">Категория</label>
+            <label htmlFor="recipe-category" className="block text-sm font-medium text-gray-700">Категория</label>
             <select
+              id="recipe-category"
               className="mt-1 w-full border rounded p-2 bg-white focus:ring-2 focus:ring-indigo-200 outline-none"
               value={category}
               onChange={e => setCategory(e.target.value)}
@@ -309,8 +311,9 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
             </select>
           </div>
           <div className="w-24">
-            <label className="block text-sm font-medium text-gray-700">Порций</label>
+            <label htmlFor="recipe-portions" className="block text-sm font-medium text-gray-700">Порций</label>
             <input
+              id="recipe-portions"
               type="number" min="1" max="20" required
               className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none text-center"
               value={portions}
@@ -339,8 +342,9 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Способ приготовления</label>
+          <label htmlFor="recipe-description" className="block text-sm font-medium text-gray-700">Способ приготовления</label>
           <textarea
+            id="recipe-description"
             className="mt-1 w-full border rounded p-2 h-24 focus:ring-2 focus:ring-indigo-200 outline-none"
             placeholder="Опишите процесс..."
             value={description}
