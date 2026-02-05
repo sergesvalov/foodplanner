@@ -371,6 +371,20 @@ const StatisticsPage = () => {
                       {isOverLimit && dayStat.cals > 0 && (
                         <div className="text-red-500 font-bold">Превышение!</div>
                       )}
+
+                      {/* Macro Balance Warning: if max diff > 5% */}
+                      {(() => {
+                        if (dayStat.itemsCount === 0) return null;
+                        const p = Math.min(protPercent, 100);
+                        const f = Math.min(fatPercent, 100);
+                        const c = Math.min(carbPercent, 100);
+                        const diff = Math.max(p, f, c) - Math.min(p, f, c);
+
+                        if (diff > 5) {
+                          return <div className="text-orange-500 font-bold text-xs mt-1">плохо кушаете</div>;
+                        }
+                        return null;
+                      })()}
                     </td>
                   </tr>
                 );
