@@ -1,11 +1,23 @@
 from sqlalchemy.orm import Session
 import models
 
-def calculate_shopping_list(db: Session):
+from datetime import datetime
+
+def calculate_shopping_list(db: Session, start_date: str = None, end_date: str = None):
     """
     Business logic for aggregating the shopping list from the weekly plan.
     """
-    plan_items = db.query(models.WeeklyPlanEntry).all()
+    query = db.query(models.WeeklyPlanEntry)
+
+    if start_date and end_date:
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
+            query = query.filter(models.WeeklyPlanEntry.date >= start_dt, models.WeeklyPlanEntry.date <= end_dt)
+        except ValueError:
+             pass # Ignore invalid dates or handle error
+
+    plan_items = query.all()
     shopping_dict = {}
 
     for plan_item in plan_items:

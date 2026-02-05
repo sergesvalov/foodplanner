@@ -16,15 +16,16 @@ class TelegramSendRequest(BaseModel):
     chat_id: str
 
 from services.shopping_list import calculate_shopping_list
+
 @router.get("/")
-def get_shopping_list_api(db: Session = Depends(get_db)):
-    return calculate_shopping_list(db)
+def get_shopping_list_api(start_date: str = None, end_date: str = None, db: Session = Depends(get_db)):
+    return calculate_shopping_list(db, start_date, end_date)
 
 from services.telegram import send_telegram_message
 
 @router.post("/send")
-def send_shopping_list_telegram(body: TelegramSendRequest, db: Session = Depends(get_db)):
-    items = calculate_shopping_list(db)
+def send_shopping_list_telegram(body: TelegramSendRequest, start_date: str = None, end_date: str = None, db: Session = Depends(get_db)):
+    items = calculate_shopping_list(db, start_date, end_date)
     
     if not items:
         raise HTTPException(status_code=400, detail="Список покупок пуст")
