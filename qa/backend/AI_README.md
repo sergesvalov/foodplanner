@@ -5,6 +5,10 @@
 You STRICTLY MUST NOT assume it works based on code analysis alone.
 **You MUST write a new test case** (or run existing ones) to prove it works.
 
+> [!IMPORTANT]
+> **SERVER-ONLY ACCESS**: You do NOT have direct access to run these tests locally or via SSH.
+> **EXECUTION STRATEGY**: You must commit and push your changes (including the new test) to the repository. The tests will be executed automatically on the server. You must then wait for the results.
+
 **Workflow:**
 When you need to make changes and test them:
 1.  **Create Verification Test**: Create a test to verify the current behavior (reproduce the issue or check base state).

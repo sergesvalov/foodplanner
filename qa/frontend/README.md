@@ -16,6 +16,10 @@ The tests run inside a Docker container (`frontend-qa`) to ensure consistency an
 **When to use:**
 If you make changes to the frontend or need to verify UI functionality (e.g., "Check if the login button works", "Verify the list is empty"), you **MUST** create and run an automated test. Do not rely on assumption.
 
+> [!IMPORTANT]
+> **SERVER-ONLY ACCESS**: You do NOT have direct access to run these tests locally or via SSH.
+> **EXECUTION STRATEGY**: You must commit and push your changes (including the new test) to the repository. The tests will be executed automatically on the server. You must then wait for the results.
+
 **Workflow:**
 When you need to make changes and test them:
 1.  **Create Verification Test**: Create a test (e.g., in `qa/frontend/tests/<feature_name>.spec.js`) to verify the current behavior (reproduce the issue or check base state).
