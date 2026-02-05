@@ -20,7 +20,7 @@ test.describe('Planning Page Refactor Verification', () => {
         await expect(page.getByText('Завтрак')).toBeVisible();
         await expect(page.getByText('Обед')).toBeVisible();
         await expect(page.getByText('Ужин')).toBeVisible();
-        await expect(page.getByText('Напитки')).toBeVisible();
+        await expect(page.getByText('Напитки')).not.toBeVisible();
 
         // Check at least one "Hide" button exists (implies recipes are rendered)
         // Note: This depends on recipes existing in the backend. 

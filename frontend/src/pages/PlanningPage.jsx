@@ -52,12 +52,6 @@ const PlanningPage = () => {
             icon: '🍽️',
             items: getRecipesByCategories(['main', 'side'], 'Ужин', recipesToShow),
             color: 'bg-blue-50 border-blue-200 text-blue-800'
-        },
-        {
-            title: 'Напитки',
-            icon: '🥤',
-            items: getRecipesByCategories(['drink'], 'Напитки', recipesToShow),
-            color: 'bg-indigo-50 border-indigo-200 text-indigo-800'
         }
     ];
 
