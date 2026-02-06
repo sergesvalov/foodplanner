@@ -434,6 +434,15 @@ const StatisticsPage = () => {
           </table>
         </div>
       </div>
+      <div className="mt-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100 text-sm text-gray-600">
+        <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">ℹ️ Справка по балансу БЖУ</h4>
+        <p className="mb-2">Предупреждения в колонке "Инфо" появляются, если баланс нутриентов за день отклоняется от рекомендованных норм:</p>
+        <ul className="list-disc list-inside space-y-1 ml-2">
+          <li><strong>Белки:</strong> норма <span className="font-bold text-gray-700">15-20%</span> от общей калорийности (меньше — "Мало белков")</li>
+          <li><strong>Жиры:</strong> норма <span className="font-bold text-gray-700">25-35%</span> от общей калорийности (отклонения — "Мало/Много жиров")</li>
+          <li><strong>Углеводы:</strong> норма <span className="font-bold text-gray-700">50-55%</span> от общей калорийности (отклонения — "Мало/Много углеводов")</li>
+        </ul>
+      </div>
     </div>
   );
 };
