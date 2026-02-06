@@ -150,12 +150,19 @@ export const usePlanning = () => {
 
     const moveMeal = (mealInstance, targetDay, targetType) => {
         setPlannedMeals(prev => {
-            const idx = prev.indexOf(mealInstance);
+            // Find by matching properties since mealInstance is a copy from DnD event
+            const idx = prev.findIndex(pm =>
+                pm.day === mealInstance.day &&
+                pm.type === mealInstance.type &&
+                pm.recipeId === mealInstance.recipeId &&
+                pm.memberId === mealInstance.memberId
+            );
+
             if (idx === -1) return prev;
 
             const newArr = [...prev];
-            // Update the found item in place or replace it
-            newArr[idx] = { ...mealInstance, day: targetDay, type: targetType };
+            // Update the found item in place
+            newArr[idx] = { ...newArr[idx], day: targetDay, type: targetType };
             return newArr;
         });
     };
