@@ -40,7 +40,7 @@ const BackupManagement = () => {
                     <div className="font-bold mb-3 text-gray-700 flex items-center gap-2">
                         <span>🍎</span> Продукты
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2">
                         <button
                             onClick={() => handleExport('/api/products/export')}
                             className="flex-1 bg-white border border-gray-200 text-gray-700 py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-gray-50 transition-colors"
@@ -61,7 +61,7 @@ const BackupManagement = () => {
                     <div className="font-bold mb-3 text-gray-700 flex items-center gap-2">
                         <span>🍳</span> Рецепты
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2">
                         <button
                             onClick={() => handleExport('/api/recipes/export')}
                             className="flex-1 bg-white border border-gray-200 text-gray-700 py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-gray-50 transition-colors"
@@ -82,7 +82,7 @@ const BackupManagement = () => {
                     <div className="font-bold mb-3 text-indigo-900 flex items-center gap-2">
                         <span>⚙️</span> Полный бэкап
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2">
                         <button
                             onClick={() => handleExport('/api/admin/settings/export')}
                             className="flex-1 bg-white border border-indigo-200 text-indigo-700 py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-indigo-50 transition-colors"
