@@ -99,7 +99,13 @@ const RecipeList = ({
                                         ) : (
                                             <>
                                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
-                                                    {recipe.calories_per_portion} ккал
+                                                    {Math.round(recipe.calories_per_portion)} ккал
+                                                </span>
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-100" title="Белки / Жиры / Углеводы">
+                                                    Б:{Math.round(recipe.proteins || 0)} Ж:{Math.round(recipe.fats || 0)} У:{Math.round(recipe.carbs || 0)}
+                                                </span>
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                                                    {plannedPortions[recipe.id] || getDefaultPortion(recipe)} порц.
                                                 </span>
                                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
                                                     €{recipe.total_cost}
