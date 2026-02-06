@@ -205,11 +205,14 @@ export const usePlanning = () => {
 
         let consumers = [];
         if (familyMembers.length > 0) {
-            consumers = familyMembers.slice(0, eatersCount);
-        }
-        while (consumers.length < eatersCount) {
-            const id = `mock-${consumers.length + 1}`;
-            consumers.push({ id: id, name: `Едок ${consumers.length + 1}`, color: 'gray' });
+            // FIX: Use ALL family members from the system, ignoring the manual 'eatersCount' limiter if it was set lower.
+            consumers = [...familyMembers];
+        } else {
+            // Only fallback to mock eaters if no family members exist
+            while (consumers.length < eatersCount) {
+                const id = `mock-${consumers.length + 1}`;
+                consumers.push({ id: id, name: `Едок ${consumers.length + 1}`, color: 'gray' });
+            }
         }
 
         consumers.forEach(c => memberRecipeStats.set(c.id, new Set()));
@@ -218,7 +221,10 @@ export const usePlanning = () => {
 
         const mealTypes = MEAL_TYPES;
 
-        visibleRecipes.forEach(recipe => {
+        // FIX: Sort recipes by rating (DESC) so high-rated recipes get priority for slots
+        const sortedRecipes = [...visibleRecipes].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+        sortedRecipes.forEach(recipe => {
             let remaining = Math.round(plannedPortions[recipe.id] || getDefaultPortion(recipe));
 
             const validTypes = mealTypes
