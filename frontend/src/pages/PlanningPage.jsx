@@ -24,7 +24,8 @@ const PlanningPage = () => {
         getRecipesByCategories,
         getTotalStats,
         getDefaultPortion,
-        autoDistribute
+        autoDistribute,
+        moveMeal
     } = usePlanning();
 
     // View Mode: 'browse' | 'summary' | 'days'
@@ -97,6 +98,7 @@ const PlanningPage = () => {
                     removeMealByInstance={removeMealByInstance}
                     recipes={recipes} // Need full list to find by ID
                     familyMembers={familyMembers}
+                    moveMeal={moveMeal}
                 />
             )}
         </div>

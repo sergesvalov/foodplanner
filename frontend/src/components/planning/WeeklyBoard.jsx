@@ -9,8 +9,36 @@ const WeeklyBoard = ({
     removeMeal,
     removeMealByInstance,
     recipes,
-    familyMembers
+    familyMembers,
+    moveMeal
 }) => {
+
+    // DRAG HANDLERS
+    const handleDragStart = (e, mealInstance) => {
+        // We serialize the meal instance to move
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('application/json', JSON.stringify(mealInstance));
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (e, dayIndex, typeId) => {
+        e.preventDefault();
+        const data = e.dataTransfer.getData('application/json');
+        if (!data) return;
+
+        try {
+            const mealInstance = JSON.parse(data);
+            // Call moveMeal
+            moveMeal(mealInstance, dayIndex, typeId);
+        } catch (err) {
+            console.error("Failed to parse drag data", err);
+        }
+    };
+
     return (
         <div className="flex gap-4 flex-1 overflow-auto pb-10 items-start">
             {weekDays.map((dayName, dIdx) => (
@@ -25,7 +53,12 @@ const WeeklyBoard = ({
                             const options = getOptionsForSlot(mType.categories);
 
                             return (
-                                <div key={mType.id} className="space-y-1">
+                                <div
+                                    key={mType.id}
+                                    className="space-y-1 min-h-[60px]"
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDrop(e, dIdx, mType.id)}
+                                >
                                     <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">{mType.title}</div>
                                     <div className="space-y-1">
                                         {mealsInSlot.map((pm, pmIdx) => {
@@ -38,7 +71,12 @@ const WeeklyBoard = ({
                                             const letter = member ? member.name[0] : (pm.memberId ? '?' : '');
 
                                             return (
-                                                <div key={pmIdx} className="flex justify-between items-center bg-indigo-50 border border-indigo-100 p-2 rounded text-sm relative group">
+                                                <div
+                                                    key={pmIdx}
+                                                    className="flex justify-between items-center bg-indigo-50 border border-indigo-100 p-2 rounded text-sm relative group cursor-grab active:cursor-grabbing hover:bg-indigo-100 transition-colors"
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, pm)}
+                                                >
                                                     <div className="flex items-center gap-2 overflow-hidden">
                                                         {letter && (
                                                             <div className={`w-5 h-5 rounded-full ${colorClass} text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-sm`} title={member?.name}>

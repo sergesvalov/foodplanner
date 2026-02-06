@@ -148,6 +148,18 @@ export const usePlanning = () => {
         });
     };
 
+    const moveMeal = (mealInstance, targetDay, targetType) => {
+        setPlannedMeals(prev => {
+            const idx = prev.indexOf(mealInstance);
+            if (idx === -1) return prev;
+
+            const newArr = [...prev];
+            // Update the found item in place or replace it
+            newArr[idx] = { ...mealInstance, day: targetDay, type: targetType };
+            return newArr;
+        });
+    };
+
 
     // -------------------------------------------------------------------------
     // 4. Derived Logic (Helpers)
@@ -333,7 +345,10 @@ export const usePlanning = () => {
         restoreAll,
         addMeal,
         removeMeal,
+        addMeal,
+        removeMeal,
         removeMealByInstance,
+        moveMeal,
         getRecipesByCategories,
         getTotalStats,
         getDefaultPortion,
