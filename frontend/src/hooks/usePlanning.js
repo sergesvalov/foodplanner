@@ -127,10 +127,10 @@ export const usePlanning = () => {
         setHiddenIds([]);
     };
 
-    const addMeal = (dayIndex, type, recipeId) => {
+    const addMeal = (dayIndex, type, recipeId, memberId = undefined) => {
         setPlannedMeals(prev => [
             ...prev,
-            { day: dayIndex, type, recipeId }
+            { day: dayIndex, type, recipeId, memberId }
         ]);
     };
 
@@ -215,8 +215,8 @@ export const usePlanning = () => {
         }, { calories: 0, cost: 0 });
     };
 
-    const getScheduledStats = () => {
-        return plannedMeals.reduce((acc, meal) => {
+    const getScheduledStats = (meals = plannedMeals) => {
+        return meals.reduce((acc, meal) => {
             const recipe = recipes.find(r => r.id === meal.recipeId);
             if (!recipe) return acc;
 

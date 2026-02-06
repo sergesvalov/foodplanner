@@ -10,7 +10,8 @@ const WeeklyBoard = ({
     removeMealByInstance,
     recipes,
     familyMembers,
-    moveMeal
+    moveMeal,
+    selectedUser = 'all'
 }) => {
 
     // DRAG HANDLERS
@@ -102,7 +103,8 @@ const WeeklyBoard = ({
                                                 value=""
                                                 onChange={(e) => {
                                                     if (e.target.value) {
-                                                        addMeal(dIdx, mType.id, parseInt(e.target.value));
+                                                        const memberId = selectedUser === 'all' ? undefined : parseInt(selectedUser);
+                                                        addMeal(dIdx, mType.id, parseInt(e.target.value), memberId);
                                                     }
                                                 }}
                                             >

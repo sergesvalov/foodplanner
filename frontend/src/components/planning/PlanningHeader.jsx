@@ -6,7 +6,10 @@ const PlanningHeader = ({
     hiddenCount,
     restoreAll,
     autoDistribute,
-    totalStats
+    totalStats,
+    users = [],
+    selectedUser = 'all',
+    setSelectedUser = () => { }
 }) => {
     return (
         <div className="flex justify-between items-center mb-6 shrink-0">
@@ -37,6 +40,20 @@ const PlanningHeader = ({
 
                 {viewMode === 'days' && (
                     <>
+                        <div className="flex items-center gap-2 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm mr-4">
+                            <span className="text-xs font-bold text-gray-400 pl-1">👤</span>
+                            <select
+                                className="bg-transparent text-sm font-medium text-gray-700 outline-none cursor-pointer"
+                                value={selectedUser}
+                                onChange={(e) => setSelectedUser(e.target.value)}
+                            >
+                                <option value="all">Все</option>
+                                {users.map(u => (
+                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
                         <button
                             onClick={autoDistribute}
                             className="text-sm bg-purple-100 text-purple-700 px-3 py-1.5 rounded hover:bg-purple-200 mr-4 font-medium transition-colors"

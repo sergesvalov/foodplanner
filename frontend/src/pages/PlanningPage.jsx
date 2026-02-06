@@ -57,8 +57,16 @@ const PlanningPage = () => {
         }
     ];
 
+    // User Selection
+    const [selectedUser, setSelectedUser] = useState('all');
+
+    // Filter meals by user
+    const filteredMeals = selectedUser === 'all'
+        ? plannedMeals
+        : plannedMeals.filter(m => String(m.memberId) === String(selectedUser));
+
     const totalStats = viewMode === 'days'
-        ? getScheduledStats()
+        ? getScheduledStats(filteredMeals)
         : getTotalStats(recipesToShow);
 
     // Helper for slots
@@ -77,6 +85,9 @@ const PlanningPage = () => {
                 restoreAll={restoreAll}
                 autoDistribute={autoDistribute}
                 totalStats={totalStats}
+                users={familyMembers}
+                selectedUser={selectedUser}
+                setSelectedUser={setSelectedUser}
             />
 
             {viewMode !== 'days' ? (
@@ -94,7 +105,7 @@ const PlanningPage = () => {
                 <WeeklyBoard
                     weekDays={WEEK_DAYS}
                     mealTypes={MEAL_TYPES}
-                    plannedMeals={plannedMeals}
+                    plannedMeals={filteredMeals}
                     getOptionsForSlot={getOptionsForSlot}
                     addMeal={addMeal}
                     removeMeal={removeMeal}
@@ -102,6 +113,7 @@ const PlanningPage = () => {
                     recipes={recipes} // Need full list to find by ID
                     familyMembers={familyMembers}
                     moveMeal={moveMeal}
+                    selectedUser={selectedUser}
                 />
             )}
         </div>
