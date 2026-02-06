@@ -204,9 +204,28 @@ export const usePlanning = () => {
     const getTotalStats = (categoryRecipes) => {
         return categoryRecipes.reduce((acc, recipe) => {
             const portion = plannedPortions[recipe.id] || getDefaultPortion(recipe);
+            // FIX: recipe.total_cost is for the WHOLE BATCH (recipe.portions).
+            // We need cost per portion * planned portions.
+            const costPerPortion = recipe.portions > 0 ? (recipe.total_cost / recipe.portions) : 0;
+
             return {
                 calories: acc.calories + (recipe.calories_per_portion * portion),
-                cost: acc.cost + (recipe.total_cost * portion)
+                cost: acc.cost + (costPerPortion * portion)
+            };
+        }, { calories: 0, cost: 0 });
+    };
+
+    const getScheduledStats = () => {
+        return plannedMeals.reduce((acc, meal) => {
+            const recipe = recipes.find(r => r.id === meal.recipeId);
+            if (!recipe) return acc;
+
+            // One meal instance = One portion
+            const costPerPortion = recipe.portions > 0 ? (recipe.total_cost / recipe.portions) : 0;
+
+            return {
+                calories: acc.calories + recipe.calories_per_portion,
+                cost: acc.cost + costPerPortion
             };
         }, { calories: 0, cost: 0 });
     };
@@ -234,7 +253,16 @@ export const usePlanning = () => {
             }
         }
 
-        consumers.forEach(c => memberRecipeStats.set(c.id, new Set()));
+        const memberDailyStats = new Map(); // Map<memberId, Map<dayIndex, {calories, proteins, fats, carbs}>>
+
+        consumers.forEach(c => {
+            memberRecipeStats.set(c.id, new Set());
+            memberDailyStats.set(c.id, new Map());
+            // Initialize 7 days for each consumer
+            for (let d = 0; d < 7; d++) {
+                memberDailyStats.get(c.id).set(d, { calories: 0, proteins: 0, fats: 0, carbs: 0 });
+            }
+        });
 
         const getNextDay = (currentDay) => (currentDay + 1) % 7;
 
@@ -273,6 +301,28 @@ export const usePlanning = () => {
                         }
 
                         let freeConsumers = consumers.filter(c => !usedSlots.has(`${currentDay}-${type}-${c.id}`));
+
+                        // FIX: Filter out consumers who would exceed their macro limits
+                        freeConsumers = freeConsumers.filter(c => {
+                            const daily = memberDailyStats.get(c.id)?.get(currentDay);
+                            if (!daily) return true; // Safety
+
+                            // Recipe macros per portion
+                            const rP = recipe.proteins || 0;
+                            const rF = recipe.fats || 0;
+                            const rC = recipe.carbs || 0;
+                            // const rCal = recipe.calories_per_portion || 0; // Optional calorie check
+
+                            // Check limits (allow slight buffer or exact? User said "if exceed")
+                            // Let's use strict > limit check.
+                            // NOTE: Models have max_proteins etc.
+                            if (c.max_proteins && (daily.proteins + rP > c.max_proteins)) return false;
+                            if (c.max_fats && (daily.fats + rF > c.max_fats)) return false;
+                            if (c.max_carbs && (daily.carbs + rC > c.max_carbs)) return false;
+
+                            return true;
+                        });
+
                         let desiredChunk = 0;
                         let targets = [];
 
@@ -303,6 +353,13 @@ export const usePlanning = () => {
                                     recipeId: recipe.id,
                                     memberId: consumer.id
                                 });
+
+                                // Update stats
+                                const daily = memberDailyStats.get(consumer.id).get(currentDay);
+                                daily.proteins += recipe.proteins || 0;
+                                daily.fats += recipe.fats || 0;
+                                daily.carbs += recipe.carbs || 0;
+                                daily.calories += recipe.calories_per_portion || 0;
                             });
 
                             if (isExclusive) slotLocks.set(slotKey, recipe.id);
@@ -358,6 +415,7 @@ export const usePlanning = () => {
         moveMeal,
         getRecipesByCategories,
         getTotalStats,
+        getScheduledStats,
         getDefaultPortion,
         autoDistribute
     };

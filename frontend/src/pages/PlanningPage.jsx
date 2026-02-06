@@ -23,6 +23,7 @@ const PlanningPage = () => {
         removeMealByInstance,
         getRecipesByCategories,
         getTotalStats,
+        getScheduledStats,
         getDefaultPortion,
         autoDistribute,
         moveMeal
@@ -56,7 +57,9 @@ const PlanningPage = () => {
         }
     ];
 
-    const totalStats = getTotalStats(recipesToShow);
+    const totalStats = viewMode === 'days'
+        ? getScheduledStats()
+        : getTotalStats(recipesToShow);
 
     // Helper for slots
     const getOptionsForSlot = (typeCategories) => {
