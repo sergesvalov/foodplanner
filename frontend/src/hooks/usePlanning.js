@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchRecipes } from '../api/recipes';
-import { fetchPlan } from '../api/plan';
+import { fetchPlan, savePlan, clearPlan } from '../api/plan';
 import { fetchFamily } from '../api/admin';
 import { MEAL_TYPES } from '../constants/planning';
 
@@ -639,7 +639,13 @@ export const usePlanning = () => {
                 return;
             }
 
+            // Clear the logic range first to ensure we overwrite even empty days
+            const nextSunday = new Date(nextMonday);
+            nextSunday.setDate(nextMonday.getDate() + 6);
+
+            await clearPlan(formatDate(nextMonday), formatDate(nextSunday));
             await savePlan(itemsToSave);
+
             alert("✅ План успешно сохранен на следующую неделю!");
 
         } catch (error) {

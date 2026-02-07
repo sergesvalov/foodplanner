@@ -105,8 +105,18 @@ def remove_from_plan(item_id: int, db: Session = Depends(get_db)):
     return {"ok": True}
 
 @router.delete("/")
-def clear_plan(db: Session = Depends(get_db)):
-    db.query(models.WeeklyPlanEntry).delete()
+def clear_plan(
+    start_date: datetime.date = None,
+    end_date: datetime.date = None,
+    db: Session = Depends(get_db)
+):
+    q = db.query(models.WeeklyPlanEntry)
+    if start_date:
+        q = q.filter(models.WeeklyPlanEntry.date >= start_date)
+    if end_date:
+        q = q.filter(models.WeeklyPlanEntry.date <= end_date)
+        
+    q.delete(synchronize_session=False)
     db.commit()
     return {"ok": True}
 
