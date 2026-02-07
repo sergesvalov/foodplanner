@@ -498,6 +498,56 @@ export const usePlanning = () => {
         setPlannedMeals(newMeals);
     };
 
+    const savePlanToNextWeek = async () => {
+        if (!window.confirm("Сохранить текущий план на СЛЕДУЮЩУЮ неделю? Это перезапишет существующий план на ту неделю.")) return;
+
+        try {
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0-6
+            const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+            // Current Monday
+            const currentMonday = new Date(today);
+            currentMonday.setDate(today.getDate() - diffToMon);
+
+            // Next Monday
+            const nextMonday = new Date(currentMonday);
+            nextMonday.setDate(currentMonday.getDate() + 7);
+
+            const formatDate = (d) => d.toISOString().split('T')[0];
+            const WEEK_DAYS_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+
+            const itemsToSave = plannedMeals.map(pm => {
+                const mealDate = new Date(nextMonday);
+                mealDate.setDate(nextMonday.getDate() + pm.day); // pm.day is 0-6
+
+                const recipe = recipes.find(r => r.id === pm.recipeId);
+                const portions = plannedPortions[pm.recipeId] || (recipe ? (recipe.portions || 1) : 1);
+
+                return {
+                    day_of_week: WEEK_DAYS_NAMES[pm.day],
+                    meal_type: pm.type,
+                    recipe_id: pm.recipeId,
+                    portions: portions, // Using current configured portion for the recipe
+                    family_member_id: pm.memberId,
+                    date: formatDate(mealDate)
+                };
+            });
+
+            if (itemsToSave.length === 0) {
+                alert("План пуст, нечего сохранять.");
+                return;
+            }
+
+            await savePlan(itemsToSave);
+            alert("✅ План успешно сохранен на следующую неделю!");
+
+        } catch (error) {
+            console.error(error);
+            alert("❌ Ошибка при сохранении: " + error.message);
+        }
+    };
+
     return {
         recipes,
         visibleRecipes,
@@ -519,6 +569,7 @@ export const usePlanning = () => {
         getTotalStats,
         getScheduledStats,
         getDefaultPortion,
-        autoDistribute
+        autoDistribute,
+        savePlanToNextWeek
     };
 };

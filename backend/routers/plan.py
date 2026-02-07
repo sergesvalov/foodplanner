@@ -110,6 +110,51 @@ def clear_plan(db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
+@router.post("/batch", response_model=List[schemas.PlanItemResponse])
+def update_plan_batch(items: List[schemas.PlanItemCreate], db: Session = Depends(get_db)):
+    if not items:
+        return []
+
+    # 1. Determine date range to clear
+    # We assume the batch covers a specific range (e.g. a week)
+    # Let's find min and max dates from the input
+    dates = [item.date for item in items if item.date]
+    
+    if not dates:
+        # Fallback if no dates provided (should not happen for this specific feature)
+        raise HTTPException(status_code=400, detail="Dates required for batch update")
+
+    min_date = min(dates)
+    max_date = max(dates)
+
+    # 2. Clear existing items in that range
+    db.query(models.WeeklyPlanEntry).filter(
+        models.WeeklyPlanEntry.date >= min_date,
+        models.WeeklyPlanEntry.date <= max_date
+    ).delete()
+    
+    # 3. Insert new items
+    new_items = []
+    for item in items:
+        db_item = models.WeeklyPlanEntry(
+            day_of_week=item.day_of_week,
+            meal_type=item.meal_type,
+            recipe_id=item.recipe_id,
+            portions=item.portions,
+            family_member_id=item.family_member_id,
+            date=item.date
+        )
+        db.add(db_item)
+        new_items.append(db_item)
+
+    db.commit()
+    
+    # Refresh to return IDs
+    for item in new_items:
+        db.refresh(item)
+        
+    return new_items
+
 from services.plan import autofill_week_logic, autofill_one_logic
 
 @router.post("/autofill_one")

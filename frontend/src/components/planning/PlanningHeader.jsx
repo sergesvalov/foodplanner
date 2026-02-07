@@ -55,6 +55,13 @@ const PlanningHeader = ({
                         </div>
 
                         <button
+                            onClick={savePlanToNextWeek}
+                            className="text-sm bg-green-100 text-green-700 px-3 py-1.5 rounded hover:bg-green-200 mr-4 font-medium transition-colors border border-green-200"
+                            title="Сохранить текущий план на следующую неделю"
+                        >
+                            💾 Сохранить
+                        </button>
+                        <button
                             onClick={autoDistribute}
                             className="text-sm bg-purple-100 text-purple-700 px-3 py-1.5 rounded hover:bg-purple-200 mr-4 font-medium transition-colors"
                             title="Случайно распределить выбранные блюда по дням"
