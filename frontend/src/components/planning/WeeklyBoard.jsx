@@ -32,9 +32,19 @@ const WeeklyBoard = ({
         if (!data) return;
 
         try {
-            const mealInstance = JSON.parse(data);
-            // Call moveMeal
-            moveMeal(mealInstance, dayIndex, typeId);
+            const parsed = JSON.parse(data);
+
+            if (parsed.isNew) {
+                // Determine memberId based on context or default?
+                // The existing 'addMeal' expects (dayIndex, typeId, recipeId, memberId)
+                // If dragged from sidebar, we don't know member yet.
+                // Let's rely on 'selectedUser' prop if passed, or default.
+                const memberId = selectedUser === 'all' ? undefined : parseInt(selectedUser);
+                addMeal(dayIndex, typeId, parsed.recipeId, memberId);
+            } else {
+                // Existing meal move
+                moveMeal(parsed, dayIndex, typeId);
+            }
         } catch (err) {
             console.error("Failed to parse drag data", err);
         }
