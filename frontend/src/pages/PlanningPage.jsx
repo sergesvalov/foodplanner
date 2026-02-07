@@ -28,7 +28,8 @@ const PlanningPage = () => {
         getDefaultPortion,
         autoDistribute,
         moveMeal,
-        savePlanToNextWeek
+        savePlanToNextWeek,
+        updateMealPortion
     } = usePlanning();
 
     // View Mode: 'browse' | 'summary' | 'days'
@@ -119,6 +120,7 @@ const PlanningPage = () => {
                         addMeal={addMeal}
                         removeMeal={removeMeal}
                         removeMealByInstance={removeMealByInstance}
+                        updateMealPortion={updateMealPortion}
                         recipes={recipes} // Need full list to find by ID
                         familyMembers={familyMembers}
                         moveMeal={moveMeal}

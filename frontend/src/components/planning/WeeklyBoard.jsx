@@ -11,7 +11,8 @@ const WeeklyBoard = ({
     recipes,
     familyMembers,
     moveMeal,
-    selectedUser = 'all'
+    selectedUser = 'all',
+    updateMealPortion
 }) => {
 
     // DRAG HANDLERS
@@ -96,6 +97,23 @@ const WeeklyBoard = ({
                                                         )}
                                                         <span className="truncate" title={r.title}>{r.title}</span>
                                                     </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const current = pm.portions || 1;
+                                                            const val = prompt("Количество порций:", current);
+                                                            if (val !== null) {
+                                                                const num = parseFloat(val);
+                                                                if (!isNaN(num) && num > 0) {
+                                                                    updateMealPortion(pm, num);
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="text-[10px] px-1.5 py-0.5 ml-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                                                        title="Изменить количество порций"
+                                                    >
+                                                        x{pm.portions || 1}
+                                                    </button>
                                                     <button
                                                         onClick={() => removeMealByInstance(pm)}
                                                         className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 ml-1"

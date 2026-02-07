@@ -110,7 +110,8 @@ export const usePlanning = () => {
                         day: daysMap[item.day_of_week],
                         type: item.meal_type,
                         recipeId: item.recipe_id,
-                        memberId: item.family_member_id
+                        memberId: item.family_member_id,
+                        portions: item.portions || 1 // Load portion from DB
                     })).filter(i => i.day !== undefined); // Ensure valid mapping
 
                     setPlannedMeals(mapped);
@@ -164,8 +165,14 @@ export const usePlanning = () => {
     const addMeal = (dayIndex, type, recipeId, memberId = undefined) => {
         setPlannedMeals(prev => [
             ...prev,
-            { day: dayIndex, type, recipeId, memberId }
+            { day: dayIndex, type, recipeId, memberId, portions: 1 }
         ]);
+    };
+
+    const updateMealPortion = (instance, newPortion) => {
+        setPlannedMeals(prev => prev.map(m =>
+            m === instance ? { ...m, portions: newPortion } : m
+        ));
     };
 
     const removeMeal = (dayIndex, type, recipeId) => {
@@ -621,14 +628,14 @@ export const usePlanning = () => {
                 const mealDate = new Date(nextMonday);
                 mealDate.setDate(nextMonday.getDate() + pm.day); // pm.day is 0-6
 
-                const recipe = recipes.find(r => r.id === pm.recipeId);
-                const portions = plannedPortions[pm.recipeId] || (recipe ? (recipe.portions || 1) : 1);
+                // Use instance-specific portion, default to 1
+                const portions = pm.portions || 1;
 
                 return {
                     day_of_week: WEEK_DAYS_NAMES[pm.day],
                     meal_type: pm.type,
                     recipe_id: pm.recipeId,
-                    portions: portions, // Using current configured portion for the recipe
+                    portions: portions,
                     family_member_id: pm.memberId,
                     date: formatDate(mealDate)
                 };
@@ -668,6 +675,7 @@ export const usePlanning = () => {
         hideRecipe,
         restoreAll,
         addMeal,
+        updateMealPortion,
         removeMeal,
         removeMealByInstance,
         moveMeal,
