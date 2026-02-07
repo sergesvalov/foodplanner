@@ -425,13 +425,37 @@ export const usePlanning = () => {
         // But the prompt says "Auto Distribute" overwrites.
         // Let's remove that complexity or keep it if it makes sense.
         // The previous code scan `plannedMeals` (which is the OLD state).
-        // Since we are overwriting, maybe we don't care about old assignments?
-        // But typically "Auto Distribute" might mean "Fill gaps" or "Redo all".
         // The confirmation says "Перезапишет текущее расписание". So we start fresh.
         // Thus, no consumer constraints from previous plan needed.
 
-        // Reuse main distribution logic
-        mainRecipes.forEach(recipe => {
+        // 3. Distribute Lunch/Dinner (Main/Soup)
+
+        // Identify recipes eaten for Lunch/Dinner last week
+        const lastWeekLunchDinnerIds = new Set();
+        if (Array.isArray(lastWeekPlan)) {
+            lastWeekPlan.forEach(item => {
+                if ((item.meal_type === 'lunch' || item.meal_type === 'dinner') && item.recipe_id) {
+                    lastWeekLunchDinnerIds.add(item.recipe_id);
+                }
+            });
+        }
+
+        // Split mainRecipes into New and Old
+        const newMainRecipes = mainRecipes.filter(r => !lastWeekLunchDinnerIds.has(r.id));
+        const oldMainRecipes = mainRecipes.filter(r => lastWeekLunchDinnerIds.has(r.id));
+
+        // Interleave them: New, Old, New, Old...
+        const balancedMainRecipes = [];
+        const maxLength = Math.max(newMainRecipes.length, oldMainRecipes.length);
+        for (let i = 0; i < maxLength; i++) {
+            if (i < newMainRecipes.length) balancedMainRecipes.push(newMainRecipes[i]);
+            if (i < oldMainRecipes.length) balancedMainRecipes.push(oldMainRecipes[i]);
+        }
+
+        // Fallback: If one list is empty, balancedMainRecipes will just be the other list.
+        // If both have items, it's mixed 50/50 as requested.
+
+        balancedMainRecipes.forEach(recipe => {
             let remaining = remainingPortions[recipe.id];
             const validTypes = getValidTypes(recipe.category);
             if (validTypes.length === 0 || remaining <= 0) return;
