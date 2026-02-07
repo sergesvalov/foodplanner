@@ -78,8 +78,12 @@ const PlanningPage = () => {
         return visibleRecipes.filter(r => typeCategories.includes(r.category));
     };
 
+    const containerClass = viewMode === 'days'
+        ? "w-full p-4 h-[calc(100vh-4rem)] flex flex-col"
+        : "container mx-auto max-w-7xl p-4 h-[calc(100vh-4rem)] flex flex-col";
+
     return (
-        <div className="container mx-auto max-w-7xl p-4 h-[calc(100vh-4rem)] flex flex-col">
+        <div className={containerClass}>
             <PlanningHeader
                 viewMode={viewMode}
                 setViewMode={setViewMode}
