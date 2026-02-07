@@ -85,13 +85,7 @@ const HomePage = () => {
         <div className="flex justify-between items-center mb-4 shrink-0">
           <h1 className="text-2xl font-bold text-gray-800">Неделя</h1>
           <div className="flex gap-2">
-            <button
-              onClick={handleAutoPlanWeek}
-              className="px-3 py-1 bg-violet-100 text-violet-700 rounded hover:bg-violet-200 border border-violet-200 text-sm font-medium transition-colors flex items-center gap-1"
-              title="Спланировать обеды и ужины на следующую неделю"
-            >
-              🔮 Спланировать
-            </button>
+
             <button
               onClick={handleAutoFillOne}
               className="px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 border border-purple-200 text-sm font-medium transition-colors flex items-center gap-1"
