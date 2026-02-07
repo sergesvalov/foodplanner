@@ -310,8 +310,9 @@ export const usePlanning = () => {
 
                 if (timeline.length === 0) return;
 
-                // 2. Pick Random Start to ensure variety
-                let idx = Math.floor(Math.random() * timeline.length);
+                // 2. Start from Monday Lunch (or first available 'lunch'/'dinner' in the week)
+                // "начинай автозаполнение дней недели с понедельника с обеда"
+                let idx = 0;
 
                 // 3. Fill Sequentially
                 let loopCount = 0;
