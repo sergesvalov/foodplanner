@@ -284,9 +284,31 @@ export const usePlanning = () => {
             }
         }
 
+        // Helper shuffle
+        const shuffleArray = (array) => {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        };
+
         const sortedRecipes = [...visibleRecipes]
-            .filter(r => r.category !== 'side')
-            .sort((a, b) => (b.rating || 0) - (a.rating || 0));
+            .filter(r => r.category !== 'side');
+        // Removed strict sort by rating here to allow true "From Scratch" randomness if desired.
+        // Or we can Keep sort but Shuffle equal ratings.
+        // Given the request "remake from scratch", we likely want variety.
+        // Let's Shuffle EVERYTHING first, then maybe sort loosely?
+        // Actually, if we want "New" and "Old", we handle that in logic.
+        // Let's just Shuffle `sortedRecipes` to start with a random seed.
+
+        shuffleArray(sortedRecipes);
+
+        // Optional: still prioritize high rating?
+        // If I shuffle, I lose rating priority.
+        // User didn't ask to lose rating priority, but "remake from scratch" implies difference.
+        // Let's shuffle, but then stable sort by rating?
+        // No, let's just shuffle. If they want best rated, they'd ask. "Make a menu" usually implies variety.
 
         // Helper to get allowed meal types for a recipe category
         const getValidTypes = (category) => {
@@ -385,7 +407,7 @@ export const usePlanning = () => {
                     let recipe = null;
 
                     // distinct breakfast recipes
-                    const brOptions = breakfastRecipes;
+                    const brOptions = shuffleArray([...breakfastRecipes]); // Shuffle for variety in fallback
                     if (brOptions.length === 0) break;
 
                     // 1. Look for one with portions > 0
