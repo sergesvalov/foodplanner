@@ -233,8 +233,35 @@ export const usePlanning = () => {
     // -------------------------------------------------------------------------
     // 5. Auto Distribute Logic
     // -------------------------------------------------------------------------
-    const autoDistribute = () => {
+    const autoDistribute = async () => {
         if (plannedMeals.length > 0 && !window.confirm("Это действие перезапишет текущее расписание по дням. Продолжить?")) return;
+
+        // Calculate Last Week Range
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0(Sun)..6(Sat) in JS
+        // We want Monday of current week as baseline.
+        // If today is Sunday (0), Monday was 6 days ago. If Monday (1), 0 days ago.
+        // BUT wait, standard week starts Monday.
+        // JS getDay(): Sun=0, Mon=1, ..., Sat=6.
+        // Monday offset:
+        const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const currentMonday = new Date(today);
+        currentMonday.setDate(today.getDate() - diffToMon);
+
+        const lastMonday = new Date(currentMonday);
+        lastMonday.setDate(currentMonday.getDate() - 7);
+        const lastSunday = new Date(currentMonday);
+        lastSunday.setDate(currentMonday.getDate() - 1);
+
+        const formatDate = (d) => d.toISOString().split('T')[0];
+
+        let lastWeekPlan = [];
+        try {
+            lastWeekPlan = await fetchPlan(formatDate(lastMonday), formatDate(lastSunday));
+        } catch (e) {
+            console.error("Failed to fetch last week history", e);
+            // Non-blocking error, just proceed with empty history
+        }
 
         const newMeals = [];
         // Track who eats what: day -> type -> Set(memberIds)
@@ -269,49 +296,6 @@ export const usePlanning = () => {
             return [];
         };
 
-        // 1. Analyze History from current plan (before clearing)
-        // Map<memberId, Array<{ recipeId, count }>> for Breakfasts
-        // Map<recipeId, Set<memberId>> for General Consumption constraints
-        const breakfastHistory = {};
-        const recipeConsumers = {}; // recipeId -> Set<memberId>
-
-        // Initialize structures
-        consumers.forEach(c => { breakfastHistory[c.id] = []; });
-
-        // Scan plan once
-        plannedMeals.forEach(pm => {
-            const rId = pm.recipeId;
-            const mId = pm.memberId;
-
-            // Track recipe consumers (global constraint)
-            if (mId) {
-                if (!recipeConsumers[rId]) recipeConsumers[rId] = new Set();
-                recipeConsumers[rId].add(mId);
-            }
-
-            // Track breakfast history specific stats
-            if (pm.type === 'breakfast' && mId) {
-                // We'll process this per user below, but grabbing raw data here is tricky 
-                // because we need counts. Let's keep the user-centric loop for breakfast stats
-                // or refactor. The previous User-Centric loop was fine for Breakfast Stats.
-            }
-        });
-
-        // Re-build User-Centric Breakfast History (keeping it simple and robust)
-        consumers.forEach(c => {
-            const history = {};
-            plannedMeals
-                .filter(pm => pm.memberId === c.id && pm.type === 'breakfast')
-                .forEach(pm => {
-                    history[pm.recipeId] = (history[pm.recipeId] || 0) + 1;
-                });
-
-            breakfastHistory[c.id] = Object.entries(history)
-                .map(([rId, count]) => ({ recipeId: parseInt(rId), count }))
-                .sort((a, b) => b.count - a.count);
-        });
-
-        // Separate recipes
         const breakfastRecipes = sortedRecipes.filter(r => r.category === 'breakfast');
         const mainRecipes = sortedRecipes.filter(r => r.category !== 'breakfast');
 
@@ -321,68 +305,136 @@ export const usePlanning = () => {
             remainingPortions[r.id] = Math.round(plannedPortions[r.id] || getDefaultPortion(r));
         });
 
-        // 2. Distribute Breakfasts based on History (with fallback)
+        // 1. Analyze History from LAST WEEK for Breakfast Priority
+        // Map<memberId, Array<{ recipeId, count }>>
+        const breakfastHistory = {};
+        consumers.forEach(c => { breakfastHistory[c.id] = []; });
+
+        // Build history map from fetch result
+        if (Array.isArray(lastWeekPlan)) {
+            consumers.forEach(c => {
+                const userHistory = {};
+                lastWeekPlan
+                    .filter(item => item.meal_type === 'breakfast' && String(item.family_member_id) === String(c.id))
+                    .forEach(item => {
+                        if (item.recipe_id) {
+                            userHistory[item.recipe_id] = (userHistory[item.recipe_id] || 0) + 1;
+                        }
+                    });
+
+                // Sort by frequency desc
+                breakfastHistory[c.id] = Object.entries(userHistory)
+                    .map(([rId, count]) => ({ recipeId: parseInt(rId), count }))
+                    .sort((a, b) => b.count - a.count);
+            });
+        }
+
+        // 2. Distribute Breakfasts
         consumers.forEach(consumer => {
             const history = breakfastHistory[consumer.id] || [];
             let currentDay = 0;
 
-            // FALLBACK: If no history, distribute available breakfasts sequentially
-            if (history.length === 0 && breakfastRecipes.length > 0) {
-                // Distribute breakfasts across the week using available recipes
-                breakfastRecipes.forEach(recipe => {
-                    if (remainingPortions[recipe.id] <= 0) return;
+            // Strategy: Fill 7 days.
+            // Priority 1: Use history (most frequent first)
+            // Priority 2: If history exhausted (or none), use random from available
 
-                    while (currentDay < 7 && remainingPortions[recipe.id] > 0) {
-                        if (!consumption[currentDay]['breakfast'].has(consumer.id)) {
-                            newMeals.push({
-                                day: currentDay,
-                                type: 'breakfast',
-                                recipeId: recipe.id,
-                                memberId: consumer.id
-                            });
-                            consumption[currentDay]['breakfast'].add(consumer.id);
-                            remainingPortions[recipe.id]--;
-                        }
-                        currentDay++;
-                    }
-                });
-                return; // Skip history-based logic for this user
-            }
+            const slotsToFill = 7;
+            let filledSlots = 0;
 
-            // HISTORY-BASED: Use existing preferences
-            history.forEach(item => {
-                const recipeId = item.recipeId;
-                const recipe = breakfastRecipes.find(r => r.id === recipeId);
+            // Phase A: Fill from History
+            for (const hItem of history) {
+                const recipe = breakfastRecipes.find(r => r.id === hItem.recipeId);
+                // Check if recipe still exists and has portions
+                if (!recipe) continue;
 
-                if (!recipe || remainingPortions[recipeId] <= 0) return;
-
-                const targetCount = item.count;
-                let taken = 0;
-
-                while (taken < targetCount && remainingPortions[recipeId] > 0) {
+                // Try to add as many times as in history, limited by remaining portions and slots
+                let countToAdd = hItem.count;
+                while (countToAdd > 0 && filledSlots < slotsToFill && remainingPortions[recipe.id] > 0) {
+                    // Find next available day for this user
                     while (currentDay < 7 && consumption[currentDay]['breakfast'].has(consumer.id)) {
                         currentDay++;
                     }
-                    if (currentDay >= 7) break;
+                    if (currentDay >= 7) break; // Should not happen if logic is correct
 
-                    newMeals.push({ day: currentDay, type: 'breakfast', recipeId: recipeId, memberId: consumer.id });
+                    newMeals.push({
+                        day: currentDay,
+                        type: 'breakfast',
+                        recipeId: recipe.id,
+                        memberId: consumer.id
+                    });
                     consumption[currentDay]['breakfast'].add(consumer.id);
-                    remainingPortions[recipeId]--;
-                    taken++;
+                    remainingPortions[recipe.id]--;
+
+                    countToAdd--;
+                    filledSlots++;
                 }
-            });
+            }
+
+            // Phase B: Fill remainder if needed
+            // If user has no history, this runs for all 7 slots.
+            // If user had limited history, this runs for remaining.
+            if (filledSlots < slotsToFill) {
+                // Sort available breakfasts by portions desc or rating? Let's verify we have portions.
+                // We just iterate available recipes.
+                // To make it "random" but fair, we can shuffle or just cycle.
+                // Let's use the sorted list (by rating).
+
+                let recipeIdx = 0;
+                // Infinite loop protection
+                let attempts = 0;
+
+                while (filledSlots < slotsToFill && attempts < 100) {
+                    attempts++;
+
+                    // Reset day pointer to find empty slots
+                    currentDay = 0;
+                    while (currentDay < 7 && consumption[currentDay]['breakfast'].has(consumer.id)) {
+                        currentDay++;
+                    }
+                    if (currentDay >= 7) break; // All full
+
+                    // Pick a recipe
+                    const recipe = breakfastRecipes[recipeIdx % breakfastRecipes.length];
+                    recipeIdx++;
+
+                    if (!recipe) break;
+                    if (remainingPortions[recipe.id] <= 0) continue;
+
+                    newMeals.push({
+                        day: currentDay,
+                        type: 'breakfast',
+                        recipeId: recipe.id,
+                        memberId: consumer.id
+                    });
+                    consumption[currentDay]['breakfast'].add(consumer.id);
+                    remainingPortions[recipe.id]--;
+                    filledSlots++;
+                }
+            }
         });
 
-        // 3. Distribute Lunch/Dinner (Main/Soup)
+        // 3. Distribute Lunch/Dinner (Main/Soup) - SAME AS BEFORE
+        // Create strict consumer constraints based on *current* plan (if any) or existing logic?
+        // Wait, the previous logic used 'recipeConsumers' from the *current* plan being overwritten.
+        // But we are overwriting it.
+        // The logic "Strict Consumer Constraint: If this recipe was eaten by ANYONE ... restrict"
+        // was based on preserving manual assignments. But here we are overwriting?
+        // Actually, 'autoDistribute' overwrites 'plannedMeals'.
+        // So 'recipeConsumers' derived from 'plannedMeals' (which is about to be wiped) is maybe not what we want?
+        // If the user manually assigned "Steak to Dad" then clicked "Auto", maybe they want to keep that constraint?
+        // But the prompt says "Auto Distribute" overwrites.
+        // Let's remove that complexity or keep it if it makes sense.
+        // The previous code scan `plannedMeals` (which is the OLD state).
+        // Since we are overwriting, maybe we don't care about old assignments?
+        // But typically "Auto Distribute" might mean "Fill gaps" or "Redo all".
+        // The confirmation says "Перезапишет текущее расписание". So we start fresh.
+        // Thus, no consumer constraints from previous plan needed.
+
+        // Reuse main distribution logic
         mainRecipes.forEach(recipe => {
             let remaining = remainingPortions[recipe.id];
             const validTypes = getValidTypes(recipe.category);
             if (validTypes.length === 0 || remaining <= 0) return;
-
-            // Strict Consumer Constraint:
-            // If this recipe was eaten by ANYONE in the current plan, restrict distribution to ONLY those people.
-            // If it was NOT eaten (new recipe), distribute to ANYONE.
-            const knownConsumers = recipeConsumers[recipe.id];
 
             // Sequential Timeline Approach
             const timeline = [];
@@ -402,11 +454,6 @@ export const usePlanning = () => {
 
                 // Base candidates: those who haven't eaten yet in this slot
                 let candidates = consumers.filter(c => !eaten.has(c.id));
-
-                // Verify Constraint
-                if (knownConsumers && knownConsumers.size > 0) {
-                    candidates = candidates.filter(c => knownConsumers.has(c.id));
-                }
 
                 if (candidates.length > 0) {
                     const takeCount = Math.min(remaining, candidates.length);
