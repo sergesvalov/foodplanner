@@ -149,6 +149,7 @@ def autofill_one_logic(req: schemas.AutoFillRequest, db: Session):
     days_map = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
     target_day = days_map[now.weekday()]
     
+    # ... check occupation ...
     q = db.query(models.WeeklyPlanEntry).filter(
         models.WeeklyPlanEntry.day_of_week == target_day,
         models.WeeklyPlanEntry.meal_type == target_meal,
@@ -158,9 +159,30 @@ def autofill_one_logic(req: schemas.AutoFillRequest, db: Session):
         q = q.filter(models.WeeklyPlanEntry.family_member_id == req.family_member_id)
     
     if q.first():
-         raise HTTPException(status_code=400, detail="Slot already occupied")
+         raise HTTPException(status_code=400, detail="Запись на это время уже ест! (Slot occupied)")
 
-    target_recipe = random.choice(candidates)
+    target_recipe = None
+    
+    # "Leftover" Logic for Lunch/Dinner: Try to find the last cooked meal
+    if target_meal in ['lunch', 'dinner']:
+        # Find last meal (excluding current slot context roughly)
+        # We look for ANY recent meal of type lunch/dinner that is NOT today's current slot (which is empty anyway)
+        last_meal = db.query(models.WeeklyPlanEntry).join(models.Recipe).filter(
+            models.WeeklyPlanEntry.meal_type.in_(['lunch', 'dinner']),
+            models.Recipe.category.in_(['soup', 'main']),
+            models.WeeklyPlanEntry.date <= datetime.date.today()
+        ).order_by(
+            models.WeeklyPlanEntry.date.desc(), 
+            models.WeeklyPlanEntry.id.desc()
+        ).first()
+
+        if last_meal:
+            target_recipe = last_meal.recipe
+            # Optional: Check if we just ate it? 
+            # If I just ate Pizza for Lunch, do I want Pizza for Dinner? YES, that's what "dozhrat" (finish) means.
+
+    if not target_recipe:
+        target_recipe = random.choice(candidates)
     
     new_item = models.WeeklyPlanEntry(
         day_of_week=target_day,
