@@ -495,18 +495,51 @@ export const usePlanning = () => {
             let idx = 0;
             let loopCount = 0;
 
+            // Strategy: "Clean Start" for Big Recipes
+            // If recipe has enough portions for everyone, it MUST start on a "fresh" meal slot (nobody eaten yet).
+            // This aligns the family meal.
+            // Small recipes (leftovers/singles) can fill gaps.
+
+            const isBigRecipe = remaining >= consumers.length;
+            let foundStart = false;
+
+            // Scan for a valid start index
+            for (let i = 0; i < timeline.length; i++) {
+                const slot = timeline[i];
+                const eatenCount = consumption[slot.d][slot.t].size;
+
+                if (isBigRecipe) {
+                    if (eatenCount === 0) {
+                        idx = i;
+                        foundStart = true;
+                        break;
+                    }
+                } else {
+                    if (eatenCount < consumers.length) {
+                        idx = i;
+                        foundStart = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!foundStart && isBigRecipe) {
+                // Fallback: If no clean slots, just find any space
+                for (let i = 0; i < timeline.length; i++) {
+                    const slot = timeline[i];
+                    if (consumption[slot.d][slot.t].size < consumers.length) {
+                        idx = i;
+                        foundStart = true;
+                        break;
+                    }
+                }
+            }
+
+            // If still no space, we can't place it efficiently, but let loop handle it.
+
             while (remaining > 0 && loopCount < timeline.length * 2) {
                 const slot = timeline[idx];
                 const eaten = consumption[slot.d][slot.t];
-
-                // If ANYONE has eaten in this slot (and it's not THIS recipe - which is impossible as we iterate one by one),
-                // then this slot is "dirty" with another recipe.
-                // We skip it to avoid mixing recipes in the same meal (e.g. Mum eats Soup, Dad eats Pizza).
-                if (eaten.size > 0) {
-                    idx = (idx + 1) % timeline.length;
-                    loopCount++;
-                    continue;
-                }
 
                 // Base candidates: those who haven't eaten yet in this slot
                 let candidates = consumers.filter(c => !eaten.has(c.id));
