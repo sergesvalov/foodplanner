@@ -93,7 +93,7 @@ const RecipeList = ({
                                                     {Math.round(recipe.calories_per_portion * (plannedPortions[recipe.id] || getDefaultPortion(recipe)))} ккал
                                                 </span>
                                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-100">
-                                                    €{(recipe.total_cost * (plannedPortions[recipe.id] || getDefaultPortion(recipe))).toFixed(2)}
+                                                    €{((recipe.total_cost / (recipe.portions || 1)) * (plannedPortions[recipe.id] || getDefaultPortion(recipe))).toFixed(2)}
                                                 </span>
                                             </>
                                         ) : (
@@ -101,8 +101,8 @@ const RecipeList = ({
                                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
                                                     {Math.round(recipe.calories_per_portion)} ккал
                                                 </span>
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-100" title="Белки / Жиры / Углеводы">
-                                                    Б:{Math.round(recipe.proteins || 0)} Ж:{Math.round(recipe.fats || 0)} У:{Math.round(recipe.carbs || 0)}
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-100" title="Белки / Жиры / Углеводы на порцию">
+                                                    Б:{Math.round((recipe.total_proteins || 0) / (recipe.portions || 1))} Ж:{Math.round((recipe.total_fats || 0) / (recipe.portions || 1))} У:{Math.round((recipe.total_carbs || 0) / (recipe.portions || 1))}
                                                 </span>
                                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
                                                     {plannedPortions[recipe.id] || getDefaultPortion(recipe)} порц.

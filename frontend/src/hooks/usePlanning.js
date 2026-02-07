@@ -418,8 +418,6 @@ export const usePlanning = () => {
         restoreAll,
         addMeal,
         removeMeal,
-        addMeal,
-        removeMeal,
         removeMealByInstance,
         moveMeal,
         getRecipesByCategories,
