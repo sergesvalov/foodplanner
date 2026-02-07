@@ -128,11 +128,10 @@ def autofill_one_logic(req: schemas.AutoFillRequest, db: Session):
     hour = now.hour
     
     target_meal = 'snack'
-    if 0 <= hour < 10: target_meal = 'breakfast'
-    elif 10 <= hour < 14: target_meal = 'lunch'
-    elif 14 <= hour < 17: target_meal = 'afternoon_snack'
-    elif 17 <= hour < 24: target_meal = 'dinner'
-    else: target_meal = 'late_snack'
+    if 0 <= hour < 11: target_meal = 'breakfast'
+    elif 11 <= hour < 14: target_meal = 'lunch'
+    elif 14 <= hour < 18: target_meal = 'afternoon_snack'
+    else: target_meal = 'dinner' # 18-24
 
     allowed_categories = ['snack']
     if target_meal == 'breakfast': allowed_categories = ['breakfast', 'snack']
@@ -159,7 +158,7 @@ def autofill_one_logic(req: schemas.AutoFillRequest, db: Session):
         q = q.filter(models.WeeklyPlanEntry.family_member_id == req.family_member_id)
     
     if q.first():
-         raise HTTPException(status_code=400, detail="Запись на это время уже ест! (Slot occupied)")
+         raise HTTPException(status_code=400, detail="На этот прием пищи уже что-то запланировано!")
 
     target_recipe = None
     
