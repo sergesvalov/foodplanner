@@ -102,7 +102,7 @@ const DraggableRecipeList = () => {
                         <div className="flex justify-between items-center mt-2">
                           <div className="flex gap-2 text-[10px] text-gray-500 font-mono">
                             <span className="bg-gray-100 px-1.5 py-0.5 rounded">
-                              {recipe.calories_per_100g > 0 ? `${recipe.calories_per_100g} ккал/100г` : `${recipe.total_calories} ккал`}
+                              {Math.round(recipe.total_calories)} ккал (рецепт)
                             </span>
                           </div>
                           <span className="text-[10px] text-gray-400 bg-gray-50 px-1.5 rounded border border-gray-100">
