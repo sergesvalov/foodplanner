@@ -78,19 +78,53 @@ export const usePlanning = () => {
     }, [familyMembers]);
 
     // Planned Meals
-    const [plannedMeals, setPlannedMeals] = useState(() => {
-        try {
-            const saved = localStorage.getItem('planning_meals');
-            const parsed = saved ? JSON.parse(saved) : [];
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (e) {
-            console.error('Error parsing planning_meals', e);
-            return [];
-        }
-    });
+    const [plannedMeals, setPlannedMeals] = useState([]);
+
+    // Load Shared Plan (Next Week) on Mount
     useEffect(() => {
-        localStorage.setItem('planning_meals', JSON.stringify(plannedMeals));
-    }, [plannedMeals]);
+        const loadSharedPlan = async () => {
+            try {
+                const today = new Date();
+                const dayOfWeek = today.getDay();
+                const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                const currentMonday = new Date(today);
+                currentMonday.setDate(today.getDate() - diffToMon);
+
+                const nextMonday = new Date(currentMonday);
+                nextMonday.setDate(currentMonday.getDate() + 7);
+
+                const nextSunday = new Date(nextMonday);
+                nextSunday.setDate(nextMonday.getDate() + 6);
+
+                const formatDate = (d) => d.toISOString().split('T')[0];
+
+                const data = await fetchPlan(formatDate(nextMonday), formatDate(nextSunday));
+
+                if (Array.isArray(data) && data.length > 0) {
+                    const daysMap = {
+                        'Понедельник': 0, 'Вторник': 1, 'Среда': 2, 'Четверг': 3,
+                        'Пятница': 4, 'Суббота': 5, 'Воскресенье': 6
+                    };
+
+                    const mapped = data.map(item => ({
+                        day: daysMap[item.day_of_week],
+                        type: item.meal_type,
+                        recipeId: item.recipe_id,
+                        memberId: item.family_member_id
+                    })).filter(i => i.day !== undefined); // Ensure valid mapping
+
+                    setPlannedMeals(mapped);
+                }
+            } catch (e) {
+                console.error("Failed to load shared plan", e);
+            }
+        };
+        loadSharedPlan();
+    }, []);
+
+    // Sync to LS removed to prefer DB source of truth
+    // If we want offline support, we'd need more logic. 
+    // user asked for "everyone sees it", which implies DB priority.
 
 
     // -------------------------------------------------------------------------
