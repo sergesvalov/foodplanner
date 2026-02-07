@@ -181,15 +181,32 @@ def autofill_one_logic(req: schemas.AutoFillRequest, db: Session):
         recipe_id=target_recipe.id,
         portions=1,
         family_member_id=req.family_member_id if req else None,
-        date=datetime.date.today() 
+        date=datetime.date.today()
     )
     db.add(new_item)
     db.commit()
     db.refresh(new_item)
     
+    # Check for calorie limit overflow
+    warning_msg = None
+    if req and req.family_member_id:
+        member = db.query(models.FamilyMember).filter(models.FamilyMember.id == req.family_member_id).first()
+        if member:
+            # Calculate total calories for today for this user
+            today_items = db.query(models.WeeklyPlanEntry).options(joinedload(models.WeeklyPlanEntry.recipe)).filter(
+                models.WeeklyPlanEntry.date == datetime.date.today(),
+                models.WeeklyPlanEntry.family_member_id == req.family_member_id
+            ).all()
+            
+            total_cals = sum(item.recipe.calories_per_portion * item.portions for item in today_items if item.recipe)
+            
+            if total_cals > member.max_calories:
+                warning_msg = f"Внимание! Вы превысили норму калорий ({member.max_calories}) на сегодня! (Сейчас: {round(total_cals)})"
+
     return {
         "message": f"Added {target_recipe.title}", 
         "day": target_day, 
         "meal": target_meal, 
-        "recipe": target_recipe.title
+        "recipe": target_recipe.title,
+        "warning": warning_msg
     }

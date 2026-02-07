@@ -59,6 +59,7 @@ const HomePage = () => {
       });
       const data = await res.json();
       if (res.ok) {
+        if (data.warning) alert(data.warning);
         // Убрали alert, чтобы не надоедал
         setRefreshKey(k => k + 1); // Обновляем сетку
       } else {
