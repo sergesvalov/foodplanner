@@ -4,6 +4,7 @@ import { WEEK_DAYS, MEAL_TYPES } from '../constants/planning';
 import PlanningHeader from '../components/planning/PlanningHeader';
 import RecipeList from '../components/planning/RecipeList';
 import WeeklyBoard from '../components/planning/WeeklyBoard';
+import PlanningSidebar from '../components/planning/PlanningSidebar';
 
 const PlanningPage = () => {
     const {
@@ -104,19 +105,22 @@ const PlanningPage = () => {
                     getDefaultPortion={getDefaultPortion}
                 />
             ) : (
-                <WeeklyBoard
-                    weekDays={WEEK_DAYS}
-                    mealTypes={MEAL_TYPES}
-                    plannedMeals={filteredMeals}
-                    getOptionsForSlot={getOptionsForSlot}
-                    addMeal={addMeal}
-                    removeMeal={removeMeal}
-                    removeMealByInstance={removeMealByInstance}
-                    recipes={recipes} // Need full list to find by ID
-                    familyMembers={familyMembers}
-                    moveMeal={moveMeal}
-                    selectedUser={selectedUser}
-                />
+                <div className="flex h-full min-h-0 gap-4">
+                    <PlanningSidebar recipes={visibleRecipes} />
+                    <WeeklyBoard
+                        weekDays={WEEK_DAYS}
+                        mealTypes={MEAL_TYPES}
+                        plannedMeals={filteredMeals}
+                        getOptionsForSlot={getOptionsForSlot}
+                        addMeal={addMeal}
+                        removeMeal={removeMeal}
+                        removeMealByInstance={removeMealByInstance}
+                        recipes={recipes} // Need full list to find by ID
+                        familyMembers={familyMembers}
+                        moveMeal={moveMeal}
+                        selectedUser={selectedUser}
+                    />
+                </div>
             )}
         </div>
     );
