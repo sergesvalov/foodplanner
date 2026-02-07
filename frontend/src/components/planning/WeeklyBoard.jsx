@@ -36,12 +36,21 @@ const WeeklyBoard = ({
             const parsed = JSON.parse(data);
 
             if (parsed.isNew) {
-                // Determine memberId based on context or default?
-                // The existing 'addMeal' expects (dayIndex, typeId, recipeId, memberId)
-                // If dragged from sidebar, we don't know member yet.
-                // Let's rely on 'selectedUser' prop if passed, or default.
-                const memberId = selectedUser === 'all' ? undefined : parseInt(selectedUser);
-                addMeal(dayIndex, typeId, parsed.recipeId, memberId);
+                if (selectedUser === 'all') {
+                    // Assign to ALL family members
+                    if (familyMembers.length > 0) {
+                        familyMembers.forEach(member => {
+                            addMeal(dayIndex, typeId, parsed.recipeId, member.id);
+                        });
+                    } else {
+                        // Fallback if no members defined
+                        addMeal(dayIndex, typeId, parsed.recipeId, undefined);
+                    }
+                } else {
+                    // Assign to specific selected user
+                    const memberId = parseInt(selectedUser);
+                    addMeal(dayIndex, typeId, parsed.recipeId, memberId);
+                }
             } else {
                 // Existing meal move
                 moveMeal(parsed, dayIndex, typeId);
