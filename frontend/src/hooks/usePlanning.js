@@ -499,10 +499,20 @@ export const usePlanning = () => {
                 const slot = timeline[idx];
                 const eaten = consumption[slot.d][slot.t];
 
+                // If ANYONE has eaten in this slot (and it's not THIS recipe - which is impossible as we iterate one by one),
+                // then this slot is "dirty" with another recipe.
+                // We skip it to avoid mixing recipes in the same meal (e.g. Mum eats Soup, Dad eats Pizza).
+                if (eaten.size > 0) {
+                    idx = (idx + 1) % timeline.length;
+                    loopCount++;
+                    continue;
+                }
+
                 // Base candidates: those who haven't eaten yet in this slot
                 let candidates = consumers.filter(c => !eaten.has(c.id));
 
                 if (candidates.length > 0) {
+                    // Try to feed the whole group if possible, or as many as we can
                     const takeCount = Math.min(remaining, candidates.length);
                     const targets = candidates.slice(0, takeCount);
 
