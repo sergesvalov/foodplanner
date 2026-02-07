@@ -23,7 +23,7 @@ const PlanningSidebar = ({ recipes }) => {
     }, [recipes, searchTerm, selectedCategory]);
 
     const handleDragStart = (e, recipe) => {
-        e.dataTransfer.effectAllowed = 'copy';
+        e.dataTransfer.effectAllowed = 'all';
         e.dataTransfer.setData('application/json', JSON.stringify({
             isNew: true,
             recipeId: recipe.id
@@ -47,8 +47,8 @@ const PlanningSidebar = ({ recipes }) => {
                             key={cat.id}
                             onClick={() => setSelectedCategory(cat.id)}
                             className={`px-2 py-1 text-xs rounded-full border transition-colors ${selectedCategory === cat.id
-                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-medium'
-                                    : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-medium'
+                                : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
                                 }`}
                         >
                             {cat.label}
