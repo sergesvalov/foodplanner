@@ -269,7 +269,10 @@ export const usePlanning = () => {
         const mealTypes = MEAL_TYPES;
 
         // FIX: Sort recipes by rating (DESC) so high-rated recipes get priority for slots
-        const sortedRecipes = [...visibleRecipes].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        // Also exclude side dishes as requested
+        const sortedRecipes = [...visibleRecipes]
+            .filter(r => r.category !== 'side')
+            .sort((a, b) => (b.rating || 0) - (a.rating || 0));
 
         sortedRecipes.forEach(recipe => {
             let remaining = Math.round(plannedPortions[recipe.id] || getDefaultPortion(recipe));
