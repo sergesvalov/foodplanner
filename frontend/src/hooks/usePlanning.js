@@ -321,11 +321,35 @@ export const usePlanning = () => {
             remainingPortions[r.id] = Math.round(plannedPortions[r.id] || getDefaultPortion(r));
         });
 
-        // 2. Distribute Breakfasts based on History
+        // 2. Distribute Breakfasts based on History (with fallback)
         consumers.forEach(consumer => {
             const history = breakfastHistory[consumer.id] || [];
             let currentDay = 0;
 
+            // FALLBACK: If no history, distribute available breakfasts sequentially
+            if (history.length === 0 && breakfastRecipes.length > 0) {
+                // Distribute breakfasts across the week using available recipes
+                breakfastRecipes.forEach(recipe => {
+                    if (remainingPortions[recipe.id] <= 0) return;
+
+                    while (currentDay < 7 && remainingPortions[recipe.id] > 0) {
+                        if (!consumption[currentDay]['breakfast'].has(consumer.id)) {
+                            newMeals.push({
+                                day: currentDay,
+                                type: 'breakfast',
+                                recipeId: recipe.id,
+                                memberId: consumer.id
+                            });
+                            consumption[currentDay]['breakfast'].add(consumer.id);
+                            remainingPortions[recipe.id]--;
+                        }
+                        currentDay++;
+                    }
+                });
+                return; // Skip history-based logic for this user
+            }
+
+            // HISTORY-BASED: Use existing preferences
             history.forEach(item => {
                 const recipeId = item.recipeId;
                 const recipe = breakfastRecipes.find(r => r.id === recipeId);
