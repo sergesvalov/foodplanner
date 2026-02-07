@@ -32,24 +32,18 @@ test.describe('Planning Page Refactor Verification', () => {
         expect(hasRecipes || hasEmptyMsg).toBeTruthy();
     });
 
-    test('should switch views: Browse -> Summary -> Days', async ({ page }) => {
+    test('should switch views: Browse -> Days', async ({ page }) => {
         await page.goto('/planning');
 
-        // 1. Browse -> Summary
-        await page.getByText('Далее к порциям →').click();
-        await expect(page.getByText('Итоговый список')).toBeVisible();
-        await expect(page.getByText('← Назад')).toBeVisible();
-        await expect(page.getByText('Далее к дням →')).toBeVisible();
-
-        // 2. Summary -> Days
+        // 1. Browse -> Days
+        await expect(page.getByText('Планирование меню')).toBeVisible();
         await page.getByText('Далее к дням →').click();
+
+        // Verify Days view
         await expect(page.getByText('По дням недели')).toBeVisible();
         await expect(page.getByText('Авто-распределение')).toBeVisible();
 
-        // 3. Days -> Summary -> Browse (Back flow)
-        await page.getByText('← Назад').click(); // Back to Summary
-        await expect(page.getByText('Итоговый список')).toBeVisible();
-
+        // 2. Days -> Browse (Back flow)
         await page.getByText('← Назад').click(); // Back to Browse
         await expect(page.getByText('Планирование меню')).toBeVisible();
     });
