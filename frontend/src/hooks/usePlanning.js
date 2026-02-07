@@ -269,78 +269,120 @@ export const usePlanning = () => {
             return [];
         };
 
-        sortedRecipes.forEach(recipe => {
-            let remaining = Math.round(plannedPortions[recipe.id] || getDefaultPortion(recipe));
+        // 1. Analyze Breakfast History from current plan (before clearing)
+        // Map<memberId, Array<{ recipeId, count }>> sorted by count DESC
+        const breakfastHistory = {};
+        consumers.forEach(c => {
+            const history = {};
+            plannedMeals
+                .filter(pm => pm.memberId === c.id && pm.type === 'breakfast')
+                .forEach(pm => {
+                    history[pm.recipeId] = (history[pm.recipeId] || 0) + 1;
+                });
+
+            breakfastHistory[c.id] = Object.entries(history)
+                .map(([rId, count]) => ({ recipeId: parseInt(rId), count }))
+                .sort((a, b) => b.count - a.count);
+        });
+
+        // Separate recipes
+        const breakfastRecipes = sortedRecipes.filter(r => r.category === 'breakfast');
+        const mainRecipes = sortedRecipes.filter(r => r.category !== 'breakfast');
+
+        // To do this correctly, we need a mutable map of remaining portions
+        const remainingPortions = {};
+        visibleRecipes.forEach(r => {
+            remainingPortions[r.id] = Math.round(plannedPortions[r.id] || getDefaultPortion(r));
+        });
+
+        // 2. Distribute Breakfasts based on History
+        // Iterate consumers first, then their favorite recipes
+        consumers.forEach(consumer => {
+            const history = breakfastHistory[consumer.id] || [];
+
+            // Fill days sequentially for this consumer
+            // We need to find empty breakfast slots for this consumer
+            // Slots: 0..6
+            // We fill them in order: Mon, Tue, ...
+
+            let currentDay = 0;
+
+            history.forEach(item => {
+                const recipeId = item.recipeId;
+                const recipe = breakfastRecipes.find(r => r.id === recipeId);
+
+                if (!recipe || remainingPortions[recipeId] <= 0) return;
+
+                // How many to take? Min(historyCount, remaining)
+                // And also limited by available days?
+                // The prompt says "in the same amount as it was".
+
+                const targetCount = item.count;
+                let taken = 0;
+
+                while (taken < targetCount && remainingPortions[recipeId] > 0) {
+                    // Find next empty breakfast slot for this consumer
+                    while (currentDay < 7 && consumption[currentDay]['breakfast'].has(consumer.id)) {
+                        currentDay++;
+                    }
+
+                    if (currentDay >= 7) break; // No more slots for this consumer
+
+                    // Assign
+                    newMeals.push({ day: currentDay, type: 'breakfast', recipeId: recipeId, memberId: consumer.id });
+                    consumption[currentDay]['breakfast'].add(consumer.id);
+                    remainingPortions[recipeId]--;
+                    taken++;
+                }
+            });
+        });
+
+        // 3. Distribute Lunch/Dinner (Main/Soup)
+        mainRecipes.forEach(recipe => {
+            let remaining = remainingPortions[recipe.id];
             const validTypes = getValidTypes(recipe.category);
-            if (validTypes.length === 0) return;
+            if (validTypes.length === 0 || remaining <= 0) return;
 
-            // Strategy:
-            // Breakfast: Random distribution
-            // Lunch/Dinner: Sequential timeline (L0->D0->L1->D1...)
+            // Sequential Timeline Approach
+            // 1. Build Timeline of valid slots for 7 days
+            const timeline = [];
+            for (let d = 0; d < 7; d++) {
+                // Order: Lunch -> Dinner (matches requirement: "if dinner full, go to next lunch")
+                if (validTypes.includes('lunch')) timeline.push({ d, t: 'lunch' });
+                if (validTypes.includes('dinner')) timeline.push({ d, t: 'dinner' });
+            }
 
-            if (recipe.category === 'breakfast') {
-                let attempts = 0;
-                while (remaining > 0 && attempts < 50) {
-                    const d = Math.floor(Math.random() * 7);
-                    const eaten = consumption[d]['breakfast'];
-                    const candidates = consumers.filter(c => !eaten.has(c.id));
+            if (timeline.length === 0) return;
 
-                    if (candidates.length > 0) {
-                        const takeCount = Math.min(remaining, candidates.length);
-                        // Randomize candidates to be fair
-                        const targets = candidates.sort(() => 0.5 - Math.random()).slice(0, takeCount);
+            // 2. Start from Monday Lunch (or first available 'lunch'/'dinner' in the week)
+            let idx = 0;
 
-                        targets.forEach(c => {
-                            newMeals.push({ day: d, type: 'breakfast', recipeId: recipe.id, memberId: c.id });
-                            eaten.add(c.id);
-                        });
-                        remaining -= takeCount;
-                    }
-                    attempts++;
+            // 3. Fill Sequentially
+            let loopCount = 0;
+            // Allow up to 2 full loops to find spots
+            while (remaining > 0 && loopCount < timeline.length * 2) {
+                const slot = timeline[idx];
+
+                const eaten = consumption[slot.d][slot.t];
+                // Find consumers who haven't eaten this meal type on this day
+                const candidates = consumers.filter(c => !eaten.has(c.id));
+
+                if (candidates.length > 0) {
+                    // Saturated the slot: give to all candidates up to remaining portions
+                    const takeCount = Math.min(remaining, candidates.length);
+                    // For main meals, usually fill sequentially/stable
+                    const targets = candidates.slice(0, takeCount);
+
+                    targets.forEach(c => {
+                        newMeals.push({ day: slot.d, type: slot.t, recipeId: recipe.id, memberId: c.id });
+                        eaten.add(c.id);
+                    });
+                    remaining -= takeCount;
                 }
-            } else {
-                // Sequential Timeline Approach
-                // 1. Build Timeline of valid slots for 7 days
-                const timeline = [];
-                for (let d = 0; d < 7; d++) {
-                    // Order: Lunch -> Dinner (matches requirement: "if dinner full, go to next lunch")
-                    if (validTypes.includes('lunch')) timeline.push({ d, t: 'lunch' });
-                    if (validTypes.includes('dinner')) timeline.push({ d, t: 'dinner' });
-                }
 
-                if (timeline.length === 0) return;
-
-                // 2. Start from Monday Lunch (or first available 'lunch'/'dinner' in the week)
-                // "начинай автозаполнение дней недели с понедельника с обеда"
-                let idx = 0;
-
-                // 3. Fill Sequentially
-                let loopCount = 0;
-                // Allow up to 2 full loops to find spots
-                while (remaining > 0 && loopCount < timeline.length * 2) {
-                    const slot = timeline[idx];
-
-                    const eaten = consumption[slot.d][slot.t];
-                    // Find consumers who haven't eaten this meal type on this day
-                    const candidates = consumers.filter(c => !eaten.has(c.id));
-
-                    if (candidates.length > 0) {
-                        // Saturated the slot: give to all candidates up to remaining portions
-                        const takeCount = Math.min(remaining, candidates.length);
-                        // For main meals, usually fill sequentially/stable (no random sort needed per slot)
-                        const targets = candidates.slice(0, takeCount);
-
-                        targets.forEach(c => {
-                            newMeals.push({ day: slot.d, type: slot.t, recipeId: recipe.id, memberId: c.id });
-                            eaten.add(c.id);
-                        });
-                        remaining -= takeCount;
-                    }
-
-                    // Move to next slot in timeline (wrap around)
-                    idx = (idx + 1) % timeline.length;
-                    loopCount++;
-                }
+                // Move to next slot in timeline (wrap around)
+                idx = (idx + 1) % timeline.length;
+                loopCount++;
             }
         });
 
