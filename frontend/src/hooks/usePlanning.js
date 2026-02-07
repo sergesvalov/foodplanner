@@ -269,9 +269,35 @@ export const usePlanning = () => {
             return [];
         };
 
-        // 1. Analyze Breakfast History from current plan (before clearing)
-        // Map<memberId, Array<{ recipeId, count }>> sorted by count DESC
+        // 1. Analyze History from current plan (before clearing)
+        // Map<memberId, Array<{ recipeId, count }>> for Breakfasts
+        // Map<recipeId, Set<memberId>> for General Consumption constraints
         const breakfastHistory = {};
+        const recipeConsumers = {}; // recipeId -> Set<memberId>
+
+        // Initialize structures
+        consumers.forEach(c => { breakfastHistory[c.id] = []; });
+
+        // Scan plan once
+        plannedMeals.forEach(pm => {
+            const rId = pm.recipeId;
+            const mId = pm.memberId;
+
+            // Track recipe consumers (global constraint)
+            if (mId) {
+                if (!recipeConsumers[rId]) recipeConsumers[rId] = new Set();
+                recipeConsumers[rId].add(mId);
+            }
+
+            // Track breakfast history specific stats
+            if (pm.type === 'breakfast' && mId) {
+                // We'll process this per user below, but grabbing raw data here is tricky 
+                // because we need counts. Let's keep the user-centric loop for breakfast stats
+                // or refactor. The previous User-Centric loop was fine for Breakfast Stats.
+            }
+        });
+
+        // Re-build User-Centric Breakfast History (keeping it simple and robust)
         consumers.forEach(c => {
             const history = {};
             plannedMeals
@@ -296,15 +322,8 @@ export const usePlanning = () => {
         });
 
         // 2. Distribute Breakfasts based on History
-        // Iterate consumers first, then their favorite recipes
         consumers.forEach(consumer => {
             const history = breakfastHistory[consumer.id] || [];
-
-            // Fill days sequentially for this consumer
-            // We need to find empty breakfast slots for this consumer
-            // Slots: 0..6
-            // We fill them in order: Mon, Tue, ...
-
             let currentDay = 0;
 
             history.forEach(item => {
@@ -313,22 +332,15 @@ export const usePlanning = () => {
 
                 if (!recipe || remainingPortions[recipeId] <= 0) return;
 
-                // How many to take? Min(historyCount, remaining)
-                // And also limited by available days?
-                // The prompt says "in the same amount as it was".
-
                 const targetCount = item.count;
                 let taken = 0;
 
                 while (taken < targetCount && remainingPortions[recipeId] > 0) {
-                    // Find next empty breakfast slot for this consumer
                     while (currentDay < 7 && consumption[currentDay]['breakfast'].has(consumer.id)) {
                         currentDay++;
                     }
+                    if (currentDay >= 7) break;
 
-                    if (currentDay >= 7) break; // No more slots for this consumer
-
-                    // Assign
                     newMeals.push({ day: currentDay, type: 'breakfast', recipeId: recipeId, memberId: consumer.id });
                     consumption[currentDay]['breakfast'].add(consumer.id);
                     remainingPortions[recipeId]--;
@@ -343,34 +355,37 @@ export const usePlanning = () => {
             const validTypes = getValidTypes(recipe.category);
             if (validTypes.length === 0 || remaining <= 0) return;
 
+            // Strict Consumer Constraint:
+            // If this recipe was eaten by ANYONE in the current plan, restrict distribution to ONLY those people.
+            // If it was NOT eaten (new recipe), distribute to ANYONE.
+            const knownConsumers = recipeConsumers[recipe.id];
+
             // Sequential Timeline Approach
-            // 1. Build Timeline of valid slots for 7 days
             const timeline = [];
             for (let d = 0; d < 7; d++) {
-                // Order: Lunch -> Dinner (matches requirement: "if dinner full, go to next lunch")
                 if (validTypes.includes('lunch')) timeline.push({ d, t: 'lunch' });
                 if (validTypes.includes('dinner')) timeline.push({ d, t: 'dinner' });
             }
 
             if (timeline.length === 0) return;
 
-            // 2. Start from Monday Lunch (or first available 'lunch'/'dinner' in the week)
             let idx = 0;
-
-            // 3. Fill Sequentially
             let loopCount = 0;
-            // Allow up to 2 full loops to find spots
+
             while (remaining > 0 && loopCount < timeline.length * 2) {
                 const slot = timeline[idx];
-
                 const eaten = consumption[slot.d][slot.t];
-                // Find consumers who haven't eaten this meal type on this day
-                const candidates = consumers.filter(c => !eaten.has(c.id));
+
+                // Base candidates: those who haven't eaten yet in this slot
+                let candidates = consumers.filter(c => !eaten.has(c.id));
+
+                // Verify Constraint
+                if (knownConsumers && knownConsumers.size > 0) {
+                    candidates = candidates.filter(c => knownConsumers.has(c.id));
+                }
 
                 if (candidates.length > 0) {
-                    // Saturated the slot: give to all candidates up to remaining portions
                     const takeCount = Math.min(remaining, candidates.length);
-                    // For main meals, usually fill sequentially/stable
                     const targets = candidates.slice(0, takeCount);
 
                     targets.forEach(c => {
@@ -380,7 +395,6 @@ export const usePlanning = () => {
                     remaining -= takeCount;
                 }
 
-                // Move to next slot in timeline (wrap around)
                 idx = (idx + 1) % timeline.length;
                 loopCount++;
             }
