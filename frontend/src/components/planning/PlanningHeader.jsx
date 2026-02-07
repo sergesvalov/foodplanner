@@ -9,7 +9,8 @@ const PlanningHeader = ({
     totalStats,
     users = [],
     selectedUser = 'all',
-    setSelectedUser = () => { }
+    setSelectedUser = () => { },
+    savePlanToNextWeek
 }) => {
     return (
         <div className="flex justify-between items-center mb-6 shrink-0">
