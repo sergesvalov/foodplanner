@@ -169,9 +169,9 @@ export const usePlanning = () => {
         ]);
     };
 
-    const updateMealPortion = (instance, newPortion) => {
+    const updateMealMember = (instance, newMemberId) => {
         setPlannedMeals(prev => prev.map(m =>
-            m === instance ? { ...m, portions: newPortion } : m
+            m === instance ? { ...m, memberId: newMemberId } : m
         ));
     };
 
@@ -675,7 +675,7 @@ export const usePlanning = () => {
         hideRecipe,
         restoreAll,
         addMeal,
-        updateMealPortion,
+        updateMealMember,
         removeMeal,
         removeMealByInstance,
         moveMeal,

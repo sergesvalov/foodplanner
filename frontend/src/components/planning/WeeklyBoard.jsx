@@ -12,7 +12,7 @@ const WeeklyBoard = ({
     familyMembers,
     moveMeal,
     selectedUser = 'all',
-    updateMealPortion
+    updateMealMember
 }) => {
 
     // DRAG HANDLERS
@@ -91,35 +91,38 @@ const WeeklyBoard = ({
                                                 >
                                                     <div className="flex items-center gap-2 overflow-hidden">
                                                         {letter && (
-                                                            <div className={`w-5 h-5 rounded-full ${colorClass} text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-sm`} title={member?.name}>
+                                                            <div
+                                                                className={`w-5 h-5 rounded-full ${colorClass} text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-sm cursor-pointer hover:scale-110 transition-transform`}
+                                                                title={`${member?.name || 'Нет имени'} (Нажмите, чтобы сменить)`}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (!familyMembers.length) return;
+                                                                    const currentIdx = familyMembers.findIndex(f => f.id === pm.memberId);
+                                                                    // If not found, starts at -1, next is 0. simple.
+                                                                    const nextIdx = (currentIdx + 1) % familyMembers.length;
+                                                                    const nextMember = familyMembers[nextIdx];
+                                                                    updateMealMember(pm, nextMember.id);
+                                                                }}
+                                                            >
                                                                 {letter}
                                                             </div>
                                                         )}
                                                         <span className="truncate" title={r.title}>{r.title}</span>
                                                     </div>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const current = pm.portions || 1;
-                                                            const val = prompt("Количество порций:", current);
-                                                            if (val !== null) {
-                                                                const num = parseFloat(val);
-                                                                if (!isNaN(num) && num > 0) {
-                                                                    updateMealPortion(pm, num);
-                                                                }
-                                                            }
-                                                        }}
-                                                        className="text-[10px] px-1.5 py-0.5 ml-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
-                                                        title="Изменить количество порций"
-                                                    >
-                                                        x{pm.portions || 1}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => removeMealByInstance(pm)}
-                                                        className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 ml-1"
-                                                    >
-                                                        ×
-                                                    </button>
+
+                                                    <div className="flex items-center">
+                                                        {/* Removed Portion Edit Button */}
+                                                        {pm.portions && pm.portions !== 1 && (
+                                                            <span className="text-[10px] text-gray-400 mr-1">x{pm.portions}</span>
+                                                        )}
+
+                                                        <button
+                                                            onClick={() => removeMealByInstance(pm)}
+                                                            className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             );
                                         })}
