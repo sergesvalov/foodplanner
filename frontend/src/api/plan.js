@@ -44,3 +44,49 @@ export const clearPlan = async (startDate, endDate) => {
     }
     return response.json();
 };
+
+export const autofillWeek = async () => {
+    const response = await fetch('/api/plan/autofill_week', {
+        method: 'POST',
+    });
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || 'Failed to autofill week');
+    }
+    return response.json();
+};
+
+export const autofillOne = async (data = {}) => {
+    const response = await fetch('/api/plan/autofill_one', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || 'Failed to autofill one slot');
+    }
+    return response.json();
+};
+
+export const importPlan = async () => {
+    const response = await fetch('/api/plan/import', {
+        method: 'POST',
+    });
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || 'Failed to import plan');
+    }
+    return response.json();
+};
+
+export const exportPlan = async () => {
+    const response = await fetch('/api/plan/export');
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || 'Failed to export plan');
+    }
+    return response.json();
+};
