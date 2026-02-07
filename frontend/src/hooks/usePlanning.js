@@ -237,160 +237,109 @@ export const usePlanning = () => {
         if (plannedMeals.length > 0 && !window.confirm("Это действие перезапишет текущее расписание по дням. Продолжить?")) return;
 
         const newMeals = [];
-        const usedSlots = new Set();
-        const slotLocks = new Map();
-        const memberRecipeStats = new Map();
+        // Track who eats what: day -> type -> Set(memberIds)
+        const consumption = {};
+        for (let d = 0; d < 7; d++) {
+            consumption[d] = {
+                breakfast: new Set(),
+                lunch: new Set(),
+                dinner: new Set()
+            };
+        }
 
         let consumers = [];
         if (familyMembers.length > 0) {
-            // FIX: Use ALL family members from the system, ignoring the manual 'eatersCount' limiter if it was set lower.
             consumers = [...familyMembers];
         } else {
-            // Only fallback to mock eaters if no family members exist
             while (consumers.length < eatersCount) {
                 const id = `mock-${consumers.length + 1}`;
                 consumers.push({ id: id, name: `Едок ${consumers.length + 1}`, color: 'gray' });
             }
         }
 
-        const memberDailyStats = new Map(); // Map<memberId, Map<dayIndex, {calories, proteins, fats, carbs}>>
-
-        consumers.forEach(c => {
-            memberRecipeStats.set(c.id, new Set());
-            memberDailyStats.set(c.id, new Map());
-            // Initialize 7 days for each consumer
-            for (let d = 0; d < 7; d++) {
-                memberDailyStats.get(c.id).set(d, { calories: 0, proteins: 0, fats: 0, carbs: 0 });
-            }
-        });
-
-        const getNextDay = (currentDay) => (currentDay + 1) % 7;
-
-        const mealTypes = MEAL_TYPES;
-
-        // FIX: Sort recipes by rating (DESC) so high-rated recipes get priority for slots
-        // Also exclude side dishes as requested
         const sortedRecipes = [...visibleRecipes]
             .filter(r => r.category !== 'side')
             .sort((a, b) => (b.rating || 0) - (a.rating || 0));
 
+        // Helper to get allowed meal types for a recipe category
+        const getValidTypes = (category) => {
+            if (category === 'breakfast') return ['breakfast'];
+            if (category === 'soup') return ['lunch'];
+            if (category === 'main') return ['lunch', 'dinner'];
+            return [];
+        };
+
         sortedRecipes.forEach(recipe => {
             let remaining = Math.round(plannedPortions[recipe.id] || getDefaultPortion(recipe));
-
-            const validTypes = mealTypes
-                .filter(mt => mt.categories.includes(recipe.category))
-                .map(mt => mt.id);
-
+            const validTypes = getValidTypes(recipe.category);
             if (validTypes.length === 0) return;
 
-            let currentDay = Math.floor(Math.random() * 7);
-            let recipeAttempts = 0;
+            // Strategy:
+            // Breakfast: Random distribution
+            // Lunch/Dinner: Sequential timeline (L0->D0->L1->D1...)
 
-            while (remaining > 0 && recipeAttempts < 50) {
-                let placedType = null;
-                let foundSlot = false;
+            if (recipe.category === 'breakfast') {
                 let attempts = 0;
+                while (remaining > 0 && attempts < 50) {
+                    const d = Math.floor(Math.random() * 7);
+                    const eaten = consumption[d]['breakfast'];
+                    const candidates = consumers.filter(c => !eaten.has(c.id));
 
-                while (!foundSlot && attempts < 14) {
-                    const shuffledTypes = [...validTypes].sort(() => 0.5 - Math.random());
+                    if (candidates.length > 0) {
+                        const takeCount = Math.min(remaining, candidates.length);
+                        // Randomize candidates to be fair
+                        const targets = candidates.sort(() => 0.5 - Math.random()).slice(0, takeCount);
 
-                    for (const type of shuffledTypes) {
-                        const slotKey = `${currentDay}-${type}`;
-                        const isExclusive = type === 'lunch' || type === 'dinner';
-
-                        if (isExclusive) {
-                            const lockedBy = slotLocks.get(slotKey);
-                            if (lockedBy && lockedBy !== recipe.id) continue;
-                        }
-
-                        let freeConsumers = consumers.filter(c => !usedSlots.has(`${currentDay}-${type}-${c.id}`));
-
-                        // FIX: Filter out consumers who would exceed their macro limits
-                        freeConsumers = freeConsumers.filter(c => {
-                            const daily = memberDailyStats.get(c.id)?.get(currentDay);
-                            if (!daily) return true; // Safety
-
-                            // Recipe macros per portion
-                            const rP = recipe.proteins || 0;
-                            const rF = recipe.fats || 0;
-                            const rC = recipe.carbs || 0;
-                            // const rCal = recipe.calories_per_portion || 0; // Optional calorie check
-
-                            // Check limits (allow slight buffer or exact? User said "if exceed")
-                            // Let's use strict > limit check.
-                            // NOTE: Models have max_proteins etc.
-                            if (c.max_proteins && (daily.proteins + rP > c.max_proteins)) return false;
-                            if (c.max_fats && (daily.fats + rF > c.max_fats)) return false;
-                            if (c.max_carbs && (daily.carbs + rC > c.max_carbs)) return false;
-
-                            return true;
+                        targets.forEach(c => {
+                            newMeals.push({ day: d, type: 'breakfast', recipeId: recipe.id, memberId: c.id });
+                            eaten.add(c.id);
                         });
-
-                        let desiredChunk = 0;
-                        let targets = [];
-
-                        if (type === 'breakfast') {
-                            freeConsumers.sort((a, b) => {
-                                const hasA = memberRecipeStats.get(a.id).has(recipe.id) ? 1 : 0;
-                                const hasB = memberRecipeStats.get(b.id).has(recipe.id) ? 1 : 0;
-                                if (hasA !== hasB) return hasB - hasA;
-                                return 0.5 - Math.random();
-                            });
-                            desiredChunk = Math.min(remaining, freeConsumers.length);
-                            if (desiredChunk > 0) targets = freeConsumers.slice(0, desiredChunk);
-
-                        } else {
-                            desiredChunk = Math.min(remaining, consumers.length);
-                            if (freeConsumers.length >= desiredChunk) {
-                                targets = freeConsumers.sort(() => 0.5 - Math.random()).slice(0, desiredChunk);
-                            }
-                        }
-
-                        if (targets.length > 0) {
-                            targets.forEach(consumer => {
-                                usedSlots.add(`${currentDay}-${type}-${consumer.id}`);
-                                memberRecipeStats.get(consumer.id).add(recipe.id);
-                                newMeals.push({
-                                    day: currentDay,
-                                    type: type,
-                                    recipeId: recipe.id,
-                                    memberId: consumer.id
-                                });
-
-                                // Update stats
-                                const daily = memberDailyStats.get(consumer.id).get(currentDay);
-                                daily.proteins += recipe.proteins || 0;
-                                daily.fats += recipe.fats || 0;
-                                daily.carbs += recipe.carbs || 0;
-                                daily.calories += recipe.calories_per_portion || 0;
-                            });
-
-                            if (isExclusive) slotLocks.set(slotKey, recipe.id);
-                            remaining -= targets.length;
-                            placedType = type;
-                            foundSlot = true;
-                            break;
-                        }
+                        remaining -= takeCount;
                     }
-
-                    if (!foundSlot) {
-                        currentDay = getNextDay(currentDay);
-                        attempts++;
-                    }
+                    attempts++;
+                }
+            } else {
+                // Sequential Timeline Approach
+                // 1. Build Timeline of valid slots for 7 days
+                const timeline = [];
+                for (let d = 0; d < 7; d++) {
+                    // Order: Lunch -> Dinner (matches requirement: "if dinner full, go to next lunch")
+                    if (validTypes.includes('lunch')) timeline.push({ d, t: 'lunch' });
+                    if (validTypes.includes('dinner')) timeline.push({ d, t: 'dinner' });
                 }
 
-                if (!foundSlot) break;
+                if (timeline.length === 0) return;
 
-                if (foundSlot) {
-                    if (placedType === 'breakfast') {
-                        currentDay = Math.floor(Math.random() * 7);
-                    } else {
-                        if (remaining > 0 && remaining < consumers.length) {
-                            currentDay = getNextDay(currentDay);
-                        }
+                // 2. Pick Random Start to ensure variety
+                let idx = Math.floor(Math.random() * timeline.length);
+
+                // 3. Fill Sequentially
+                let loopCount = 0;
+                // Allow up to 2 full loops to find spots
+                while (remaining > 0 && loopCount < timeline.length * 2) {
+                    const slot = timeline[idx];
+
+                    const eaten = consumption[slot.d][slot.t];
+                    // Find consumers who haven't eaten this meal type on this day
+                    const candidates = consumers.filter(c => !eaten.has(c.id));
+
+                    if (candidates.length > 0) {
+                        // Saturated the slot: give to all candidates up to remaining portions
+                        const takeCount = Math.min(remaining, candidates.length);
+                        // For main meals, usually fill sequentially/stable (no random sort needed per slot)
+                        const targets = candidates.slice(0, takeCount);
+
+                        targets.forEach(c => {
+                            newMeals.push({ day: slot.d, type: slot.t, recipeId: recipe.id, memberId: c.id });
+                            eaten.add(c.id);
+                        });
+                        remaining -= takeCount;
                     }
+
+                    // Move to next slot in timeline (wrap around)
+                    idx = (idx + 1) % timeline.length;
+                    loopCount++;
                 }
-                recipeAttempts++;
             }
         });
 
