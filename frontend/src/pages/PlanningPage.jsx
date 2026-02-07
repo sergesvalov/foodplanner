@@ -26,7 +26,8 @@ const PlanningPage = () => {
         getScheduledStats,
         getDefaultPortion,
         autoDistribute,
-        moveMeal
+        moveMeal,
+        savePlanToNextWeek
     } = usePlanning();
 
     // View Mode: 'browse' | 'summary' | 'days'
@@ -84,6 +85,7 @@ const PlanningPage = () => {
                 hiddenCount={hiddenIds.length}
                 restoreAll={restoreAll}
                 autoDistribute={autoDistribute}
+                savePlanToNextWeek={savePlanToNextWeek}
                 totalStats={totalStats}
                 users={familyMembers}
                 selectedUser={selectedUser}
