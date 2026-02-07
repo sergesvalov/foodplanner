@@ -148,17 +148,9 @@ def autofill_one_logic(req: schemas.AutoFillRequest, db: Session):
     days_map = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
     target_day = days_map[now.weekday()]
     
-    # ... check occupation ...
-    q = db.query(models.WeeklyPlanEntry).filter(
-        models.WeeklyPlanEntry.day_of_week == target_day,
-        models.WeeklyPlanEntry.meal_type == target_meal,
-        models.WeeklyPlanEntry.date == datetime.date.today()
-    )
-    if req and req.family_member_id:
-        q = q.filter(models.WeeklyPlanEntry.family_member_id == req.family_member_id)
-    
-    if q.first():
-         raise HTTPException(status_code=400, detail="На этот прием пищи уже что-то запланировано!")
+    # ... check occupation - REMOVED to allow multiple items (snacks/leftovers)
+    # q = db.query(models.WeeklyPlanEntry).filter(...)
+    # if q.first(): raise ...
 
     target_recipe = None
     
