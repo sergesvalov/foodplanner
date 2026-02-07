@@ -314,7 +314,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
             <label htmlFor="recipe-portions" className="block text-sm font-medium text-gray-700">Порций</label>
             <input
               id="recipe-portions"
-              type="number" min="1" max="20" required
+              type="number" min="1" required
               className="mt-1 w-full border rounded p-2 focus:ring-2 focus:ring-indigo-200 outline-none text-center"
               value={portions}
               onChange={e => setPortions(e.target.value)}

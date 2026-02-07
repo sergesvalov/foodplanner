@@ -344,17 +344,15 @@ export const usePlanning = () => {
             // Phase A: Fill from History
             for (const hItem of history) {
                 const recipe = breakfastRecipes.find(r => r.id === hItem.recipeId);
-                // Check if recipe still exists and has portions
                 if (!recipe) continue;
 
-                // Try to add as many times as in history, limited by remaining portions and slots
                 let countToAdd = hItem.count;
-                while (countToAdd > 0 && filledSlots < slotsToFill && remainingPortions[recipe.id] > 0) {
-                    // Find next available day for this user
+                // RELAXED CONSTRAINT: Allow exceeding remainingPortions to ensure we fill the plan.
+                while (countToAdd > 0 && filledSlots < slotsToFill) {
                     while (currentDay < 7 && consumption[currentDay]['breakfast'].has(consumer.id)) {
                         currentDay++;
                     }
-                    if (currentDay >= 7) break; // Should not happen if logic is correct
+                    if (currentDay >= 7) break;
 
                     newMeals.push({
                         day: currentDay,
@@ -370,35 +368,38 @@ export const usePlanning = () => {
                 }
             }
 
-            // Phase B: Fill remainder if needed
-            // If user has no history, this runs for all 7 slots.
-            // If user had limited history, this runs for remaining.
+            // Phase B: Fill remainder
             if (filledSlots < slotsToFill) {
-                // Sort available breakfasts by portions desc or rating? Let's verify we have portions.
-                // We just iterate available recipes.
-                // To make it "random" but fair, we can shuffle or just cycle.
-                // Let's use the sorted list (by rating).
-
                 let recipeIdx = 0;
-                // Infinite loop protection
                 let attempts = 0;
 
                 while (filledSlots < slotsToFill && attempts < 100) {
                     attempts++;
-
-                    // Reset day pointer to find empty slots
                     currentDay = 0;
                     while (currentDay < 7 && consumption[currentDay]['breakfast'].has(consumer.id)) {
                         currentDay++;
                     }
-                    if (currentDay >= 7) break; // All full
+                    if (currentDay >= 7) break;
 
-                    // Pick a recipe
-                    const recipe = breakfastRecipes[recipeIdx % breakfastRecipes.length];
-                    recipeIdx++;
+                    // Try to find a recipe with remaining portions first
+                    let recipe = null;
+
+                    // distinct breakfast recipes
+                    const brOptions = breakfastRecipes;
+                    if (brOptions.length === 0) break;
+
+                    // 1. Look for one with portions > 0
+                    const withPortions = brOptions.find(r => remainingPortions[r.id] > 0);
+
+                    if (withPortions) {
+                        recipe = withPortions;
+                    } else {
+                        // 2. If none, just take next in round-robin/sorted list
+                        recipe = brOptions[recipeIdx % brOptions.length];
+                        recipeIdx++;
+                    }
 
                     if (!recipe) break;
-                    if (remainingPortions[recipe.id] <= 0) continue;
 
                     newMeals.push({
                         day: currentDay,
