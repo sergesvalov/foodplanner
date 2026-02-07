@@ -345,7 +345,7 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
           <label htmlFor="recipe-description" className="block text-sm font-medium text-gray-700">Способ приготовления</label>
           <textarea
             id="recipe-description"
-            className="mt-1 w-full border rounded p-2 h-24 focus:ring-2 focus:ring-indigo-200 outline-none"
+            className="mt-1 w-full border rounded p-2 h-48 focus:ring-2 focus:ring-indigo-200 outline-none"
             placeholder="Опишите процесс..."
             value={description}
             onChange={e => setDescription(e.target.value)}
