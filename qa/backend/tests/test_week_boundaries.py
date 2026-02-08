@@ -1,98 +1,125 @@
+import pytest
+import requests
+import os
 import datetime
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from main import app
-from dependencies import get_db
-import models
-import pytest
-from dependencies import get_db
-import models
-import pytest
+import uuid
 
-# Setup Test DB
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_boundaries.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
+# Use environment variable for API URL or default to docker compose service name
+BASE_URL = os.getenv("API_URL", "http://backend:8000")
 
 @pytest.fixture(scope="module")
-def setup_db():
-    models.Base.metadata.create_all(bind=engine)
-    yield
-    models.Base.metadata.drop_all(bind=engine)
-    import os
-    if os.path.exists("./test_boundaries.db"):
-        os.remove("./test_boundaries.db")
+def setup_data():
+    """Create a temporary product and recipe for testing."""
+    unique_suffix = str(uuid.uuid4())[:8]
+    
+    # 1. Create Product
+    product_data = {
+        "name": f"BoundaryProduct_{unique_suffix}",
+        "price": 10,
+        "amount": 1000,
+        "unit": "g",
+        "calories": 100,
+        "proteins": 10,
+        "fats": 10,
+        "carbs": 10
+    }
+    p_resp = requests.post(f"{BASE_URL}/products/", json=product_data)
+    if p_resp.status_code != 200:
+        pytest.fail(f"Failed to create product: {p_resp.text}")
+    product = p_resp.json()
+    
+    # 2. Create Recipe
+    recipe_data = {
+        "title": f"Boundary Test Recipe {unique_suffix}",
+        "description": "For testing week boundaries",
+        "portions": 4,
+        "category": "breakfast", # Using breakfast as base
+        "ingredients": [
+            {"product_id": product["id"], "quantity": 100}
+        ]
+    }
+    r_resp = requests.post(f"{BASE_URL}/recipes/", json=recipe_data)
+    if r_resp.status_code != 200:
+        # Cleanup product if recipe fails
+        requests.delete(f"{BASE_URL}/products/{product['id']}")
+        pytest.fail(f"Failed to create recipe: {r_resp.text}")
+    recipe = r_resp.json()
+    
+    yield {"product": product, "recipe": recipe}
+    
+    # Teardown
+    requests.delete(f"{BASE_URL}/recipes/{recipe['id']}")
+    requests.delete(f"{BASE_URL}/products/{product['id']}")
 
-def test_sunday_boundary_issue(setup_db):
-    # Scenario: Today is Sunday, Feb 8th 2026.
-    # Current Week: Feb 2 (Mon) - Feb 8 (Sun).
-    # Last Sunday: Feb 1.
+def test_sunday_boundary_issue(setup_data):
+    """
+    Scenario: Ensure that items on the PREVIOUS Sunday (Feb 1) do not appear
+    in the CURRENT week (Feb 2 - Feb 8), but items on THIS Sunday (Feb 8) do.
+    """
+    recipe_id = setup_data["recipe"]["id"]
     
-    # We simulate "Today" as Feb 8.
-    # But we can't easily mock datetime.date.today() inside the API without patching.
-    # However, the API accepts start_date and end_date.
+    # Dates
+    last_sunday = "2026-02-01"
+    this_sunday = "2026-02-08"
     
-    # Let's create an entry explicitly dated Feb 1 (Last Sunday).
-    # And one dated Feb 8 (This Sunday).
+    # The week range we are querying
+    query_start = "2026-02-02"  # Monday
+    query_end = "2026-02-08"    # Sunday (inclusive)
     
-    db = TestingSessionLocal()
+    created_ids = []
     
-    # Create a recipe first
-    recipe = models.Recipe(title="Boundary Test Recipe", category="breakfast", total_calories=100)
-    db.add(recipe)
-    db.commit()
-    db.refresh(recipe)
-    
-    # 1. Entry for last Sunday (Feb 1)
-    last_sunday = datetime.date(2026, 2, 1)
-    entry_last = models.WeeklyPlanEntry(
-        day_of_week="Воскресенье",
-        meal_type="breakfast",
-        recipe_id=recipe.id,
-        date=last_sunday
-    )
-    db.add(entry_last)
-    
-    # 2. Entry for this Sunday (Feb 8)
-    this_sunday = datetime.date(2026, 2, 8)
-    entry_this = models.WeeklyPlanEntry(
-        day_of_week="Воскресенье",
-        meal_type="lunch", # Different type to distinguish
-        recipe_id=recipe.id,
-        date=this_sunday
-    )
-    db.add(entry_this)
-    
-    db.commit()
-    db.close()
-    
-    # 3. Query for "Current Week" (Feb 2 - Feb 8)
-    # The frontend calculates this range.
-    start_date = "2026-02-02"
-    end_date = "2026-02-08"
-    
-    response = client.get(f"/api/plan/?start_date={start_date}&end_date={end_date}")
-    assert response.status_code == 200
-    data = response.json()
-    
-    print(f"\nQuery Range: {start_date} to {end_date}")
-    print("Items found:", len(data))
-    for item in data:
-        print(f" - {item['date']} {item['meal_type']}")
+    try:
+        # 1. Add entry for Last Sunday (Feb 1) - Should be EXCLUDED
+        entry_last = {
+            "day_of_week": "Воскресенье",
+            "meal_type": "breakfast",
+            "recipe_id": recipe_id,
+            "portions": 1,
+            "date": last_sunday
+        }
+        resp1 = requests.post(f"{BASE_URL}/plan/", json=entry_last)
+        assert resp1.status_code == 200, f"Failed to add last sunday entry: {resp1.text}"
+        created_ids.append(resp1.json()["id"])
         
-    # Expectation: Only 'lunch' (Feb 8) should be present. 'breakfast' (Feb 1) should be excluded.
-    dates = [item['date'] for item in data]
-    
-    assert "2026-02-08" in dates
-    assert "2026-02-01" not in dates, "Last Sunday's item appeared in this week's plan!"
+        # 2. Add entry for This Sunday (Feb 8) - Should be INCLUDED
+        entry_this = {
+            "day_of_week": "Воскресенье",
+            "meal_type": "lunch", # distinct type
+            "recipe_id": recipe_id,
+            "portions": 1,
+            "date": this_sunday
+        }
+        resp2 = requests.post(f"{BASE_URL}/plan/", json=entry_this)
+        assert resp2.status_code == 200, f"Failed to add this sunday entry: {resp2.text}"
+        created_ids.append(resp2.json()["id"])
+        
+        # 3. Query the plan
+        resp_query = requests.get(f"{BASE_URL}/plan/?start_date={query_start}&end_date={query_end}")
+        assert resp_query.status_code == 200
+        plan_items = resp_query.json()
+        
+        print(f"\nQuery returned {len(plan_items)} items for range {query_start} to {query_end}")
+        
+        # 4. Verify
+        dates_in_plan = [item["date"] for item in plan_items]
+        meal_types_in_plan = [item["meal_type"] for item in plan_items if item["date"] == this_sunday]
+        
+        # Check THIS Sunday is present
+        assert this_sunday in dates_in_plan, "This Sunday (Feb 8) should be in the plan"
+        assert "lunch" in meal_types_in_plan, "The lunch item for Feb 8 should be present"
+        
+        # Check LAST Sunday is ABSENT
+        # Note: If database was empty properly, strictly 1 item (or existing items in that range).
+        # We just check our specific date logic.
+        
+        # Verify specifically that our 'breakfast' for '2026-02-01' is NOT in the list
+        last_sunday_items = [
+            item for item in plan_items 
+            if item["date"] == last_sunday and item["recipe_id"] == recipe_id
+        ]
+        assert len(last_sunday_items) == 0, f"Found item from Last Sunday ({last_sunday}) in current week plan!"
+        
+    finally:
+        # Cleanup created plan items
+        for pid in created_ids:
+            requests.delete(f"{BASE_URL}/plan/{pid}")
