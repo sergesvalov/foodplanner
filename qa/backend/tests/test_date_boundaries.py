@@ -140,3 +140,51 @@ def test_date_integrity(setup_db):
     items = res.json()
     assert len(items) == 1
     assert items[0]['date'] == target_date, "Date mismatch on retrieval!"
+
+def test_null_date_exclusion(setup_db):
+    """
+    Ensure items with NULL date (if any exist) are NOT returned when filtering by date range.
+    """
+    db = TestingSessionLocal()
+    recipe = db.query(models.Recipe).first()
+    if not recipe:
+        recipe = models.Recipe(title="Null Date Test", category="breakfast", total_calories=100)
+        db.add(recipe)
+        db.commit()
+    db.refresh(recipe)
+    
+    # Manually insert item with NULL date
+    # Note: Pydantic/SQLAlchemy might set default, so we explicitly set None if allowed by model
+    # If model requires date, this test might fail on insert, which is also good (integrity).
+    try:
+        item = models.WeeklyPlanEntry(
+            day_of_week="Воскресенье",
+            meal_type="breakfast",
+            recipe_id=recipe.id,
+            portions=1,
+            date=None # Explicit None
+        )
+        db.add(item)
+        db.commit()
+    except Exception as e:
+        print(f"Computed date required or DB constraint: {e}")
+        db.rollback()
+        return # If we can't insert null, we are safe from null ghosts
+        
+    db.close()
+    
+    # Query Range
+    start = "2026-02-02"
+    end = "2026-02-08"
+    
+    res = client.get(f"/api/plan/?start_date={start}&end_date={end}")
+    data = res.json()
+    
+    # Should NOT satisfy date >= start
+    # SQL comparison with NULL result in NULL (False-ish for filter)
+    ids = [x['id'] for x in data]
+    print(f"IDs with null date check: {ids}")
+    # We can't know ID easily without refresh, but if list is empty good.
+    # If list has items, verify they have dates.
+    for x in data:
+        assert x['date'] is not None, "Item with NULL date leaked into range query!"
