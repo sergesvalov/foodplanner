@@ -181,9 +181,18 @@ export const calculateDistributedMeals = ({
         let recipeIdx = 0;
 
         // Helper to get next recipe from pool (circular)
-        const getNextRecipe = () => {
+        // excludeId: ID to avoid picking immediately (to prevent consecutive repeating)
+        const getNextRecipe = (excludeId = null) => {
             if (lunchDinnerRecipes.length === 0) return null;
-            const r = lunchDinnerRecipes[recipeIdx % lunchDinnerRecipes.length];
+
+            let r = lunchDinnerRecipes[recipeIdx % lunchDinnerRecipes.length];
+
+            // If we picked same recipe as exclusion, AND we have other options, skip it.
+            if (excludeId && r.id === excludeId && lunchDinnerRecipes.length > 1) {
+                recipeIdx++;
+                r = lunchDinnerRecipes[recipeIdx % lunchDinnerRecipes.length];
+            }
+
             recipeIdx++;
             return r;
         };
@@ -200,7 +209,8 @@ export const calculateDistributedMeals = ({
             // Else, cook NEW batch.
             if (!currentRecipe || currentPortionsLeft < eatersCount) {
                 // Cook New Batch
-                currentRecipe = getNextRecipe();
+                // Pass current recipe ID to avoid picking it again immediately
+                currentRecipe = getNextRecipe(currentRecipe ? currentRecipe.id : null);
                 if (currentRecipe) {
                     // "Cook" - we have the whole batch available now
                     const batchSize = plannedPortions[currentRecipe.id] || getDefaultPortion(currentRecipe);
