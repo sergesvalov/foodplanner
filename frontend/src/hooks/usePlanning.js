@@ -115,7 +115,10 @@ export const usePlanning = () => {
                 const mapped = data.map(item => ({
                     id: item.id, // Keep ID for updates/deletes
                     day: daysMap[item.day_of_week],
-                    type: item.meal_type,
+                    // Map legacy Lunch/Dinner to 'day'
+                    type: (item.meal_type === 'lunch' || item.meal_type === 'dinner' || item.meal_type === 'soup' || item.meal_type === 'main')
+                        ? 'day'
+                        : item.meal_type,
                     recipeId: item.recipe_id,
                     memberId: item.family_member_id,
                     portions: item.portions || 1
@@ -382,8 +385,7 @@ export const usePlanning = () => {
         for (let d = 0; d < 7; d++) {
             consumption[d] = {
                 breakfast: new Set(),
-                lunch: new Set(),
-                dinner: new Set()
+                day: new Set()
             };
         }
 
@@ -564,23 +566,20 @@ export const usePlanning = () => {
         // The confirmation says "Перезапишет текущее расписание". So we start fresh.
         // Thus, no consumer constraints from previous plan needed.
 
-        // 3. Distribute Lunch/Dinner (Main/Soup)
-
-        // Identify recipes eaten for Lunch/Dinner last week
-        const lastWeekLunchDinnerIds = new Set();
+        // 3. Distribute Main Meals (Soup/Main) into 'day' slot
+        const lastWeekMainIds = new Set();
         if (Array.isArray(lastWeekPlan)) {
             lastWeekPlan.forEach(item => {
-                if ((item.meal_type === 'lunch' || item.meal_type === 'dinner') && item.recipe_id) {
-                    lastWeekLunchDinnerIds.add(item.recipe_id);
+                // If it was lunch/dinner/main/soup before, consider it "used" for variety check
+                if (['lunch', 'dinner', 'main', 'soup'].includes(item.meal_type) && item.recipe_id) {
+                    lastWeekMainIds.add(item.recipe_id);
                 }
             });
         }
 
-        // Split mainRecipes into New and Old
-        const newMainRecipes = mainRecipes.filter(r => !lastWeekLunchDinnerIds.has(r.id));
-        const oldMainRecipes = mainRecipes.filter(r => lastWeekLunchDinnerIds.has(r.id));
+        const newMainRecipes = mainRecipes.filter(r => !lastWeekMainIds.has(r.id));
+        const oldMainRecipes = mainRecipes.filter(r => lastWeekMainIds.has(r.id));
 
-        // Interleave them: New, Old, New, Old...
         const balancedMainRecipes = [];
         const maxLength = Math.max(newMainRecipes.length, oldMainRecipes.length);
         for (let i = 0; i < maxLength; i++) {
@@ -588,19 +587,15 @@ export const usePlanning = () => {
             if (i < oldMainRecipes.length) balancedMainRecipes.push(oldMainRecipes[i]);
         }
 
-        // Fallback: If one list is empty, balancedMainRecipes will just be the other list.
-        // If both have items, it's mixed 50/50 as requested.
-
         balancedMainRecipes.forEach(recipe => {
             let remaining = remainingPortions[recipe.id];
-            const validTypes = getValidTypes(recipe.category);
-            if (validTypes.length === 0 || remaining <= 0) return;
+            // Treat all non-breakfast as valid for 'day'
+            if (remaining <= 0) return;
 
-            // Sequential Timeline Approach
+            // Sequential Timeline Approach - Single 'day' slot per day
             const timeline = [];
             for (let d = 0; d < 7; d++) {
-                if (validTypes.includes('lunch')) timeline.push({ d, t: 'lunch' });
-                if (validTypes.includes('dinner')) timeline.push({ d, t: 'dinner' });
+                timeline.push({ d, t: 'day' });
             }
 
             if (timeline.length === 0) return;
@@ -608,18 +603,24 @@ export const usePlanning = () => {
             let idx = 0;
             let loopCount = 0;
 
-            // Strategy: "Clean Start" for Big Recipes
-            // If recipe has enough portions for everyone, it MUST start on a "fresh" meal slot (nobody eaten yet).
-            // This aligns the family meal.
-            // Small recipes (leftovers/singles) can fill gaps.
-
             const isBigRecipe = remaining >= consumers.length;
             let foundStart = false;
 
             // Scan for a valid start index
             for (let i = 0; i < timeline.length; i++) {
                 const slot = timeline[i];
-                const eatenCount = consumption[slot.d][slot.t].size;
+                // Check if 'day' slot has consumption (requires updating 'consumption' usage below too)
+                // We need to initialize 'consumption' with 'day' key first! 
+                // Wait, consumption object structure is defined earlier.
+                // I need to update the caller to initialize 'day' instead of lunch/dinner.
+                // But this block is inside the caller function.
+                // I will assume consumption is updated below in the same file.
+                // Let's rely on 'consumption[d].day' existence check inside the loop?
+                // No, I must ensure consumption[d] has 'day'. 
+                // Ah, consumption is initialized at top of function. I need to update THAT too.
+                // Since I can only replace one block, I will assume I deal with consumption structure momentarily.
+
+                const eatenCount = consumption[slot.d]['day'] ? consumption[slot.d]['day'].size : 0;
 
                 if (isBigRecipe) {
                     if (eatenCount === 0) {
@@ -637,10 +638,10 @@ export const usePlanning = () => {
             }
 
             if (!foundStart && isBigRecipe) {
-                // Fallback: If no clean slots, just find any space
                 for (let i = 0; i < timeline.length; i++) {
                     const slot = timeline[i];
-                    if (consumption[slot.d][slot.t].size < consumers.length) {
+                    const eatenCount = consumption[slot.d]['day'] ? consumption[slot.d]['day'].size : 0;
+                    if (eatenCount < consumers.length) {
                         idx = i;
                         foundStart = true;
                         break;
@@ -648,21 +649,35 @@ export const usePlanning = () => {
                 }
             }
 
-            // If still no space, we can't place it efficiently, but let loop handle it.
-
             while (remaining > 0 && loopCount < timeline.length * 2) {
                 const slot = timeline[idx];
-                const eaten = consumption[slot.d][slot.t];
+                const eaten = consumption[slot.d]['day'];
 
-                // Base candidates: those who haven't eaten yet in this slot
                 let candidates = consumers.filter(c => !eaten.has(c.id));
 
                 if (candidates.length > 0) {
-                    // Try to feed the whole group if possible, or as many as we can
                     const takeCount = Math.min(remaining, candidates.length);
                     const targets = candidates.slice(0, takeCount);
 
                     targets.forEach(c => {
+                        // Use actions to save? No, autoDistribute builds list then saves or sets state?
+                        // autoDistribute builds 'newMeals' array.
+                        // I need to make sure 'addMeal' calls are made OR setPlannedMeals is used.
+                        // Original code pushed to newMeals.
+                        // Wait, with my Auto-Save refactor, 'autoDistribute' should probably call addMeal directly?
+                        // OR 'autoDistribute' constructs a batch and saves via batch API?
+                        // The original logic just updated local state.
+                        // But I removed the local state logic in favor of direct API calls.
+                        // Does 'autoDistribute' call 'addMeal'? 
+                        // In previous file content, autoDistribute pushed to 'newMeals'.
+                        // But I need to update 'autoDistribute' to use 'addMeal' (async) or 'batch' API.
+                        // Since I am refactoring it HERE, I should make it call `addMeal` for each item?
+                        // That would be slow (many requests).
+                        // Better to use Batch API.
+                        // But `usePlanning` removed `batch` save logic mostly.
+                        // Let's assume for now I populate `newMeals` and then I'll add a batch save call at the end of the function.
+
+                        // Push to local array
                         newMeals.push({ day: slot.d, type: slot.t, recipeId: recipe.id, memberId: c.id });
                         eaten.add(c.id);
                     });
@@ -674,7 +689,33 @@ export const usePlanning = () => {
             }
         });
 
-        setPlannedMeals(newMeals);
+        // Save to Backend using Batch API
+        const batchPayload = newMeals.map(m => {
+            const dateStr = getDateForDayIndex(m.day);
+            return {
+                day_of_week: WEEK_DAYS_NAMES[m.day],
+                meal_type: m.type,
+                recipe_id: m.recipeId,
+                portions: getDefaultPortion(recipes.find(r => r.id === m.recipeId) || { portions: 1 }),
+                family_member_id: m.memberId,
+                date: dateStr
+            };
+        });
+
+        try {
+            const res = await fetch('/api/plan/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(batchPayload)
+            });
+            if (res.ok) {
+                loadSharedPlan();
+            } else {
+                console.error("Batch save failed");
+            }
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const savePlanToNextWeek = async () => {

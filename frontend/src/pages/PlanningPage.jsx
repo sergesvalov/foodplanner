@@ -47,16 +47,10 @@ const PlanningPage = () => {
             color: 'bg-yellow-50 border-yellow-200 text-yellow-800'
         },
         {
-            title: 'Обед',
-            icon: '🍲',
-            items: getRecipesByCategories(['soup', 'main'], 'Обед', recipesToShow),
-            color: 'bg-orange-50 border-orange-200 text-orange-800'
-        },
-        {
-            title: 'Ужин',
+            title: 'День',
             icon: '🍽️',
-            items: getRecipesByCategories(['main', 'side'], 'Ужин', recipesToShow),
-            color: 'bg-blue-50 border-blue-200 text-blue-800'
+            items: getRecipesByCategories(['soup', 'main', 'side'], 'День', recipesToShow),
+            color: 'bg-orange-50 border-orange-200 text-orange-800'
         }
     ];
 
