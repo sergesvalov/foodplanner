@@ -22,12 +22,16 @@ const TodayPage = () => {
     const todayIndex = new Date().getDay();
     const todayName = DAYS_MAP[todayIndex];
 
+    const todayDateStr = new Date().toISOString().split('T')[0];
+
     useEffect(() => {
-        fetch('/api/plan/')
+        // Fetch only for TODAY's date to avoid showing history or future plans for the same day of week
+        fetch(`/api/plan/?start_date=${todayDateStr}&end_date=${todayDateStr}`)
             .then(res => res.json())
             .then(data => {
-                const filtered = (Array.isArray(data) ? data : [])
-                    .filter(item => item.day_of_week === todayName && item.recipe);
+                const filtered = (Array.isArray(data) ? data : []);
+                // We rely on backend date filter, but double check day name just in case? 
+                // Actually if date matches, day name matches.
                 setTodayItems(filtered);
 
                 // Auto-select first item
