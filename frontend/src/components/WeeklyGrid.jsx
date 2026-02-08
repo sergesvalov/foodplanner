@@ -36,20 +36,26 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
 
     // --- ХЕЛПЕР ДЛЯ ДАТ ---
     const getWeekDays = (baseDate) => {
-        const currentDay = baseDate.getDay(); // 0-Sun, 1-Mon...
+        // Clone and set to noon to avoid DST/timezone midnight issues
+        const current = new Date(baseDate);
+        current.setHours(12, 0, 0, 0);
+
+        const currentDay = current.getDay(); // 0-Sun, 1-Mon...
         // Корректировка: если воскресенье (0), считаем его 7-м днем, чтобы неделя начиналась с Пн
         const dayIndex = currentDay === 0 ? 6 : currentDay - 1;
 
         // Понедельник текущей недели
-        const monday = new Date(baseDate);
-        monday.setDate(baseDate.getDate() - dayIndex);
+        const monday = new Date(current);
+        monday.setDate(current.getDate() - dayIndex);
 
         return DAYS.map((d, i) => {
             const date = new Date(monday);
             date.setDate(monday.getDate() + i);
+
             const dd = String(date.getDate()).padStart(2, '0');
             const mm = String(date.getMonth() + 1).padStart(2, '0');
             const yyyy = date.getFullYear();
+
             return {
                 name: d,
                 dateObj: date,
