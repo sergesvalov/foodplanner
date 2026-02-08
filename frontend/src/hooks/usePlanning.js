@@ -377,6 +377,14 @@ export const usePlanning = () => {
             // Non-blocking error, just proceed with empty history
         }
 
+        // Map of recipe usage in the last week
+        const lastWeekUsage = {};
+        if (Array.isArray(lastWeekPlan)) {
+            lastWeekPlan.forEach(item => {
+                if (item.recipe_id) lastWeekUsage[item.recipe_id] = true;
+            });
+        }
+
         const newMeals = [];
         // Track who eats what: day -> type -> Set(memberIds)
         const consumption = {};
@@ -666,6 +674,7 @@ export const usePlanning = () => {
                     }
                 }
             }
+        });
 
             // Save to Backend using Batch API
             const batchPayload = newMeals.map(m => {
