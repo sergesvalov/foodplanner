@@ -3,6 +3,7 @@ import { fetchRecipes } from '../api/recipes';
 import { fetchPlan, savePlan, clearPlan } from '../api/plan';
 import { fetchFamily } from '../api/admin';
 import { MEAL_TYPES } from '../constants/planning';
+import { calculateItemStats } from '../utils/stats';
 
 export const usePlanning = () => {
     // -------------------------------------------------------------------------
@@ -241,17 +242,20 @@ export const usePlanning = () => {
             });
     }, [highlightedIds, weeklyPlan]);
 
-    // Stats Helper
+    // Stats Helper - REFACTORED to use utils
+    // Import at top level really, but here for clarity of replacement block.
+    // NOTE: Requires import { calculateItemStats } from '../utils/stats'; at top of file. 
+
     const getTotalStats = (categoryRecipes) => {
         return categoryRecipes.reduce((acc, recipe) => {
             const portion = plannedPortions[recipe.id] || getDefaultPortion(recipe);
-            // FIX: recipe.total_cost is for the WHOLE BATCH (recipe.portions).
-            // We need cost per portion * planned portions.
-            const costPerPortion = recipe.portions > 0 ? (recipe.total_cost / recipe.portions) : 0;
+            // Construct a "fake" plan item to use utility
+            const item = { recipe, portions: portion };
+            const s = calculateItemStats(item);
 
             return {
-                calories: acc.calories + (recipe.calories_per_portion * portion),
-                cost: acc.cost + (costPerPortion * portion)
+                calories: acc.calories + s.cals,
+                cost: acc.cost + s.cost
             };
         }, { calories: 0, cost: 0 });
     };
@@ -261,12 +265,12 @@ export const usePlanning = () => {
             const recipe = recipes.find(r => r.id === meal.recipeId);
             if (!recipe) return acc;
 
-            // One meal instance = One portion
-            const costPerPortion = recipe.portions > 0 ? (recipe.total_cost / recipe.portions) : 0;
+            const item = { recipe, portions: meal.portions || 1 };
+            const s = calculateItemStats(item);
 
             return {
-                calories: acc.calories + recipe.calories_per_portion,
-                cost: acc.cost + costPerPortion
+                calories: acc.calories + s.cals,
+                cost: acc.cost + s.cost
             };
         }, { calories: 0, cost: 0 });
     };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { calculateItemStats, getMacroWarnings } from '../utils/stats';
 
 const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
@@ -68,22 +69,7 @@ const StatisticsPage = () => {
   }, [currentDate]);
 
   // 2. Логика расчета стоимости одной позиции
-  const calculateItemStats = (item) => {
-    const recipe = item.recipe;
-    if (!recipe) return { cost: 0, cals: 0, prot: 0, fat: 0, carb: 0 };
-
-    const basePortions = recipe.portions || 1;
-    const targetPortions = item.portions || 1;
-    const ratio = targetPortions / basePortions;
-
-    return {
-      cost: (recipe.total_cost || 0) * ratio,
-      cals: Math.round((recipe.total_calories || 0) * ratio),
-      prot: Math.round((recipe.total_proteins || 0) * ratio),
-      fat: Math.round((recipe.total_fats || 0) * ratio),
-      carb: Math.round((recipe.total_carbs || 0) * ratio)
-    };
-  };
+  // 2. Логика расчета стоимости одной позиции (imported from utils)
 
   // 3. Агрегация данных
   const stats = useMemo(() => {
@@ -385,32 +371,12 @@ const StatisticsPage = () => {
                       {(() => {
                         if (dayStat.itemsCount === 0) return null;
 
-                        // Calculate calories from each macro based on standard conversion
-                        // Protein = 4, Fat = 9, Carb = 4
-                        const pCal = dayStat.prot * 4;
-                        const fCal = dayStat.fat * 9;
-                        const cCal = dayStat.carb * 4;
-                        const totalCalcCals = pCal + fCal + cCal;
-
-                        if (totalCalcCals === 0) return null;
-
-                        const pPct = (pCal / totalCalcCals) * 100;
-                        const fPct = (fCal / totalCalcCals) * 100;
-                        const cPct = (cCal / totalCalcCals) * 100;
-
-                        const warnings = [];
-
-                        // 1. Proteins: 15-20%
-                        if (pPct < 15) warnings.push("Мало белков");
-                        // if (pPct > 20) warnings.push("Много белков"); // Optional
-
-                        // 2. Fats: 30% (buffer 25-35%)
-                        if (fPct < 25) warnings.push("Мало жиров");
-                        if (fPct > 35) warnings.push("Много жиров");
-
-                        // 3. Carbs: 50-55%
-                        if (cPct < 50) warnings.push("Мало углеводов");
-                        if (cPct > 55) warnings.push("Много углеводов");
+                        const warnings = getMacroWarnings(dayStat, {
+                          prot: dailyLimit.prot,
+                          fat: dailyLimit.fat,
+                          carb: dailyLimit.carb,
+                          cals: dailyLimit.cals
+                        });
 
                         if (warnings.length > 0) {
                           return (
@@ -420,7 +386,6 @@ const StatisticsPage = () => {
                                   {w}
                                 </div>
                               ))}
-                              {/* <div className="text-[10px] text-gray-300">{Math.round(pPct)}/{Math.round(fPct)}/{Math.round(cPct)}</div> */}
                             </div>
                           );
                         }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { calculateItemStats } from '../utils/stats';
 
 const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 const EXTRA_KEY = 'Вкусняшки';
@@ -297,20 +298,9 @@ const WeeklyGrid = ({ selectedUser, onUserChange }) => {
         } catch (e) { console.error(e); fetchPlan(); }
     };
 
-    const calculateItemStats = (item) => {
-        const recipe = item.recipe;
-        if (!recipe) return { cost: 0, cals: 0, prot: 0, fat: 0, carb: 0 };
-        const ratio = (item.portions || 1) / (recipe.portions || 1);
+    // 3. Агрегация данных
+    // calculateItemStats imported from utils/stats
 
-        // Используем готовые суммы с бэкенда (там уже учтен вес штук и т.д.)
-        return {
-            cost: (recipe.total_cost || 0) * ratio,
-            cals: Math.round((recipe.total_calories || 0) * ratio),
-            prot: Math.round((recipe.total_proteins || 0) * ratio),
-            fat: Math.round((recipe.total_fats || 0) * ratio),
-            carb: Math.round((recipe.total_carbs || 0) * ratio)
-        };
-    };
 
     // --- ИЗМЕНЕНИЕ: Статистика считается только по видимым колонкам ---
     const viewStats = useMemo(() => {
