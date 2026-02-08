@@ -101,3 +101,42 @@ def test_autofill_date_logic(setup_db):
     # But that helper depends on datetime.date.today().
     # We can't mock today easily in these integration tests without patching 'services.plan.datetime'.
     pass
+
+def test_date_integrity(setup_db):
+    """
+    Verify that when we POST a plan item with a specific date, 
+    it is saved EXACTLY as provided, without any timezone shifts.
+    """
+    db = TestingSessionLocal()
+    recipe = db.query(models.Recipe).first()
+    if not recipe:
+        recipe = models.Recipe(title="Integrity Test", category="breakfast", total_calories=100)
+        db.add(recipe)
+        db.commit()
+    db.refresh(recipe)
+    db.close()
+    
+    target_date = "2026-05-15" # Random future date
+    day_name = "Пятница"
+    
+    payload = {
+        "day_of_week": day_name,
+        "meal_type": "lunch",
+        "recipe_id": recipe.id,
+        "portions": 1,
+        "date": target_date
+    }
+    
+    response = client.post("/api/plan/", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    
+    print(f"Sent: {target_date}, Received: {data['date']}")
+    assert data['date'] == target_date, "Date mismatch on save!"
+    
+    # Verify retrieval
+    # Start/End date query
+    res = client.get(f"/api/plan/?start_date={target_date}&end_date={target_date}")
+    items = res.json()
+    assert len(items) == 1
+    assert items[0]['date'] == target_date, "Date mismatch on retrieval!"
