@@ -26,25 +26,9 @@ if found_path:
         sys.path.insert(0, found_path)
     print(f"DEBUG: Found main.py in {found_path}, added to sys.path")
 else:
-    # DEBUGGING: If we can't find it, we MUST know why
-    debug_msg = ["Could not find main.py in common locations."]
+    # If we are in the QA Docker container, this is EXPECTED behavior.
+    # The backend code main.py is NOT mounted in the QA container.
+    # The tests should use requests to talk to the backend service.
+    debug_msg = ["Could not find main.py in common locations. Assuming INTEGRATION TEST mode."]
     debug_msg.append(f"Current Test Dir: {current_test_dir}")
-    debug_msg.append(f"Sys Path: {sys.path}")
-    
-    try:
-        debug_msg.append(f"Listing /app: {os.listdir('/app')}")
-    except Exception as e:
-        debug_msg.append(f"Could not list /app: {e}")
-        
-    try:
-        debug_msg.append(f"Listing /app/backend: {os.listdir('/app/backend')}")
-    except Exception:
-        pass
-        
-    try:
-        debug_msg.append(f"Listing current dir {current_test_dir}: {os.listdir(current_test_dir)}")
-    except Exception:
-        pass
-        
-    # Raise error to show this message in logs
-    raise RuntimeError("\n".join(debug_msg))
+    print("\nDEBUG: " + "\nDEBUG: ".join(debug_msg))
