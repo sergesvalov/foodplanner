@@ -396,7 +396,9 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
 
                   <div className="flex w-36 border rounded bg-white overflow-hidden focus-within:ring-2 focus-within:ring-indigo-200">
                     <input
-                      type="number" step="0.001" min="0" required placeholder="0"
+                      type="number"
+                      step={isPieces ? "0.5" : "0.001"}
+                      min="0" required placeholder="0"
                       className="w-full p-2 text-sm outline-none border-r"
                       value={ing.quantity}
                       onChange={(e) => {
