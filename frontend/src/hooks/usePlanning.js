@@ -558,10 +558,86 @@ export const usePlanning = () => {
                         recipeId: recipe.id,
                         memberId: consumer.id
                     });
-                    consumption[currentDay]['breakfast'].add(consumer.id);
                 }
             }
         });
+
+        // 3. Sequential Lunch & Dinner Distribution
+        // Pool of recipes for L/D (Main + Soup)
+        const lunchDinnerRecipes = shuffleArray([...visibleRecipes.filter(r => r.category === 'main' || r.category === 'soup')]);
+
+        if (lunchDinnerRecipes.length > 0) {
+            let currentRecipe = null;
+            let currentPortionsLeft = 0;
+            let recipeIdx = 0;
+
+            // Helper to get next recipe from pool (circular)
+            const getNextRecipe = () => {
+                if (lunchDinnerRecipes.length === 0) return null;
+                const r = lunchDinnerRecipes[recipeIdx % lunchDinnerRecipes.length];
+                recipeIdx++;
+                return r;
+            };
+
+            const slots = [];
+            for (let d = 0; d < 7; d++) {
+                slots.push({ day: d, type: 'lunch' });
+                slots.push({ day: d, type: 'dinner' });
+            }
+
+            for (const slot of slots) {
+                // Determine what to serve
+                // If we have enough left in "Pot" for all eaters, serve it.
+                // Else, cook NEW batch.
+
+                // Note: User said "If portions remain... put on dinner. If no... new portions".
+                // This implies we need at least 'eatersCount' portions to serve the slot fully with ONE recipe.
+                // If we have < eatersCount, we consider the pot "empty" or insufficient, so we make a NEW batch.
+
+                if (!currentRecipe || currentPortionsLeft < eatersCount) {
+                    // Cook New Batch
+                    currentRecipe = getNextRecipe();
+                    if (currentRecipe) {
+                        // "Cook" - we have the whole batch available now
+                        // We use the recipe's default portions as the "Batch Size"
+                        const batchSize = plannedPortions[currentRecipe.id] || getDefaultPortion(currentRecipe);
+                        // However, logic says "portions equal to number of users" are put on input.
+                        // Wait, user said: "на обед понедельника ставится порция... количество порций равно количеству пользоватлелей"
+                        // AND "Число порций в прием пищи равно числу пользователей"
+                        // This means we consume `eatersCount` portions per slot.
+
+                        // BUT where do these portions come from?
+                        // "из случайно выбранного рецепта"
+                        // "Если порции еще остались то они ставятся на ужин"
+                        // This implies the Recipe has a defined TOTAL number of portions (e.g. 4 or 6).
+                        // We take `eatersCount` (e.g. 2) for Lunch. Remaining = Total - 2.
+                        // If Remaining >= 2, we take 2 for Dinner.
+
+                        currentPortionsLeft = batchSize;
+                    }
+                }
+
+                if (currentRecipe) {
+                    // Serve to all consumers
+                    consumers.forEach(consumer => {
+                        newMeals.push({
+                            day: slot.day,
+                            type: slot.type,
+                            recipeId: currentRecipe.id,
+                            memberId: consumer.id
+                        });
+                    });
+
+                    // Deduct from Pot
+                    // Note: This deduction is virtual for the distribution logic.
+                    // We also need to update `remainingPortions` if we want to track global usage, 
+                    // but the prompt implies a "Batch Cooking" flow where we just decide based on the current batch's remaining amount.
+                    // We don't strictly need to update `remainingPortions` for *other* logic unless we want to avoid over-using a recipe globally?
+                    // For now, simple sequential logic as requested.
+                    currentPortionsLeft -= eatersCount;
+                }
+            }
+        }
 
         // Save to Backend using Batch API
         const batchPayload = newMeals.map(m => {
