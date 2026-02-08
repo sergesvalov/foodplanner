@@ -186,14 +186,21 @@ export const usePlanning = () => {
             const r = recipes.find(x => x.id === recipeId);
             const portions = plannedPortions[recipeId] || (r ? (r.portions || 1) : 1);
 
+            // Handle Mock IDs: valid IDs are integers. If string start with 'mock-', send null
+            let finalMemberId = memberId;
+            if (typeof memberId === 'string' && memberId.startsWith('mock-')) {
+                finalMemberId = null;
+            }
+
             const payload = {
                 day_of_week: WEEK_DAYS_NAMES[dayIndex],
                 meal_type: type,
                 recipe_id: recipeId,
-                family_member_id: memberId,
+                family_member_id: finalMemberId,
                 portions: portions,
                 date: dateStr
             };
+
 
             // Call API directly (Auto-Save)
             const res = await fetch('/api/plan/', {
@@ -676,117 +683,162 @@ export const usePlanning = () => {
             }
         });
 
-            // Save to Backend using Batch API
-            const batchPayload = newMeals.map(m => {
-                const dateStr = getDateForDayIndex(m.day);
-                const r = recipes.find(r => r.id === m.recipeId);
-                const portions = r ? (r.portions || 1) : 1;
+        // Save to Backend using Batch API
+        const batchPayload = newMeals.map(m => {
+            const dateStr = getDateForDayIndex(m.day);
+            const r = recipes.find(r => r.id === m.recipeId);
+            const portions = r ? (r.portions || 1) : 1;
+
+            // Handle Mock IDs
+            let finalMemberId = m.memberId;
+            if (typeof m.memberId === 'string' && m.memberId.startsWith('mock-')) {
+                finalMemberId = null;
+            }
+
+            return {
+                day_of_week: WEEK_DAYS_NAMES[m.day],
+                meal_type: m.type,
+                recipe_id: m.recipeId,
+                portions: portions,
+                family_member_id: finalMemberId,
+                date: dateStr
+            };
+        });
+
+
+        try {
+            const res = await fetch('/api/plan/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(batchPayload)
+            });
+            if (res.ok) {
+                loadSharedPlan();
+            } else {
+                console.error("Batch save failed");
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const savePlanToNextWeek = async () => {
+        if (!window.confirm("Сохранить текущий план на СЛЕДУЮЩУЮ неделю? Это перезапишет существующий план на ту неделю.")) return;
+
+        // Target Week Dates
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0-6
+        const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const currentMonday = new Date(today);
+        currentMonday.setDate(today.getDate() - diffToMon);
+
+        const nextMonday = new Date(currentMonday);
+        nextMonday.setDate(currentMonday.getDate() + 7);
+        const nextSunday = new Date(nextMonday);
+        nextSunday.setDate(nextMonday.getDate() + 6);
+
+        const formatDate = (d) => d.toISOString().split('T')[0];
+        const startDateStr = formatDate(nextMonday);
+        const endDateStr = formatDate(nextSunday);
+
+        try {
+            // 1. Prepare items to save
+            const itemsToSave = plannedMeals.map(pm => {
+                const mealDate = new Date(nextMonday);
+                mealDate.setDate(nextMonday.getDate() + pm.day); // pm.day is 0-6
+                const portions = pm.portions || 1;
+
+                // Allow Mocks to be saved as unassigned (null)
+                let finalMemberId = pm.memberId;
+                if (typeof pm.memberId === 'string' && pm.memberId.startsWith('mock-')) {
+                    finalMemberId = null;
+                }
 
                 return {
-                    day_of_week: WEEK_DAYS_NAMES[m.day],
-                    meal_type: m.type,
-                    recipe_id: m.recipeId,
+                    day_of_week: WEEK_DAYS_NAMES[pm.day],
+                    meal_type: pm.type,
+                    recipe_id: pm.recipeId,
                     portions: portions,
-                    family_member_id: m.memberId,
-                    date: dateStr
+                    family_member_id: finalMemberId,
+                    date: formatDate(mealDate)
                 };
             });
 
+            if (itemsToSave.length === 0) {
+                alert("План пуст, нечего сохранять.");
+                return;
+            }
+
+            // 2. Backup existing plan (Safety)
+            // We fetch the plan for next week first.
+            let backupPlan = [];
             try {
-                const res = await fetch('/api/plan/batch', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(batchPayload)
-                });
-                if (res.ok) {
-                    loadSharedPlan();
-                } else {
-                    console.error("Batch save failed");
-                }
+                backupPlan = await fetchPlan(startDateStr, endDateStr);
             } catch (e) {
-                console.error(e);
+                console.warn("Could not fetch backup plan", e);
+                // Decide if we proceed. Yes, but warn? No, proceed.
             }
-        };
 
-        const savePlanToNextWeek = async () => {
-            if (!window.confirm("Сохранить текущий план на СЛЕДУЮЩУЮ неделю? Это перезапишет существующий план на ту неделю.")) return;
+            // 3. Clear target week
+            await clearPlan(startDateStr, endDateStr);
 
+            // 4. Save new items
+            // We trust savePlan fails if something is wrong.
             try {
-                const today = new Date();
-                const dayOfWeek = today.getDay(); // 0-6
-                const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-
-                // Current Monday
-                const currentMonday = new Date(today);
-                currentMonday.setDate(today.getDate() - diffToMon);
-
-                // Next Monday
-                const nextMonday = new Date(currentMonday);
-                nextMonday.setDate(currentMonday.getDate() + 7);
-
-                const formatDate = (d) => d.toISOString().split('T')[0];
-                const WEEK_DAYS_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
-
-                const itemsToSave = plannedMeals.map(pm => {
-                    const mealDate = new Date(nextMonday);
-                    mealDate.setDate(nextMonday.getDate() + pm.day); // pm.day is 0-6
-
-                    // Use instance-specific portion, default to 1
-                    const portions = pm.portions || 1;
-
-                    return {
-                        day_of_week: WEEK_DAYS_NAMES[pm.day],
-                        meal_type: pm.type,
-                        recipe_id: pm.recipeId,
-                        portions: portions,
-                        family_member_id: pm.memberId,
-                        date: formatDate(mealDate)
-                    };
-                });
-
-                if (itemsToSave.length === 0) {
-                    alert("План пуст, нечего сохранять.");
-                    return;
-                }
-
-                // Clear the logic range first to ensure we overwrite even empty days
-                const nextSunday = new Date(nextMonday);
-                nextSunday.setDate(nextMonday.getDate() + 6);
-
-                await clearPlan(formatDate(nextMonday), formatDate(nextSunday));
                 await savePlan(itemsToSave);
-
                 alert("✅ План успешно сохранен на следующую неделю!");
-
-            } catch (error) {
-                console.error(error);
-                alert("❌ Ошибка при сохранении: " + error.message);
+            } catch (saveError) {
+                console.error("Save failed, attempting restore...", saveError);
+                // 5. Restore backup if save failed
+                if (backupPlan.length > 0) {
+                    try {
+                        const restoreItems = backupPlan.map(item => ({
+                            day_of_week: item.day_of_week,
+                            meal_type: item.meal_type,
+                            recipe_id: item.recipe_id,
+                            portions: item.portions,
+                            family_member_id: item.family_member_id,
+                            date: item.date
+                        }));
+                        await savePlan(restoreItems);
+                        alert("❌ Ошибка сохранения! Старый план был восстановлен. Детали: " + saveError.message);
+                    } catch (restoreError) {
+                        alert("CRITICAL: Ошибка сохранения и НЕ удалось восстановить старый план! Данные могут быть потеряны.");
+                    }
+                } else {
+                    alert("❌ Ошибка сохранения! (Резервная копия была пуста): " + saveError.message);
+                }
             }
-        };
 
-        return {
-            recipes,
-            visibleRecipes,
-            hiddenIds,
-            highlightedIds,
-            plannedPortions,
-            eatersCount,
-            familyMembers,
-            plannedMeals,
-            updatePortion,
-            toggleHighlight,
-            hideRecipe,
-            restoreAll,
-            addMeal,
-            updateMealMember,
-            removeMeal,
-            removeMealByInstance,
-            moveMeal,
-            getRecipesByCategories,
-            getTotalStats,
-            getScheduledStats,
-            getDefaultPortion,
-            autoDistribute,
-            savePlanToNextWeek
-        };
+        } catch (error) {
+            console.error(error);
+            alert("❌ Ошибка инициализации сохранения: " + error.message);
+        }
     };
+
+    return {
+        recipes,
+        visibleRecipes,
+        hiddenIds,
+        highlightedIds,
+        plannedPortions,
+        eatersCount,
+        familyMembers,
+        plannedMeals,
+        updatePortion,
+        toggleHighlight,
+        hideRecipe,
+        restoreAll,
+        addMeal,
+        updateMealMember,
+        removeMeal,
+        removeMealByInstance,
+        moveMeal,
+        getRecipesByCategories,
+        getTotalStats,
+        getScheduledStats,
+        getDefaultPortion,
+        autoDistribute,
+        savePlanToNextWeek
+    };
+};
