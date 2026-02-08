@@ -1,29 +1,11 @@
 import datetime
-import sys
-import os
-
-# --- PATH SETUP START ---
-current_test_dir = os.path.dirname(os.path.abspath(__file__))
-possible_roots = [
-    "/app",
-    "/app/backend",
-    os.path.abspath(os.path.join(current_test_dir, "..")), 
-    os.path.abspath(os.path.join(current_test_dir, "../..")),
-    os.path.abspath(os.path.join(current_test_dir, "../../..")),
-    os.path.abspath(os.path.join(current_test_dir, "../../../backend")),
-]
-
-for root in possible_roots:
-    if os.path.exists(os.path.join(root, "main.py")):
-        if root not in sys.path:
-            sys.path.insert(0, root)
-        break
-# --- PATH SETUP END ---
-
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from main import app
+from dependencies import get_db
+import models
+import pytest
 from dependencies import get_db
 import models
 import pytest
