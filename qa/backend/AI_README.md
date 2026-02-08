@@ -5,6 +5,12 @@
 You STRICTLY MUST NOT assume it works based on code analysis alone.
 **You MUST write a new test case** (or run existing ones) to prove it works.
 
+**STRICT RULE:** ALL tests must be implemented as automated validation scripts (pytest) inside the `qa/backend/tests` directory.
+- D0 NOT create temporary python scripts in the root directory.
+- DO NOT try to run tests locally with `python test.py`.
+- YOU MUST use the containerized testing workflow described below.
+- **CRITICAL REASONING**: The application runs on a remote server. You do not have local access to the database or the running application. Running tests outside the container will fail because they cannot connect to the backend.
+
 > [!IMPORTANT]
 > **SERVER-ONLY ACCESS**: You do NOT have direct access to run these tests locally or via SSH.
 > **EXECUTION STRATEGY**: You must commit and push your changes (including the new test) to the repository. The tests will be executed automatically on the server. You must then wait for the results.
