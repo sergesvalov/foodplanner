@@ -27,6 +27,12 @@ The QA suite is designed to verify the API's health, CRUD operations, and comple
 - **Type:** Black-box API tests (using `pytest` + `requests`).
 - **Data Strategy:** Non-destructive. Tests **create** their own temporary data (random names) and **delete** it upon completion.
 
+> [!WARNING]
+> **NO DIRECT IMPORTS**: The QA container is **isolated** from the backend source code. 
+> You CANNOT import `main.py`, `models.py`, or `dependencies.py`.
+> You MUST use `requests` to hit the API endpoints (e.g., `requests.get(f"{BASE_URL}/plan")`).
+> **DO NOT** try to patch `sys.path` to find backend code. It is not there.
+
 ## 2. How to Run Tests (Remote)
 
 ### Context: Jenkins (CI/CD)

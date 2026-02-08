@@ -34,3 +34,10 @@ docker run --rm --network foodplanner_default -e API_URL=http://menu_backend:800
 ```
 
 Then you can verify the content of `report.md` or copy-paste it to your AI assistant.
+
+## 4. Development
+**Important:** These are **Integration Tests**.
+The test runner is a separate container from the backend.
+- You **cannot** import `app` or `db` from the backend code.
+- You **must** use `requests` to interact with the running API.
+- See `test_smoke.py` for examples.
