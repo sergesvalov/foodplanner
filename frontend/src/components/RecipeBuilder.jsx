@@ -25,7 +25,8 @@ const RecipeBuilder = ({ onRecipeCreated, initialData, onCancel }) => {
 
   const SPOON_UNITS = [
     { label: 'ст. л', value: 15 },
-    { label: 'ч. л', value: 5 }
+    { label: 'ч. л', value: 5 },
+    { label: '1 кусочек', value: 35 }
   ];
 
   const fetchProducts = () => {
