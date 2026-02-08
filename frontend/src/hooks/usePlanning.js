@@ -115,10 +115,8 @@ export const usePlanning = () => {
                 const mapped = data.map(item => ({
                     id: item.id, // Keep ID for updates/deletes
                     day: daysMap[item.day_of_week],
-                    // Map legacy Lunch/Dinner to 'day'
-                    type: (item.meal_type === 'lunch' || item.meal_type === 'dinner' || item.meal_type === 'soup' || item.meal_type === 'main')
-                        ? 'day'
-                        : item.meal_type,
+                    // Keep type as is (lunch/dinner separate)
+                    type: item.meal_type,
                     recipeId: item.recipe_id,
                     memberId: item.family_member_id,
                     portions: item.portions || 1
@@ -385,7 +383,8 @@ export const usePlanning = () => {
         for (let d = 0; d < 7; d++) {
             consumption[d] = {
                 breakfast: new Set(),
-                day: new Set()
+                lunch: new Set(),
+                dinner: new Set()
             };
         }
 
@@ -546,257 +545,217 @@ export const usePlanning = () => {
                     });
                     consumption[currentDay]['breakfast'].add(consumer.id);
                     remainingPortions[recipe.id]--;
-                    filledSlots++;
-                }
-            }
-        });
+                    // 3. Distribute Lunch (Soup priority, then Main)
+                    // & Dinner (Main + Side)
 
-        // 3. Distribute Lunch/Dinner (Main/Soup) - SAME AS BEFORE
-        // Create strict consumer constraints based on *current* plan (if any) or existing logic?
-        // Wait, the previous logic used 'recipeConsumers' from the *current* plan being overwritten.
-        // But we are overwriting it.
-        // The logic "Strict Consumer Constraint: If this recipe was eaten by ANYONE ... restrict"
-        // was based on preserving manual assignments. But here we are overwriting?
-        // Actually, 'autoDistribute' overwrites 'plannedMeals'.
-        // So 'recipeConsumers' derived from 'plannedMeals' (which is about to be wiped) is maybe not what we want?
-        // If the user manually assigned "Steak to Dad" then clicked "Auto", maybe they want to keep that constraint?
-        // But the prompt says "Auto Distribute" overwrites.
-        // Let's remove that complexity or keep it if it makes sense.
-        // The previous code scan `plannedMeals` (which is the OLD state).
-        // The confirmation says "Перезапишет текущее расписание". So we start fresh.
-        // Thus, no consumer constraints from previous plan needed.
-
-        // 3. Distribute Main Meals (Soup/Main) into 'day' slot
-        const lastWeekMainIds = new Set();
-        if (Array.isArray(lastWeekPlan)) {
-            lastWeekPlan.forEach(item => {
-                // If it was lunch/dinner/main/soup before, consider it "used" for variety check
-                if (['lunch', 'dinner', 'main', 'soup'].includes(item.meal_type) && item.recipe_id) {
-                    lastWeekMainIds.add(item.recipe_id);
-                }
-            });
-        }
-
-        const newMainRecipes = mainRecipes.filter(r => !lastWeekMainIds.has(r.id));
-        const oldMainRecipes = mainRecipes.filter(r => lastWeekMainIds.has(r.id));
-
-        const balancedMainRecipes = [];
-        const maxLength = Math.max(newMainRecipes.length, oldMainRecipes.length);
-        for (let i = 0; i < maxLength; i++) {
-            if (i < newMainRecipes.length) balancedMainRecipes.push(newMainRecipes[i]);
-            if (i < oldMainRecipes.length) balancedMainRecipes.push(oldMainRecipes[i]);
-        }
-
-        balancedMainRecipes.forEach(recipe => {
-            let remaining = remainingPortions[recipe.id];
-            // Treat all non-breakfast as valid for 'day'
-            if (remaining <= 0) return;
-
-            // Sequential Timeline Approach - Single 'day' slot per day
-            const timeline = [];
-            for (let d = 0; d < 7; d++) {
-                timeline.push({ d, t: 'day' });
-            }
-
-            if (timeline.length === 0) return;
-
-            let idx = 0;
-            let loopCount = 0;
-
-            const isBigRecipe = remaining >= consumers.length;
-            let foundStart = false;
-
-            // Scan for a valid start index
-            for (let i = 0; i < timeline.length; i++) {
-                const slot = timeline[i];
-                // Check if 'day' slot has consumption (requires updating 'consumption' usage below too)
-                // We need to initialize 'consumption' with 'day' key first! 
-                // Wait, consumption object structure is defined earlier.
-                // I need to update the caller to initialize 'day' instead of lunch/dinner.
-                // But this block is inside the caller function.
-                // I will assume consumption is updated below in the same file.
-                // Let's rely on 'consumption[d].day' existence check inside the loop?
-                // No, I must ensure consumption[d] has 'day'. 
-                // Ah, consumption is initialized at top of function. I need to update THAT too.
-                // Since I can only replace one block, I will assume I deal with consumption structure momentarily.
-
-                const eatenCount = consumption[slot.d]['day'] ? consumption[slot.d]['day'].size : 0;
-
-                if (isBigRecipe) {
-                    if (eatenCount === 0) {
-                        idx = i;
-                        foundStart = true;
-                        break;
+                    // Helper to get used counts from LAST WEEK for variety
+                    const lastWeekUsage = {}; // recipeId -> count
+                    if (Array.isArray(lastWeekPlan)) {
+                        lastWeekPlan.forEach(item => {
+                            if (item.recipe_id) {
+                                lastWeekUsage[item.recipe_id] = (lastWeekUsage[item.recipe_id] || 0) + 1;
+                            }
+                        });
                     }
-                } else {
-                    if (eatenCount < consumers.length) {
-                        idx = i;
-                        foundStart = true;
-                        break;
+
+                    // Categorize available recipes
+                    const soups = visibleRecipes.filter(r => r.category === 'soup');
+                    const mains = visibleRecipes.filter(r => r.category === 'main');
+                    const sides = visibleRecipes.filter(r => r.category === 'side');
+
+                    // Shuffle all
+                    shuffleArray(soups);
+                    shuffleArray(mains);
+                    shuffleArray(sides);
+
+                    // Helper to distribute a list of recipes into a specific slot type (lunch/dinner)
+                    // across the week for all consumers.
+                    const distributeStrategies = async (slotType, recipeList, dailyLimit = 1) => {
+                        // We want to fill 7 days * consumers per day
+                        // But usually Lunch/Dinner is shared.
+                        // Let's assume shared meals => same recipe for all consumers on a given day/slot.
+
+                        // timeline: 0..6
+                        for (let d = 0; d < 7; d++) {
+                            // If slot already filled (manually?), skip? 
+                            // We are overwriting, so assume empty.
+
+                            // 1. Pick a recipe
+                            // Try to pick one that hasn't been used this week if possible
+                            let picked = null;
+
+                            // Simple Round-Robin from recipeList
+                            // But we want to respect portions if possible?
+                            // For simplicity in "Remake", we just pick distinct recipes for the week.
+
+                            // Try to find one with portions > 0
+                            // picked = recipeList.find(r => remainingPortions[r.id] > 0);
+
+                            // If not found, pick any (and go negative/buy more)
+                            if (!picked) picked = recipeList[d % recipeList.length];
+
+                            if (!picked) continue; // No recipes in this category
+
+                            // 2. Assign to all consumers
+                            consumers.forEach(c => {
+                                newMeals.push({
+                                    day: d,
+                                    type: slotType,
+                                    recipeId: picked.id,
+                                    memberId: c.id
+                                });
+                                // Decrement portions?
+                                remainingPortions[picked.id]--;
+                            });
+                        }
+                    };
+
+                    // LUNCH: Soup 
+                    // We can just iterate 7 days.
+                    for (let d = 0; d < 7; d++) {
+                        // 50% chance soup, 50% main? Or always soup if available?
+                        // User didn't specify strict rules. 
+                        // Let's alternate or fill with soups first.
+                        let recipe = null;
+                        if (soups.length > 0) {
+                            recipe = soups[d % soups.length];
+                        } else if (mains.length > 0) {
+                            recipe = mains[d % mains.length];
+                        }
+
+                        if (recipe) {
+                            consumers.forEach(c => {
+                                newMeals.push({ day: d, type: 'lunch', recipeId: recipe.id, memberId: c.id });
+                                remainingPortions[recipe.id]--;
+                            });
+                        }
                     }
-                }
-            }
 
-            if (!foundStart && isBigRecipe) {
-                for (let i = 0; i < timeline.length; i++) {
-                    const slot = timeline[i];
-                    const eatenCount = consumption[slot.d]['day'] ? consumption[slot.d]['day'].size : 0;
-                    if (eatenCount < consumers.length) {
-                        idx = i;
-                        foundStart = true;
-                        break;
+                    // DINNER: Main + Side advice?
+                    // Let's assign Main to Dinner.
+                    for (let d = 0; d < 7; d++) {
+                        let recipe = null;
+                        if (mains.length > 0) {
+                            // Try to pick distinct from lunch if possible (not implemented deeply, just shuffle helps)
+                            recipe = mains[(d + 3) % mains.length]; // Offset to avoid same-day repeat if list small
+                        }
+
+                        if (recipe) {
+                            consumers.forEach(c => {
+                                newMeals.push({ day: d, type: 'dinner', recipeId: recipe.id, memberId: c.id });
+                                remainingPortions[recipe.id]--;
+                            });
+                        }
                     }
-                }
-            }
 
-            while (remaining > 0 && loopCount < timeline.length * 2) {
-                const slot = timeline[idx];
-                const eaten = consumption[slot.d]['day'];
-
-                let candidates = consumers.filter(c => !eaten.has(c.id));
-
-                if (candidates.length > 0) {
-                    const takeCount = Math.min(remaining, candidates.length);
-                    const targets = candidates.slice(0, takeCount);
-
-                    targets.forEach(c => {
-                        // Use actions to save? No, autoDistribute builds list then saves or sets state?
-                        // autoDistribute builds 'newMeals' array.
-                        // I need to make sure 'addMeal' calls are made OR setPlannedMeals is used.
-                        // Original code pushed to newMeals.
-                        // Wait, with my Auto-Save refactor, 'autoDistribute' should probably call addMeal directly?
-                        // OR 'autoDistribute' constructs a batch and saves via batch API?
-                        // The original logic just updated local state.
-                        // But I removed the local state logic in favor of direct API calls.
-                        // Does 'autoDistribute' call 'addMeal'? 
-                        // In previous file content, autoDistribute pushed to 'newMeals'.
-                        // But I need to update 'autoDistribute' to use 'addMeal' (async) or 'batch' API.
-                        // Since I am refactoring it HERE, I should make it call `addMeal` for each item?
-                        // That would be slow (many requests).
-                        // Better to use Batch API.
-                        // But `usePlanning` removed `batch` save logic mostly.
-                        // Let's assume for now I populate `newMeals` and then I'll add a batch save call at the end of the function.
-
-                        // Push to local array
-                        newMeals.push({ day: slot.d, type: slot.t, recipeId: recipe.id, memberId: c.id });
-                        eaten.add(c.id);
+                    // Save to Backend using Batch API
+                    const batchPayload = newMeals.map(m => {
+                        const dateStr = getDateForDayIndex(m.day);
+                        return {
+                            day_of_week: WEEK_DAYS_NAMES[m.day],
+                            meal_type: m.type,
+                            recipe_id: m.recipeId,
+                            portions: getDefaultPortion(recipes.find(r => r.id === m.recipeId) || { portions: 1 }),
+                            family_member_id: m.memberId,
+                            date: dateStr
+                        };
                     });
-                    remaining -= takeCount;
-                }
 
-                idx = (idx + 1) % timeline.length;
-                loopCount++;
-            }
-        });
+                    try {
+                        const res = await fetch('/api/plan/batch', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(batchPayload)
+                        });
+                        if (res.ok) {
+                            loadSharedPlan();
+                        } else {
+                            console.error("Batch save failed");
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                };
 
-        // Save to Backend using Batch API
-        const batchPayload = newMeals.map(m => {
-            const dateStr = getDateForDayIndex(m.day);
-            return {
-                day_of_week: WEEK_DAYS_NAMES[m.day],
-                meal_type: m.type,
-                recipe_id: m.recipeId,
-                portions: getDefaultPortion(recipes.find(r => r.id === m.recipeId) || { portions: 1 }),
-                family_member_id: m.memberId,
-                date: dateStr
-            };
-        });
+                const savePlanToNextWeek = async () => {
+                    if (!window.confirm("Сохранить текущий план на СЛЕДУЮЩУЮ неделю? Это перезапишет существующий план на ту неделю.")) return;
 
-        try {
-            const res = await fetch('/api/plan/batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(batchPayload)
-            });
-            if (res.ok) {
-                loadSharedPlan();
-            } else {
-                console.error("Batch save failed");
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    };
+                    try {
+                        const today = new Date();
+                        const dayOfWeek = today.getDay(); // 0-6
+                        const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
 
-    const savePlanToNextWeek = async () => {
-        if (!window.confirm("Сохранить текущий план на СЛЕДУЮЩУЮ неделю? Это перезапишет существующий план на ту неделю.")) return;
+                        // Current Monday
+                        const currentMonday = new Date(today);
+                        currentMonday.setDate(today.getDate() - diffToMon);
 
-        try {
-            const today = new Date();
-            const dayOfWeek = today.getDay(); // 0-6
-            const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                        // Next Monday
+                        const nextMonday = new Date(currentMonday);
+                        nextMonday.setDate(currentMonday.getDate() + 7);
 
-            // Current Monday
-            const currentMonday = new Date(today);
-            currentMonday.setDate(today.getDate() - diffToMon);
+                        const formatDate = (d) => d.toISOString().split('T')[0];
+                        const WEEK_DAYS_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
-            // Next Monday
-            const nextMonday = new Date(currentMonday);
-            nextMonday.setDate(currentMonday.getDate() + 7);
+                        const itemsToSave = plannedMeals.map(pm => {
+                            const mealDate = new Date(nextMonday);
+                            mealDate.setDate(nextMonday.getDate() + pm.day); // pm.day is 0-6
 
-            const formatDate = (d) => d.toISOString().split('T')[0];
-            const WEEK_DAYS_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+                            // Use instance-specific portion, default to 1
+                            const portions = pm.portions || 1;
 
-            const itemsToSave = plannedMeals.map(pm => {
-                const mealDate = new Date(nextMonday);
-                mealDate.setDate(nextMonday.getDate() + pm.day); // pm.day is 0-6
+                            return {
+                                day_of_week: WEEK_DAYS_NAMES[pm.day],
+                                meal_type: pm.type,
+                                recipe_id: pm.recipeId,
+                                portions: portions,
+                                family_member_id: pm.memberId,
+                                date: formatDate(mealDate)
+                            };
+                        });
 
-                // Use instance-specific portion, default to 1
-                const portions = pm.portions || 1;
+                        if (itemsToSave.length === 0) {
+                            alert("План пуст, нечего сохранять.");
+                            return;
+                        }
+
+                        // Clear the logic range first to ensure we overwrite even empty days
+                        const nextSunday = new Date(nextMonday);
+                        nextSunday.setDate(nextMonday.getDate() + 6);
+
+                        await clearPlan(formatDate(nextMonday), formatDate(nextSunday));
+                        await savePlan(itemsToSave);
+
+                        alert("✅ План успешно сохранен на следующую неделю!");
+
+                    } catch (error) {
+                        console.error(error);
+                        alert("❌ Ошибка при сохранении: " + error.message);
+                    }
+                };
 
                 return {
-                    day_of_week: WEEK_DAYS_NAMES[pm.day],
-                    meal_type: pm.type,
-                    recipe_id: pm.recipeId,
-                    portions: portions,
-                    family_member_id: pm.memberId,
-                    date: formatDate(mealDate)
+                    recipes,
+                    visibleRecipes,
+                    hiddenIds,
+                    highlightedIds,
+                    plannedPortions,
+                    eatersCount,
+                    familyMembers,
+                    plannedMeals,
+                    updatePortion,
+                    toggleHighlight,
+                    hideRecipe,
+                    restoreAll,
+                    addMeal,
+                    updateMealMember,
+                    removeMeal,
+                    removeMealByInstance,
+                    moveMeal,
+                    getRecipesByCategories,
+                    getTotalStats,
+                    getScheduledStats,
+                    getDefaultPortion,
+                    autoDistribute,
+                    savePlanToNextWeek
                 };
-            });
-
-            if (itemsToSave.length === 0) {
-                alert("План пуст, нечего сохранять.");
-                return;
-            }
-
-            // Clear the logic range first to ensure we overwrite even empty days
-            const nextSunday = new Date(nextMonday);
-            nextSunday.setDate(nextMonday.getDate() + 6);
-
-            await clearPlan(formatDate(nextMonday), formatDate(nextSunday));
-            await savePlan(itemsToSave);
-
-            alert("✅ План успешно сохранен на следующую неделю!");
-
-        } catch (error) {
-            console.error(error);
-            alert("❌ Ошибка при сохранении: " + error.message);
-        }
-    };
-
-    return {
-        recipes,
-        visibleRecipes,
-        hiddenIds,
-        highlightedIds,
-        plannedPortions,
-        eatersCount,
-        familyMembers,
-        plannedMeals,
-        updatePortion,
-        toggleHighlight,
-        hideRecipe,
-        restoreAll,
-        addMeal,
-        updateMealMember,
-        removeMeal,
-        removeMealByInstance,
-        moveMeal,
-        getRecipesByCategories,
-        getTotalStats,
-        getScheduledStats,
-        getDefaultPortion,
-        autoDistribute,
-        savePlanToNextWeek
-    };
-};
+            };
