@@ -1,8 +1,14 @@
 import datetime
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import sys
+import os
+
+# Robustly add project root to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.append("/app")
+
+# Now import app
 from main import app
 from dependencies import get_db
 import models
