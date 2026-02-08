@@ -143,20 +143,38 @@ test.describe('Core User Flows', () => {
         // Since I don't recall seeing Navbar in the file list recently (it was in components/Navbar.jsx), let's verify it's used.
         // Assuming it is.
     });
-    test.afterAll(async ({ browser }) => {
-        const page = await browser.newPage();
-        await page.goto('/recipes');
-        await page.getByPlaceholder('🔍 Поиск...').fill('E2E Recipe');
-        await page.waitForTimeout(500); // Wait for filter
+    test.afterAll(async ({ browser }, testInfo) => {
+        console.log('Starting Cleanup...');
+        const baseURL = testInfo.project.use.baseURL || process.env.BASE_URL || 'http://frontend';
+        console.log(`Cleanup URL: ${baseURL}`);
+        const context = await browser.newContext({ baseURL });
+        const page = await context.newPage();
 
-        // Delete all found
-        let count = await page.getByText('Удалить').count();
-        while (count > 0) {
+        try {
+            await page.goto('/recipes');
+            await page.getByPlaceholder('🔍 Поиск...').fill('E2E Recipe');
+            // Wait for filter to apply - network idle is safer but simplistic wait works for small apps
+            await page.waitForTimeout(500);
+
+            // Register dialog handler ONCE
             page.on('dialog', dialog => dialog.accept());
-            await page.getByText('Удалить').first().click();
-            await page.waitForTimeout(500); // Wait for refresh
-            count = await page.getByText('Удалить').count();
+
+            // Delete loop
+            while (true) {
+                const deleteBtns = page.getByText('Удалить');
+                const count = await deleteBtns.count();
+                if (count === 0) break;
+
+                console.log('Deleting leftover recipe...');
+                await deleteBtns.first().click();
+                // Wait for list update - simplest way is small sleep or waiting for count to decrease
+                await page.waitForTimeout(500);
+            }
+        } catch (e) {
+            console.error('Cleanup failed:', e);
+        } finally {
+            console.log('Cleanup finished');
+            await page.close();
         }
-        await page.close();
     });
 });
