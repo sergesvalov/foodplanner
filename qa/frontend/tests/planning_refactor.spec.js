@@ -16,10 +16,11 @@ test.describe('Planning Page Refactor Verification', () => {
         // Check Header
         await expect(page.getByText('Планирование меню')).toBeVisible();
 
-        // Check Categories exist (Breakfast, Lunch, Dinner, Drinks)
+        // Check Categories exist (Breakfast, Day)
         await expect(page.getByText('Завтрак')).toBeVisible();
-        await expect(page.getByText('Обед')).toBeVisible();
-        await expect(page.getByText('Ужин')).toBeVisible();
+        await expect(page.getByText('День')).toBeVisible();
+        await expect(page.getByText('Обед')).not.toBeVisible();
+        await expect(page.getByText('Ужин')).not.toBeVisible();
         await expect(page.getByText('Напитки')).not.toBeVisible();
 
         // Check at least one "Hide" button exists (implies recipes are rendered)
