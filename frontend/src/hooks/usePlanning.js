@@ -659,119 +659,106 @@ export const usePlanning = () => {
                                 newMeals.push({
                                     day: slot.day,
                                     type: slot.type,
-                                    recipeId: currentRecipe.id,
-                                    memberId: c.id
-                                });
-                                remainingPortions[currentRecipe.id]--;
+                                    family_member_id: m.memberId,
+                                    date: dateStr
+                                };
                             });
-                        }
-                    }
-                    // Save to Backend using Batch API
-                    const batchPayload = newMeals.map(m => {
-                        const dateStr = getDateForDayIndex(m.day);
-                        return {
-                            recipe_id: m.recipeId,
-                            portions: getDefaultPortion(recipes.find(r => r.id === m.recipeId) || { portions: 1 }),
-                            family_member_id: m.memberId,
-                            date: dateStr
+
+                            try {
+                                const res = await fetch('/api/plan/batch', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(batchPayload)
+                                });
+                                if (res.ok) {
+                                    loadSharedPlan();
+                                } else {
+                                    console.error("Batch save failed");
+                                }
+                            } catch (e) {
+                                console.error(e);
+                            }
                         };
-                    });
 
-                    try {
-                        const res = await fetch('/api/plan/batch', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(batchPayload)
-                        });
-                        if (res.ok) {
-                            loadSharedPlan();
-                        } else {
-                            console.error("Batch save failed");
-                        }
-                    } catch (e) {
-                        console.error(e);
-                    }
-                };
+                        const savePlanToNextWeek = async () => {
+                            if (!window.confirm("Сохранить текущий план на СЛЕДУЮЩУЮ неделю? Это перезапишет существующий план на ту неделю.")) return;
 
-                const savePlanToNextWeek = async () => {
-                    if (!window.confirm("Сохранить текущий план на СЛЕДУЮЩУЮ неделю? Это перезапишет существующий план на ту неделю.")) return;
+                            try {
+                                const today = new Date();
+                                const dayOfWeek = today.getDay(); // 0-6
+                                const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
 
-                    try {
-                        const today = new Date();
-                        const dayOfWeek = today.getDay(); // 0-6
-                        const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                                // Current Monday
+                                const currentMonday = new Date(today);
+                                currentMonday.setDate(today.getDate() - diffToMon);
 
-                        // Current Monday
-                        const currentMonday = new Date(today);
-                        currentMonday.setDate(today.getDate() - diffToMon);
+                                // Next Monday
+                                const nextMonday = new Date(currentMonday);
+                                nextMonday.setDate(currentMonday.getDate() + 7);
 
-                        // Next Monday
-                        const nextMonday = new Date(currentMonday);
-                        nextMonday.setDate(currentMonday.getDate() + 7);
+                                const formatDate = (d) => d.toISOString().split('T')[0];
+                                const WEEK_DAYS_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
-                        const formatDate = (d) => d.toISOString().split('T')[0];
-                        const WEEK_DAYS_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+                                const itemsToSave = plannedMeals.map(pm => {
+                                    const mealDate = new Date(nextMonday);
+                                    mealDate.setDate(nextMonday.getDate() + pm.day); // pm.day is 0-6
 
-                        const itemsToSave = plannedMeals.map(pm => {
-                            const mealDate = new Date(nextMonday);
-                            mealDate.setDate(nextMonday.getDate() + pm.day); // pm.day is 0-6
+                                    // Use instance-specific portion, default to 1
+                                    const portions = pm.portions || 1;
 
-                            // Use instance-specific portion, default to 1
-                            const portions = pm.portions || 1;
+                                    return {
+                                        day_of_week: WEEK_DAYS_NAMES[pm.day],
+                                        meal_type: pm.type,
+                                        recipe_id: pm.recipeId,
+                                        portions: portions,
+                                        family_member_id: pm.memberId,
+                                        date: formatDate(mealDate)
+                                    };
+                                });
 
-                            return {
-                                day_of_week: WEEK_DAYS_NAMES[pm.day],
-                                meal_type: pm.type,
-                                recipe_id: pm.recipeId,
-                                portions: portions,
-                                family_member_id: pm.memberId,
-                                date: formatDate(mealDate)
-                            };
-                        });
+                                if (itemsToSave.length === 0) {
+                                    alert("План пуст, нечего сохранять.");
+                                    return;
+                                }
 
-                        if (itemsToSave.length === 0) {
-                            alert("План пуст, нечего сохранять.");
-                            return;
-                        }
+                                // Clear the logic range first to ensure we overwrite even empty days
+                                const nextSunday = new Date(nextMonday);
+                                nextSunday.setDate(nextMonday.getDate() + 6);
 
-                        // Clear the logic range first to ensure we overwrite even empty days
-                        const nextSunday = new Date(nextMonday);
-                        nextSunday.setDate(nextMonday.getDate() + 6);
+                                await clearPlan(formatDate(nextMonday), formatDate(nextSunday));
+                                await savePlan(itemsToSave);
 
-                        await clearPlan(formatDate(nextMonday), formatDate(nextSunday));
-                        await savePlan(itemsToSave);
+                                alert("✅ План успешно сохранен на следующую неделю!");
 
-                        alert("✅ План успешно сохранен на следующую неделю!");
+                            } catch (error) {
+                                console.error(error);
+                                alert("❌ Ошибка при сохранении: " + error.message);
+                            }
+                        };
 
-                    } catch (error) {
-                        console.error(error);
-                        alert("❌ Ошибка при сохранении: " + error.message);
-                    }
-                };
-
-                return {
-                    recipes,
-                    visibleRecipes,
-                    hiddenIds,
-                    highlightedIds,
-                    plannedPortions,
-                    eatersCount,
-                    familyMembers,
-                    plannedMeals,
-                    updatePortion,
-                    toggleHighlight,
-                    hideRecipe,
-                    restoreAll,
-                    addMeal,
-                    updateMealMember,
-                    removeMeal,
-                    removeMealByInstance,
-                    moveMeal,
-                    getRecipesByCategories,
-                    getTotalStats,
-                    getScheduledStats,
-                    getDefaultPortion,
-                    autoDistribute,
-                    savePlanToNextWeek
-                };
-            };
+                        return {
+                            recipes,
+                            visibleRecipes,
+                            hiddenIds,
+                            highlightedIds,
+                            plannedPortions,
+                            eatersCount,
+                            familyMembers,
+                            plannedMeals,
+                            updatePortion,
+                            toggleHighlight,
+                            hideRecipe,
+                            restoreAll,
+                            addMeal,
+                            updateMealMember,
+                            removeMeal,
+                            removeMealByInstance,
+                            moveMeal,
+                            getRecipesByCategories,
+                            getTotalStats,
+                            getScheduledStats,
+                            getDefaultPortion,
+                            autoDistribute,
+                            savePlanToNextWeek
+                        };
+                    };
