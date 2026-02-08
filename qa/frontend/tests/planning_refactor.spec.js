@@ -44,7 +44,7 @@ test.describe('Planning Page Refactor Verification', () => {
         await expect(page.getByText('Авто-распределение')).toBeVisible();
 
         // Verify Sidebar (Draggable Search Input) is visible
-        await expect(page.getByPlaceholder('🔍 Найти рецепт...')).toBeVisible();
+        await expect(page.getByPlaceholder('Поиск рецептов...')).toBeVisible();
 
         // 2. Days -> Browse (Back flow)
         await page.getByText('← Назад').click(); // Back to Browse

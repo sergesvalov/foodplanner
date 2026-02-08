@@ -1,3 +1,6 @@
 pytest
 requests
 pydantic
+fastapi
+httpx
+sqlalchemy
