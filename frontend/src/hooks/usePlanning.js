@@ -81,56 +81,60 @@ export const usePlanning = () => {
     // Planned Meals
     const [plannedMeals, setPlannedMeals] = useState([]);
 
-    // Load Shared Plan (Next Week) on Mount
-    useEffect(() => {
-        const loadSharedPlan = async () => {
-            try {
-                const today = new Date();
-                const dayOfWeek = today.getDay();
-                const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-                const currentMonday = new Date(today);
-                currentMonday.setDate(today.getDate() - diffToMon);
+    // State for Next Week Start Date (to calculate target dates for API)
+    const [nextMondayDate, setNextMondayDate] = useState(null);
 
-                const nextMonday = new Date(currentMonday);
-                nextMonday.setDate(currentMonday.getDate() + 7);
+    // Initial Load - Next Week
+    const loadSharedPlan = useCallback(async () => {
+        try {
+            const today = new Date();
+            const dayOfWeek = today.getDay();
+            const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            const currentMonday = new Date(today);
+            currentMonday.setDate(today.getDate() - diffToMon);
 
-                const nextSunday = new Date(nextMonday);
-                nextSunday.setDate(nextMonday.getDate() + 6);
+            const nextMonday = new Date(currentMonday);
+            nextMonday.setDate(currentMonday.getDate() + 7);
 
-                const formatDate = (d) => d.toISOString().split('T')[0];
+            // Store valid Date object
+            setNextMondayDate(nextMonday);
 
-                const data = await fetchPlan(formatDate(nextMonday), formatDate(nextSunday));
+            const nextSunday = new Date(nextMonday);
+            nextSunday.setDate(nextMonday.getDate() + 6);
 
-                if (Array.isArray(data) && data.length > 0) {
-                    const daysMap = {
-                        'Понедельник': 0, 'Вторник': 1, 'Среда': 2, 'Четверг': 3,
-                        'Пятница': 4, 'Суббота': 5, 'Воскресенье': 6
-                    };
+            const formatDate = (d) => d.toISOString().split('T')[0];
 
-                    const mapped = data.map(item => ({
-                        day: daysMap[item.day_of_week],
-                        type: item.meal_type,
-                        recipeId: item.recipe_id,
-                        memberId: item.family_member_id,
-                        portions: item.portions || 1 // Load portion from DB
-                    })).filter(i => i.day !== undefined); // Ensure valid mapping
+            const data = await fetchPlan(formatDate(nextMonday), formatDate(nextSunday));
 
-                    setPlannedMeals(mapped);
-                }
-            } catch (e) {
-                console.error("Failed to load shared plan", e);
+            if (Array.isArray(data)) {
+                const daysMap = {
+                    'Понедельник': 0, 'Вторник': 1, 'Среда': 2, 'Четверг': 3,
+                    'Пятница': 4, 'Суббота': 5, 'Воскресенье': 6
+                };
+
+                const mapped = data.map(item => ({
+                    id: item.id, // Keep ID for updates/deletes
+                    day: daysMap[item.day_of_week],
+                    type: item.meal_type,
+                    recipeId: item.recipe_id,
+                    memberId: item.family_member_id,
+                    portions: item.portions || 1
+                })).filter(i => i.day !== undefined);
+
+                setPlannedMeals(mapped);
             }
-        };
-        loadSharedPlan();
+        } catch (e) {
+            console.error("Failed to load shared plan", e);
+        }
     }, []);
 
-    // Sync to LS removed to prefer DB source of truth
-    // If we want offline support, we'd need more logic. 
-    // user asked for "everyone sees it", which implies DB priority.
+    useEffect(() => {
+        loadSharedPlan();
+    }, [loadSharedPlan]);
 
 
     // -------------------------------------------------------------------------
-    // 3. Actions / Handlers
+    // 3. Actions / Handlers (AUTO-SAVE)
     // -------------------------------------------------------------------------
 
     const updatePortion = (id, change) => {
@@ -163,50 +167,114 @@ export const usePlanning = () => {
         setHiddenIds([]);
     };
 
-    const addMeal = (dayIndex, type, recipeId, memberId = undefined) => {
-        setPlannedMeals(prev => [
-            ...prev,
-            { day: dayIndex, type, recipeId, memberId, portions: 1 }
-        ]);
+    // Helper: Calculate date for day index (0-Mon ... 6-Sun) based on Next Week
+    const getDateForDayIndex = (dayIndex) => {
+        if (!nextMondayDate) return null;
+        const targetDate = new Date(nextMondayDate);
+        targetDate.setDate(nextMondayDate.getDate() + dayIndex);
+        return targetDate.toISOString().split('T')[0];
     };
 
-    const updateMealMember = (instance, newMemberId) => {
-        setPlannedMeals(prev => prev.map(m =>
-            m === instance ? { ...m, memberId: newMemberId } : m
-        ));
+    const WEEK_DAYS_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+
+    const addMeal = async (dayIndex, type, recipeId, memberId = undefined) => {
+        if (!nextMondayDate) return;
+
+        try {
+            const dateStr = getDateForDayIndex(dayIndex);
+            const r = recipes.find(x => x.id === recipeId);
+            const portions = plannedPortions[recipeId] || (r ? (r.portions || 1) : 1);
+
+            const payload = {
+                day_of_week: WEEK_DAYS_NAMES[dayIndex],
+                meal_type: type,
+                recipe_id: recipeId,
+                family_member_id: memberId,
+                portions: portions,
+                date: dateStr
+            };
+
+            // Call API directly (Auto-Save)
+            const res = await fetch('/api/plan/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                // Reload plan to sync ID
+                loadSharedPlan();
+            } else {
+                console.error("Failed to add meal:", await res.text());
+                alert("Ошибка сохранения! Попробуйте обновить страницу.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Ошибка сети при сохранении.");
+        }
     };
 
-    const removeMeal = (dayIndex, type, recipeId) => {
-        setPlannedMeals(prev => prev.filter(m =>
-            !(m.day === dayIndex && m.type === type && m.recipeId === recipeId)
-        ));
+    const updateMealMember = async (instance, newMemberId) => {
+        if (!instance.id) return; // Cannot update unsaved (should not happen with auto-save)
+
+        try {
+            const res = await fetch(`/api/plan/${instance.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ family_member_id: newMemberId })
+            });
+            if (res.ok) {
+                // Optimistic local update or Reload
+                setPlannedMeals(prev => prev.map(m => m.id === instance.id ? { ...m, memberId: newMemberId } : m));
+            }
+        } catch (e) { console.error(e); }
     };
 
-    const removeMealByInstance = (instance) => {
-        setPlannedMeals(prev => {
-            const idx = prev.indexOf(instance);
-            if (idx === -1) return prev;
-            return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
-        });
+    const removeMeal = async (dayIndex, type, recipeId) => {
+        // Fallback remove by properties if ID missing (should rarely happen now)
+        // Find instance
+        const instance = plannedMeals.find(m => m.day === dayIndex && m.type === type && m.recipeId === recipeId);
+        if (instance && instance.id) {
+            await removeMealByInstance(instance);
+        } else {
+            // Optimistic fallback removal (legacy mode)
+            setPlannedMeals(prev => prev.filter(m =>
+                !(m.day === dayIndex && m.type === type && m.recipeId === recipeId)
+            ));
+        }
     };
 
-    const moveMeal = (mealInstance, targetDay, targetType) => {
-        setPlannedMeals(prev => {
-            // Find by matching properties since mealInstance is a copy from DnD event
-            const idx = prev.findIndex(pm =>
-                pm.day === mealInstance.day &&
-                pm.type === mealInstance.type &&
-                pm.recipeId === mealInstance.recipeId &&
-                pm.memberId === mealInstance.memberId
-            );
+    const removeMealByInstance = async (instance) => {
+        if (!instance.id) return;
+        try {
+            const res = await fetch(`/api/plan/${instance.id}`, { method: 'DELETE' });
+            if (res.ok) {
+                setPlannedMeals(prev => prev.filter(m => m.id !== instance.id));
+            }
+        } catch (e) { console.error(e); }
+    };
 
-            if (idx === -1) return prev;
+    const moveMeal = async (mealInstance, targetDay, targetType) => {
+        if (!nextMondayDate || !mealInstance.id) return;
 
-            const newArr = [...prev];
-            // Update the found item in place
-            newArr[idx] = { ...newArr[idx], day: targetDay, type: targetType };
-            return newArr;
-        });
+        try {
+            const targetDateStr = getDateForDayIndex(targetDay);
+            const payload = {
+                day_of_week: WEEK_DAYS_NAMES[targetDay],
+                date: targetDateStr,
+                meal_type: targetType
+            };
+
+            const res = await fetch(`/api/plan/${mealInstance.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                loadSharedPlan(); // Sync fully to catch any date shifts
+            }
+        } catch (e) { console.error(e); }
     };
 
 
