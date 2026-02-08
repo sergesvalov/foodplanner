@@ -143,4 +143,20 @@ test.describe('Core User Flows', () => {
         // Since I don't recall seeing Navbar in the file list recently (it was in components/Navbar.jsx), let's verify it's used.
         // Assuming it is.
     });
+    test.afterAll(async ({ browser }) => {
+        const page = await browser.newPage();
+        await page.goto('/recipes');
+        await page.getByPlaceholder('🔍 Поиск...').fill('E2E Recipe');
+        await page.waitForTimeout(500); // Wait for filter
+
+        // Delete all found
+        let count = await page.getByText('Удалить').count();
+        while (count > 0) {
+            page.on('dialog', dialog => dialog.accept());
+            await page.getByText('Удалить').first().click();
+            await page.waitForTimeout(500); // Wait for refresh
+            count = await page.getByText('Удалить').count();
+        }
+        await page.close();
+    });
 });
