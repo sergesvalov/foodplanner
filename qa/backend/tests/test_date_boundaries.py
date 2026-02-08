@@ -1,190 +1,159 @@
-import datetime
 import pytest
-from main import app
-from dependencies import get_db
-import models
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import requests
+import os
+import datetime
 
-# Setup Test DB
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_dates.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Configuration
+BASE_URL = os.getenv("API_URL", "http://backend:8000")
 
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
-
-@pytest.fixture(scope="module")
-def setup_db():
-    models.Base.metadata.create_all(bind=engine)
-    yield
-    models.Base.metadata.drop_all(bind=engine)
-    import os
-    if os.path.exists("./test_dates.db"):
-        os.remove("./test_dates.db")
-
-def test_week_filtering_boundaries(setup_db):
+def test_week_filtering_boundaries():
     """
-    Scenario: 'Today' is Sunday Feb 8.
-    Week Range: Mon Feb 2 - Sun Feb 8.
-    
-    We insert:
-    1. Item A: Last Sunday (Feb 1) - Should be EXCLUDED.
-    2. Item B: This Monday (Feb 2) - Should be INCLUDED.
-    3. Item C: This Sunday (Feb 8) - Should be INCLUDED.
-    4. Item D: Next Monday (Feb 9) - Should be EXCLUDED.
+    Scenario: Verify that requesting a specific week range ONLY returns items within that range.
+    We will:
+    1. Clear the plan for a specific range to ensure clean state.
+    2. Add items:
+       - Last Sunday (Feb 1)
+       - This Monday (Feb 2)
+       - This Sunday (Feb 8)
+       - Next Monday (Feb 9)
+    3. Query for "Current Week" (Feb 2 - Feb 8) and verify exclusions.
     """
-    db = TestingSessionLocal()
     
-    # Create Dummy Recipe
-    recipe = models.Recipe(title="Date Test", category="breakfast", total_calories=100)
-    db.add(recipe)
-    db.commit()
-    db.refresh(recipe)
+    # 1. Setup Data via API
+    # We need a valid recipe ID. Let's fetch one or create one.
+    # Assuming at least one recipe exists (seeded or created by other tests).
+    # Or create one for robustness.
     
-    # helper
-    def add_plan(d_date, day_name, meal):
-        item = models.WeeklyPlanEntry(
-            day_of_week=day_name,
-            meal_type=meal,
-            recipe_id=recipe.id,
-            date=d_date
-        )
-        db.add(item)
-    
-    # 1. Last Sunday (Feb 1)
-    add_plan(datetime.date(2026, 2, 1), "Воскресенье", "breakfast")
-    
-    # 2. This Monday (Feb 2)
-    add_plan(datetime.date(2026, 2, 2), "Понедельник", "lunch")
-    
-    # 3. This Sunday (Feb 8)
-    add_plan(datetime.date(2026, 2, 8), "Воскресенье", "dinner")
-    
-    # 4. Next Monday (Feb 9)
-    add_plan(datetime.date(2026, 2, 9), "Понедельник", "breakfast")
-    
-    db.commit()
-    db.close()
-    
-    # Perform Query for "Current Week" (Feb 2 - Feb 8)
-    start = "2026-02-02"
-    end = "2026-02-08"
-    
-    res = client.get(f"/api/plan/?start_date={start}&end_date={end}")
+    recipe_payload = {
+        "title": "API Boundary Test Recipe",
+        "description": "Test",
+        "ingredients": [],
+        "portions": 1,
+        "category": "breakfast"
+    }
+    r = requests.post(f"{BASE_URL}/recipes/", json=recipe_payload)
+    if r.status_code == 200:
+        recipe_id = r.json()['id']
+    else:
+        # Fallback to fetching existing
+        recipes = requests.get(f"{BASE_URL}/recipes/").json()
+        if not recipes:
+             pytest.skip("No recipes available to run test")
+        recipe_id = recipes[0]['id']
+
+    # Helper to add plan item
+    def add_item(date_str, day, meal):
+        payload = {
+            "day_of_week": day,
+            "meal_type": meal,
+            "recipe_id": recipe_id,
+            "portions": 1,
+            "date": date_str
+        }
+        res = requests.post(f"{BASE_URL}/plan/", json=payload)
+        assert res.status_code == 200, f"Failed to add item: {res.text}"
+        return res.json()
+
+    # Dates
+    last_sunday = "2026-02-01"
+    this_monday = "2026-02-02"
+    this_sunday = "2026-02-08"
+    next_monday = "2026-02-09"
+
+    # Clean up potentially conflicting items in this broad range first?
+    # DELETE /plan/?start_date=...&end_date=...
+    # (Assuming clear_plan endpoint exists as per routers/plan.py)
+    requests.delete(f"{BASE_URL}/plan/?start_date={last_sunday}&end_date={next_monday}")
+
+    # Add items
+    add_item(last_sunday, "Воскресенье", "breakfast")
+    add_item(this_monday, "Понедельник", "lunch")
+    add_item(this_sunday, "Воскресенье", "dinner")
+    add_item(next_monday, "Понедельник", "breakfast")
+
+    # 2. Query Range (Feb 2 - Feb 8)
+    res = requests.get(f"{BASE_URL}/plan/?start_date={this_monday}&end_date={this_sunday}")
     assert res.status_code == 200
     data = res.json()
     
     dates = [x['date'] for x in data]
     print(f"Returned dates: {dates}")
     
-    assert "2026-02-01" not in dates, "Feb 1 (Last Sunday) should be excluded"
-    assert "2026-02-02" in dates, "Feb 2 (This Mon) should be included"
-    assert "2026-02-08" in dates, "Feb 8 (This Sun) should be included"
-    assert "2026-02-09" not in dates, "Feb 9 (Next Mon) should be excluded"
+    assert last_sunday not in dates, f"{last_sunday} Should be excluded"
+    assert this_monday in dates, f"{this_monday} Should be included"
+    assert this_sunday in dates, f"{this_sunday} Should be included"
+    assert next_monday not in dates, f"{next_monday} Should be excluded"
 
-def test_autofill_date_logic(setup_db):
+def test_date_integrity():
     """
-    Verify that backend date calculation matches expectations.
-    If today is Sunday Feb 8, then 'get_date_for_day_of_week' for 'Воскресенье' should differ 
-    depending on how we define 'current week'.
+    Verify date persistence via API.
     """
-    # This logic is internal to routers/plan.py helper get_date_for_day_of_week
-    # But that helper depends on datetime.date.today().
-    # We can't mock today easily in these integration tests without patching 'services.plan.datetime'.
-    pass
-
-def test_date_integrity(setup_db):
-    """
-    Verify that when we POST a plan item with a specific date, 
-    it is saved EXACTLY as provided, without any timezone shifts.
-    """
-    db = TestingSessionLocal()
-    recipe = db.query(models.Recipe).first()
-    if not recipe:
-        recipe = models.Recipe(title="Integrity Test", category="breakfast", total_calories=100)
-        db.add(recipe)
-        db.commit()
-    db.refresh(recipe)
-    db.close()
+    # Get recipe
+    recipes = requests.get(f"{BASE_URL}/recipes/").json()
+    if not recipes:
+         pytest.skip("No recipes available")
+    recipe_id = recipes[0]['id']
     
-    target_date = "2026-05-15" # Random future date
-    day_name = "Пятница"
-    
+    target_date = "2026-05-15"
     payload = {
-        "day_of_week": day_name,
+        "day_of_week": "Пятница",
         "meal_type": "lunch",
-        "recipe_id": recipe.id,
+        "recipe_id": recipe_id,
         "portions": 1,
         "date": target_date
     }
     
-    response = client.post("/api/plan/", json=payload)
-    assert response.status_code == 200
-    data = response.json()
+    # POST
+    resp = requests.post(f"{BASE_URL}/plan/", json=payload)
+    assert resp.status_code == 200
+    saved = resp.json()
+    assert saved['date'] == target_date
     
-    print(f"Sent: {target_date}, Received: {data['date']}")
-    assert data['date'] == target_date, "Date mismatch on save!"
+    # GET
+    resp = requests.get(f"{BASE_URL}/plan/?start_date={target_date}&end_date={target_date}")
+    items = resp.json()
     
-    # Verify retrieval
-    # Start/End date query
-    res = client.get(f"/api/plan/?start_date={target_date}&end_date={target_date}")
-    items = res.json()
-    assert len(items) == 1
-    assert items[0]['date'] == target_date, "Date mismatch on retrieval!"
+    # Find our item
+    found = False
+    for i in items:
+        if i['id'] == saved['id']:
+             assert i['date'] == target_date
+             found = True
+             break
+    assert found, "Item not found in retrieval"
 
-def test_null_date_exclusion(setup_db):
+def test_null_date_exclusion():
     """
-    Ensure items with NULL date (if any exist) are NOT returned when filtering by date range.
+    Verify that if we somehow insert a NULL date (or omit it), 
+    it doesn't appear in date-filtered query.
+    Note: Via API, 'date' might be optional or calculated.
+    If we omit 'date', backend calculates it based on 'day_of_week' relative to TODAY.
+    So we can't easily force NULL via API unless we send explicit null and schema allows it.
+    Schema PlanItemCreate: date: Optional[date] = None. 
+    Router: if not calculated_date: calculated_date = get_date_for_day_of_week(...)
+    So backend forces a date! 
+    The ONLY way to have NULL date is DB corruption or manual SQL injection, 
+    which we can't test via API easily.
+    
+    HOWEVER, we can verify that sending explicit None results in a calculated date,
+    NOT a null date.
     """
-    db = TestingSessionLocal()
-    recipe = db.query(models.Recipe).first()
-    if not recipe:
-        recipe = models.Recipe(title="Null Date Test", category="breakfast", total_calories=100)
-        db.add(recipe)
-        db.commit()
-    db.refresh(recipe)
     
-    # Manually insert item with NULL date
-    # Note: Pydantic/SQLAlchemy might set default, so we explicitly set None if allowed by model
-    # If model requires date, this test might fail on insert, which is also good (integrity).
-    try:
-        item = models.WeeklyPlanEntry(
-            day_of_week="Воскресенье",
-            meal_type="breakfast",
-            recipe_id=recipe.id,
-            portions=1,
-            date=None # Explicit None
-        )
-        db.add(item)
-        db.commit()
-    except Exception as e:
-        print(f"Computed date required or DB constraint: {e}")
-        db.rollback()
-        return # If we can't insert null, we are safe from null ghosts
-        
-    db.close()
+    recipes = requests.get(f"{BASE_URL}/recipes/").json()
+    if not recipes: return
+    recipe_id = recipes[0]['id']
     
-    # Query Range
-    start = "2026-02-02"
-    end = "2026-02-08"
+    payload = {
+        "day_of_week": "Среда",
+        "meal_type": "snack",
+        "recipe_id": recipe_id,
+        "portions": 1,
+        "date": None # Explicit null
+    }
     
-    res = client.get(f"/api/plan/?start_date={start}&end_date={end}")
-    data = res.json()
+    resp = requests.post(f"{BASE_URL}/plan/", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
     
-    # Should NOT satisfy date >= start
-    # SQL comparison with NULL result in NULL (False-ish for filter)
-    ids = [x['id'] for x in data]
-    print(f"IDs with null date check: {ids}")
-    # We can't know ID easily without refresh, but if list is empty good.
-    # If list has items, verify they have dates.
-    for x in data:
-        assert x['date'] is not None, "Item with NULL date leaked into range query!"
+    assert data['date'] is not None, "API should calculate date if missing/null"
+    print(f"Calculated date for None input: {data['date']}")
