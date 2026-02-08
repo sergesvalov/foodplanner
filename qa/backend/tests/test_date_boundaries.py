@@ -3,12 +3,30 @@ import pytest
 import sys
 import os
 
-# Robustly add project root to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-sys.path.append("/app")
+# --- PATH SETUP START ---
+# We need to find 'main.py' to import app. 
+# It might be in:
+# 1. /app (if container mounts backend code to root)
+# 2. ../../../backend (if full repo mount)
+# 3. ../ (if simple QA mount)
 
-# Now import app
+current_test_dir = os.path.dirname(os.path.abspath(__file__))
+possible_roots = [
+    "/app",
+    "/app/backend",
+    os.path.abspath(os.path.join(current_test_dir, "..")), 
+    os.path.abspath(os.path.join(current_test_dir, "../..")),
+    os.path.abspath(os.path.join(current_test_dir, "../../..")),
+    os.path.abspath(os.path.join(current_test_dir, "../../../backend")),
+]
+
+for root in possible_roots:
+    if os.path.exists(os.path.join(root, "main.py")):
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        break
+# --- PATH SETUP END ---
+
 from main import app
 from dependencies import get_db
 import models

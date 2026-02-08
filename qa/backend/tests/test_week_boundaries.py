@@ -2,10 +2,23 @@ import datetime
 import sys
 import os
 
-# Robustly add project root to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-sys.path.append("/app")
+# --- PATH SETUP START ---
+current_test_dir = os.path.dirname(os.path.abspath(__file__))
+possible_roots = [
+    "/app",
+    "/app/backend",
+    os.path.abspath(os.path.join(current_test_dir, "..")), 
+    os.path.abspath(os.path.join(current_test_dir, "../..")),
+    os.path.abspath(os.path.join(current_test_dir, "../../..")),
+    os.path.abspath(os.path.join(current_test_dir, "../../../backend")),
+]
+
+for root in possible_roots:
+    if os.path.exists(os.path.join(root, "main.py")):
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        break
+# --- PATH SETUP END ---
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
