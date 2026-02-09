@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { usePlanning } from '../hooks/usePlanning';
 import { WEEK_DAYS, MEAL_TYPES } from '../constants/planning';
 import PlanningHeader from '../components/planning/PlanningHeader';
@@ -62,9 +62,11 @@ const PlanningPage = () => {
         ? plannedMeals
         : plannedMeals.filter(m => String(m.memberId) === String(selectedUser));
 
-    const totalStats = viewMode === 'days'
-        ? getScheduledStats(filteredMeals)
-        : getTotalStats(recipesToShow);
+    const totalStats = useMemo(() => {
+        return viewMode === 'days'
+            ? getScheduledStats(filteredMeals)
+            : getTotalStats(recipesToShow);
+    }, [viewMode, filteredMeals, getScheduledStats, getTotalStats, recipesToShow]);
 
     // Helper for slots
     const getOptionsForSlot = (typeCategories) => {
