@@ -30,6 +30,7 @@ const WeeklyBoard = ({
 
         try {
             const parsed = JSON.parse(data);
+            console.log('[WeeklyBoard] Dropped:', parsed, 'Day:', dayIndex, 'Type:', typeId);
 
             if (parsed.isNew) {
                 if (selectedUser === 'all') {
@@ -42,6 +43,7 @@ const WeeklyBoard = ({
                 } else {
                     // Assign to specific selected user
                     const memberId = parseInt(selectedUser);
+                    console.log('[WeeklyBoard] Adding directly for user:', memberId);
                     addMeal(dayIndex, typeId, parsed.recipeId, memberId);
                 }
             } else {

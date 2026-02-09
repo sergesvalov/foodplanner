@@ -70,7 +70,13 @@ export const usePlanning = () => {
     const WEEK_DAYS_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
     const addMeal = async (dayIndex, type, recipeId, memberId = undefined) => {
-        if (!nextMondayDate) return;
+        console.log('[usePlanning] addMeal called', { dayIndex, type, recipeId, memberId, nextMondayDate });
+
+        if (!nextMondayDate) {
+            console.error('[usePlanning] nextMondayDate is missing!');
+            alert("Ошибка: Дата начала недели не определена. Попробуйте обновить страницу.");
+            return;
+        }
 
         try {
             const dateStr = getDateForDayIndex(dayIndex);
@@ -92,6 +98,7 @@ export const usePlanning = () => {
                 date: dateStr
             };
 
+            console.log('[usePlanning] Sending payload:', payload);
 
             // Call API directly (Auto-Save)
             const res = await fetch('/api/plan/', {
@@ -101,14 +108,16 @@ export const usePlanning = () => {
             });
 
             if (res.ok) {
+                console.log('[usePlanning] Saved successfully. Reloading plan...');
                 // Reload plan to sync ID
                 loadSharedPlan();
             } else {
-                console.error("Failed to add meal:", await res.text());
+                const errText = await res.text();
+                console.error("Failed to add meal:", errText);
                 alert("Ошибка сохранения! Попробуйте обновить страницу.");
             }
         } catch (e) {
-            console.error(e);
+            console.error('[usePlanning] Network error:', e);
             alert("Ошибка сети при сохранении.");
         }
     };
