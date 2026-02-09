@@ -54,24 +54,6 @@ const StatisticsPage = () => {
           </div>
         </div>
 
-        {/* NUTRITION CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          {[
-            { key: 'prot', title: 'Белки', color: 'blue', icon: '🥩' },
-            { key: 'fat', title: 'Жиры', color: 'yellow', icon: '🧀' },
-            { key: 'carb', title: 'Углеводы', color: 'red', icon: '🍞' }
-          ].map(({ key, title, color, icon }) => (
-            <NutritionCard
-              key={key}
-              title={title}
-              value={stats.total[key]}
-              limit={dailyLimit[key] * 7}
-              color={color}
-              icon={icon}
-            />
-          ))}
-        </div>
-
         {/* User Filter */}
         <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
           <span className="text-sm font-bold text-gray-400 pl-2">Пользователь:</span>
@@ -88,22 +70,34 @@ const StatisticsPage = () => {
         </div>
       </div>
 
-      {/* TOTAL CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+      {/* NUTRITION CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        {[
+          { key: 'cals', title: 'Всего калорий', color: 'orange', icon: '🔥', unit: '' },
+          { key: 'prot', title: 'Белки', color: 'blue', icon: '🥩' },
+          { key: 'fat', title: 'Жиры', color: 'yellow', icon: '🧀' },
+          { key: 'carb', title: 'Углеводы', color: 'red', icon: '🍞' }
+        ].map(({ key, title, color, icon, unit }) => (
+          <NutritionCard
+            key={key}
+            title={title}
+            value={stats.total[key]}
+            limit={dailyLimit[key] * 7}
+            color={color}
+            icon={icon}
+            unit={unit}
+          />
+        ))}
+      </div>
+
+      {/* TOTAL COST */}
+      <div className="mb-10">
         <NutritionCard
           title="Общий бюджет"
           value={`€${stats.total.cost.toFixed(2)}`}
           unit="€"
           color="green"
           icon="€"
-        />
-        <NutritionCard
-          title="Всего калорий"
-          value={stats.total.cals}
-          limit={dailyLimit.cals * 7}
-          unit=""
-          color="orange"
-          icon="🔥"
         />
       </div>
 
