@@ -56,27 +56,20 @@ const StatisticsPage = () => {
 
         {/* NUTRITION CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <NutritionCard
-            title="Белки"
-            value={stats.total.prot}
-            limit={dailyLimit.prot * 7}
-            color="blue"
-            icon="🥩"
-          />
-          <NutritionCard
-            title="Жиры"
-            value={stats.total.fat}
-            limit={dailyLimit.fat * 7}
-            color="yellow"
-            icon="🧀"
-          />
-          <NutritionCard
-            title="Углеводы"
-            value={stats.total.carb}
-            limit={dailyLimit.carb * 7}
-            color="red"
-            icon="🍞"
-          />
+          {[
+            { key: 'prot', title: 'Белки', color: 'blue', icon: '🥩' },
+            { key: 'fat', title: 'Жиры', color: 'yellow', icon: '🧀' },
+            { key: 'carb', title: 'Углеводы', color: 'red', icon: '🍞' }
+          ].map(({ key, title, color, icon }) => (
+            <NutritionCard
+              key={key}
+              title={title}
+              value={stats.total[key]}
+              limit={dailyLimit[key] * 7}
+              color={color}
+              icon={icon}
+            />
+          ))}
         </div>
 
         {/* User Filter */}

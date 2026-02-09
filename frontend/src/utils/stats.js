@@ -12,16 +12,7 @@ export const calculateItemStats = (item, recipe = null) => {
     // If item has 'portions' property, use it (plan item). If not, default to base (recipe view).
     const targetPortions = item.portions !== undefined ? item.portions : basePortions;
 
-    // Logic: 
-    // If we are viewing a recipe card directly (item === recipe), we usually show stats PER PORTION or TOTAL?
-    // In WeeklyGrid, we show stats for the PLANNED portions.
-    // In RecipeList (Planning), we show stats PER PORTION usually.
-    // Let's standardise: 
-    // If 'item' is a PlanItem (has portions), we calculate for that amount.
-    // If 'item' is a Recipe, we calculate for 1 portion? Or for the whole batch?
-    // Current usage in WeeklyGrid: item is PlanItem.
-    // Current usage in StatisticsPage: item is PlanItem.
-    // Current usage in usePlanning (getTotalStats): iterates recipes, uses plannedPortions[id].
+
 
     const ratio = targetPortions / basePortions;
 

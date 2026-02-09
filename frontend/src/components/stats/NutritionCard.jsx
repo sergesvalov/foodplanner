@@ -75,4 +75,4 @@ const NutritionCard = ({ title, value, limit, unit = 'г', color = 'blue', icon 
     );
 };
 
-export default NutritionCard;
+export default React.memo(NutritionCard);

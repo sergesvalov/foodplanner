@@ -47,18 +47,25 @@ export const useStatistics = () => {
         setCurrentDate(newDate);
     };
 
-    // 1. Загрузка данных
+    // 1a. Загрузка пользователей (один раз)
+    useEffect(() => {
+        fetch('/api/admin/family')
+            .then(res => res.json())
+            .then(usersData => {
+                setUsers(Array.isArray(usersData) ? usersData : []);
+            })
+            .catch(console.error);
+    }, []);
+
+    // 1b. Загрузка плана (при смене даты)
     useEffect(() => {
         setLoading(true);
         const { start, end } = getWeekRange(currentDate);
 
-        Promise.all([
-            fetch(`/api/plan/?start_date=${start}&end_date=${end}`).then(res => res.json()),
-            fetch('/api/admin/family').then(res => res.json())
-        ])
-            .then(([planData, usersData]) => {
+        fetch(`/api/plan/?start_date=${start}&end_date=${end}`)
+            .then(res => res.json())
+            .then(planData => {
                 setPlan(Array.isArray(planData) ? planData : []);
-                setUsers(Array.isArray(usersData) ? usersData : []);
                 setLoading(false);
             })
             .catch(err => {

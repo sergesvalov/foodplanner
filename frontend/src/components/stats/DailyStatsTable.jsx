@@ -146,4 +146,4 @@ const DailyStatsTable = ({ days, stats, dailyLimit }) => {
     );
 };
 
-export default DailyStatsTable;
+export default React.memo(DailyStatsTable);
