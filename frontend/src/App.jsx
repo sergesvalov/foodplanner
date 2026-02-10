@@ -7,6 +7,7 @@ import RecipesPage from './pages/RecipesPage';
 import ShoppingListPage from './pages/ShoppingListPage';
 import TodayPage from './pages/TodayPage';
 import AdminPage from './pages/AdminPage';
+import PersonalPage from './pages/PersonalPage';
 import AboutPage from './pages/AboutPage';
 import PlanningPage from './pages/PlanningPage';
 import StatisticsPage from './pages/StatisticsPage';
@@ -33,6 +34,7 @@ function App() {
             <Route path="/planning" element={<PlanningPage />} />
             <Route path="/stats" element={<StatisticsPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/personal" element={<PersonalPage />} />
             <Route path="/about" element={<AboutPage />} />
           </Routes>
         </main>

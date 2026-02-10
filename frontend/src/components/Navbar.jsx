@@ -58,6 +58,15 @@ const Navbar = () => {
                 ℹ️
               </Link>
 
+              {/* Personal Link */}
+              <Link
+                to="/personal"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/personal')}`}
+                title="Личное"
+              >
+                👤
+              </Link>
+
               {/* Admin Link */}
               <Link
                 to="/admin"
