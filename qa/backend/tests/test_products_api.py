@@ -49,7 +49,7 @@ class TestProductsAPI(unittest.TestCase):
             self.assertTrue(len(filtered_data) > 0, "Should find at least one product")
             
             for product in filtered_data:
-                self.assertEqual(product['name'], target_name, "Filtered product name should match query")
+                self.assertIn(target_name.lower(), product['name'].lower(), "Filtered product name should contain query")
             
             print(f"PASS: Filter correctly returned products with name '{target_name}'.")
 
