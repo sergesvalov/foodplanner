@@ -3,7 +3,7 @@ import requests
 import os
 
 class TestProductsAPI(unittest.TestCase):
-    BASE_URL = os.getenv("API_URL", "http://localhost:8000")
+    BASE_URL = os.getenv("API_URL", "http://backend:8000")
 
     def setUp(self):
         self.products_url = f"{self.BASE_URL}/products/"
