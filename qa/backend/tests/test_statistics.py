@@ -1,10 +1,11 @@
 import pytest
 import requests
 import uuid
+import os
 from datetime import datetime, timedelta
 
 # --- Config ---
-BASE_URL = "http://menu_backend:8000"
+BASE_URL = os.environ.get("API_URL", "http://menu_backend:8000")
 
 @pytest.fixture
 def test_data():

@@ -1,9 +1,10 @@
 import pytest
 import requests
 import uuid
+import os
 
 # --- Config ---
-BASE_URL = "http://menu_backend:8000"
+BASE_URL = os.environ.get("API_URL", "http://menu_backend:8000")
 
 def test_products_crud_and_recipe_creation():
     """
