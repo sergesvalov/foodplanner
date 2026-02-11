@@ -75,7 +75,7 @@ def test_products_crud_and_recipe_creation():
         
         assert recipe["title"] == updated_name
         assert len(recipe["ingredients"]) == 1
-        assert recipe["ingredients"][0]["product_id"] == product_id
+        assert recipe["ingredients"][0]["product"]["id"] == product_id
 
         # Cleanup Recipe
         requests.delete(f"{BASE_URL}/recipes/{recipe_id}")

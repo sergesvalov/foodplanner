@@ -67,7 +67,8 @@ def test_statistics_data_flow(test_data):
     res_user = requests.post(f"{BASE_URL}/admin/family", json={
         "name": user_name,
         "tg_username": user_name,
-        "max_calories": 2000
+        "max_calories": 2000,
+        "color": "blue"
     })
     assert res_user.status_code == 200
     user_id = res_user.json()["id"]

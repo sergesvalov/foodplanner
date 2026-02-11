@@ -18,6 +18,10 @@ def read_products(name: str = None, db: Session = Depends(get_db)):
 def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
     return ProductService.create_product(db, product)
 
+@router.get("/{product_id}", response_model=schemas.ProductResponse)
+def read_product(product_id: int, db: Session = Depends(get_db)):
+    return ProductService.get_product_by_id(db, product_id)
+
 @router.put("/{product_id}", response_model=schemas.ProductResponse)
 def update_product(product_id: int, product: schemas.ProductCreate, db: Session = Depends(get_db)):
     return ProductService.update_product(db, product_id, product)
