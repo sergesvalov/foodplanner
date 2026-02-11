@@ -4,7 +4,31 @@ This API allows you to retrieve the list of products from the FoodPlanner databa
 
 ## Base URL
 Depending on your deployment, the base URL is typically:
-`http://localhost:8000`
+- **Local access**: `http://localhost:8000`
+- **From local network**: `http://<server-ip>:8000` (e.g., `http://192.168.1.100:8000`)
+
+### Network Access Configuration
+To allow access from other devices in your local network, ensure that `docker-compose.yml` has the backend port configured as:
+```yaml
+ports:
+  - "0.0.0.0:8000:8000"
+```
+
+If you cannot access the API from another device:
+1. Check that the port is open in the firewall:
+   ```bash
+   sudo ufw allow 8000/tcp
+   ```
+2. Find your server's IP address:
+   ```bash
+   hostname -I
+   # or
+   ip addr show
+   ```
+3. Test from another device:
+   ```bash
+   curl http://<server-ip>:8000/
+   ```
 
 ## Endpoint: Get Products
 
@@ -46,9 +70,15 @@ Returns a JSON array of product objects. Each object contains the following fiel
 
 #### 1. Download All Products
 
-**Request:**
+**Request (localhost):**
 ```bash
 curl -X 'GET' 'http://localhost:8000/products/' -H 'accept: application/json'
+```
+
+**Request (from local network):**
+```bash
+curl -X 'GET' 'http://192.168.1.100:8000/products/' -H 'accept: application/json'
+# Replace 192.168.1.100 with your server's IP address
 ```
 
 **Response:**

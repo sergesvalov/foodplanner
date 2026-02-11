@@ -9,18 +9,18 @@ services:
       - /opt/foodplanner:/app/data
       # Монтируем код, чтобы изменения применялись сразу (и чтобы миграции сохранялись)
       - ./backend:/app
-    
+
     # ВАЖНО: Запускаем авто-мигратор перед сервером
     command: sh -c "python fast_migrate.py && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
-    
+
     expose:
       - "8000"
     ports:
-      - "8000:8000" 
+      - "0.0.0.0:8000:8000"
       # Можно убрать ports: "8000:8000", если не нужен прямой доступ к API снаружи.
       # Nginx будет общаться с бэкендом внутри сети Docker.
 
-  # --- ФРОНТЕНД (NGINX) ---
+      # --- ФРОНТЕНД (NGINX) ---
   frontend:
     build: ./frontend
     container_name: menu_frontend
