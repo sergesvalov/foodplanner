@@ -1,4 +1,4 @@
-import json
+import requests
 import os
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -6,6 +6,7 @@ import models
 import schemas
 
 EXPORT_PATH = "/app/data/products.json"
+EXTERNAL_API_URL = "http://192.168.10.222:8010/products/"
 
 class ProductService:
     @staticmethod
@@ -77,14 +78,15 @@ class ProductService:
 
     @staticmethod
     def import_products(db: Session):
-        if not os.path.exists(EXPORT_PATH):
-            raise HTTPException(status_code=404, detail="Файл не найден")
-
         try:
-            with open(EXPORT_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            response = requests.get(EXTERNAL_API_URL, timeout=10)
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail=f"Ошибка внешнего API: {response.text}")
+            data = response.json()
+        except requests.RequestException as e:
+            raise HTTPException(status_code=500, detail=f"Ошибка соединения с внешним API: {str(e)}")
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Ошибка чтения: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Ошибка обработки данных: {str(e)}")
 
         created_count, updated_count = 0, 0
         

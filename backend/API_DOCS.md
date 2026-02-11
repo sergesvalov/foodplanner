@@ -12,6 +12,17 @@ Depending on your deployment, the base URL is typically:
 
 Retrieves a list of products.
 
+### `POST /products/import`
+
+Imports products from an external service (`http://192.168.10.222:8010/products/`).
+Updates existing products by name and creates new ones if they don't exist.
+
+**Response:**
+Returns a JSON object with:
+- `message`: Status message
+- `created`: Number of new products created
+- `updated`: Number of existing products updated
+
 ### Parameters
 
 | Name | Type | Description |
