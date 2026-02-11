@@ -9,8 +9,12 @@ EXPORT_PATH = "/app/data/products.json"
 
 class ProductService:
     @staticmethod
-    def get_products(db: Session):
-        return db.query(models.Product).all()
+    def get_products(db: Session, name: str = None):
+        query = db.query(models.Product)
+        if name:
+            # Case-insensitive partial match
+            query = query.filter(models.Product.name.ilike(f"%{name}%"))
+        return query.all()
 
     @staticmethod
     def create_product(db: Session, product: schemas.ProductCreate):
