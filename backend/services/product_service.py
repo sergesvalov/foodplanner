@@ -82,10 +82,15 @@ class ProductService:
         } for p in products]
         
         try:
+            # Ensure the directory exists
+            export_dir = os.path.dirname(EXPORT_PATH)
+            os.makedirs(export_dir, exist_ok=True)
+            
             with open(EXPORT_PATH, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             return {"message": f"Успешно сохранено {len(data)} товаров в {EXPORT_PATH}"}
         except Exception as e:
+            logger.error(f"Ошибка экспорта продуктов: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Ошибка записи: {str(e)}")
 
     @staticmethod

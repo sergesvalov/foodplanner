@@ -18,6 +18,16 @@ def read_products(name: str = None, db: Session = Depends(get_db)):
 def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
     return ProductService.create_product(db, product)
 
+# Export and import routes MUST come before /{product_id} routes
+# to prevent FastAPI from treating "export" and "import" as product IDs
+@router.get("/export")
+def export_products(db: Session = Depends(get_db)):
+    return ProductService.export_products(db)
+
+@router.post("/import")
+def import_products(db: Session = Depends(get_db)):
+    return ProductService.import_products(db)
+
 @router.get("/{product_id}", response_model=schemas.ProductResponse)
 def read_product(product_id: int, db: Session = Depends(get_db)):
     return ProductService.get_product_by_id(db, product_id)
@@ -29,11 +39,3 @@ def update_product(product_id: int, product: schemas.ProductCreate, db: Session 
 @router.delete("/{product_id}")
 def delete_product(product_id: int, db: Session = Depends(get_db)):
     return ProductService.delete_product(db, product_id)
-
-@router.get("/export")
-def export_products(db: Session = Depends(get_db)):
-    return ProductService.export_products(db)
-
-@router.post("/import")
-def import_products(db: Session = Depends(get_db)):
-    return ProductService.import_products(db)

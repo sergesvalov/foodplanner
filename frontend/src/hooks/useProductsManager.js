@@ -228,9 +228,19 @@ export const useProductsManager = () => {
         try {
             const res = await fetch('/api/products/export');
             const data = await res.json();
-            if (res.ok) alert("✅ " + data.message);
-            else alert("❌ Ошибка: " + data.detail);
-        } catch (err) { alert("Ошибка сети"); }
+            if (res.ok) {
+                alert("✅ " + data.message);
+            } else {
+                // Properly handle error detail that might be an object or string
+                const errorMsg = typeof data.detail === 'string'
+                    ? data.detail
+                    : JSON.stringify(data.detail);
+                alert("❌ Ошибка: " + errorMsg);
+            }
+        } catch (err) {
+            console.error("Export error:", err);
+            alert("❌ Ошибка сети: " + err.message);
+        }
     };
 
     const handleServerImport = async () => {
@@ -242,9 +252,16 @@ export const useProductsManager = () => {
                 alert(`✅ Успешно!\nСоздано: ${data.created}\nОбновлено: ${data.updated}`);
                 fetchProducts();
             } else {
-                alert("❌ Ошибка: " + data.detail);
+                // Properly handle error detail that might be an object or string
+                const errorMsg = typeof data.detail === 'string'
+                    ? data.detail
+                    : JSON.stringify(data.detail);
+                alert("❌ Ошибка: " + errorMsg);
             }
-        } catch (err) { alert("Ошибка сети"); }
+        } catch (err) {
+            console.error("Import error:", err);
+            alert("❌ Ошибка сети: " + err.message);
+        }
     };
 
     return {
