@@ -10,8 +10,11 @@ EXPORT_PATH = "/app/data/recipes.json"
 
 class RecipeService:
     @staticmethod
-    def get_recipes(db: Session):
-        return db.query(models.Recipe).all()
+    def get_recipes(db: Session, search_query: str = None):
+        query = db.query(models.Recipe)
+        if search_query:
+            query = query.filter(models.Recipe.title.ilike(f"%{search_query}%"))
+        return query.all()
 
     @staticmethod
     def create_recipe(db: Session, recipe: schemas.RecipeCreate):

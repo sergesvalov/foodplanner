@@ -12,8 +12,8 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[schemas.RecipeResponse])
-def read_recipes(db: Session = Depends(get_db)):
-    return RecipeService.get_recipes(db)
+def read_recipes(q: str = None, db: Session = Depends(get_db)):
+    return RecipeService.get_recipes(db, search_query=q)
 
 @router.post("/", response_model=schemas.RecipeResponse)
 def create_recipe(recipe: schemas.RecipeCreate, db: Session = Depends(get_db)):

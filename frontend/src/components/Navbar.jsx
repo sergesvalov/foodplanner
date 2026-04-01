@@ -26,6 +26,10 @@ const Navbar = () => {
                 Неделя
               </Link>
 
+              <Link to="/view" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/view')}`}>
+                🔎 Посмотреть
+              </Link>
+
               <Link to="/shopping-list" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/shopping-list')}`}>
                 🛒 Покупки
               </Link>

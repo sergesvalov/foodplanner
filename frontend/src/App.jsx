@@ -11,6 +11,7 @@ import PersonalPage from './pages/PersonalPage';
 import AboutPage from './pages/AboutPage';
 import PlanningPage from './pages/PlanningPage';
 import StatisticsPage from './pages/StatisticsPage';
+import ViewRecipesPage from './pages/ViewRecipesPage';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/personal" element={<PersonalPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/view" element={<ViewRecipesPage />} />
           </Routes>
         </main>
       </div>
