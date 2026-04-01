@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CATEGORIES, getCategoryById, getCategoryIcon, getCategoryStyle, getCategoryLabel } from '../constants/categories';
+import RecipeBuilder from '../components/RecipeBuilder';
 
 // ─── Utility ────────────────────────────────────────────────────────────────
 
 const API_BASE = '/api';
 
-const fetchRecipes = async (query = '', category = 'all') => {
+const fetchRecipes = async (query = '') => {
     const params = new URLSearchParams();
     if (query) params.append('q', query);
     const url = `${API_BASE}/recipes/?${params.toString()}`;
@@ -29,7 +30,55 @@ const sendToTelegram = async (recipeId, chatId) => {
     return res.json();
 };
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Edit Modal ──────────────────────────────────────────────────────────────
+
+const EditModal = ({ recipe, onClose, onSaved }) => {
+    // Close on Escape
+    useEffect(() => {
+        const handler = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [onClose]);
+
+    // Prevent body scroll while open
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = ''; };
+    }, []);
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(15,15,30,0.55)', backdropFilter: 'blur(4px)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+                {/* Modal header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+                    <h2 className="text-lg font-bold text-indigo-700">✏️ Редактирование рецепта</h2>
+                    <button
+                        onClick={onClose}
+                        className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors text-lg"
+                        title="Закрыть"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                {/* Scrollable builder */}
+                <div className="overflow-y-auto flex-1 p-6">
+                    <RecipeBuilder
+                        initialData={recipe}
+                        onRecipeCreated={onSaved}
+                        onCancel={onClose}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ─── Category Pill ───────────────────────────────────────────────────────────
 
 const CategoryPill = ({ cat, isSelected, onClick }) => (
     <button
@@ -45,13 +94,9 @@ const CategoryPill = ({ cat, isSelected, onClick }) => (
     </button>
 );
 
-const StatBadge = ({ label, value, color }) => (
-    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${color}`} title={label}>
-        {label}: {value}
-    </span>
-);
+// ─── Gallery Card ─────────────────────────────────────────────────────────────
 
-const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend }) => {
+const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend, onEdit }) => {
     const [expanded, setExpanded] = useState(false);
     const cat = getCategoryById(recipe.category);
     const portions = recipe.portions || 1;
@@ -60,10 +105,16 @@ const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend })
     const carb = Math.round((recipe.total_carbs || 0) / portions);
     const isSending = sendingId === recipe.id;
 
+    const stripeColor = {
+        breakfast: 'bg-yellow-400', soup: 'bg-red-400', main: 'bg-orange-400',
+        side: 'bg-green-400', snack: 'bg-purple-400', yummy: 'bg-pink-400',
+        drink: 'bg-teal-400',
+    }[cat.id] || 'bg-gray-400';
+
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-indigo-200 transition-all duration-300 flex flex-col overflow-hidden group">
-            {/* Header stripe by category */}
-            <div className={`h-1.5 w-full ${cat.id === 'breakfast' ? 'bg-yellow-400' : cat.id === 'soup' ? 'bg-red-400' : cat.id === 'main' ? 'bg-orange-400' : cat.id === 'side' ? 'bg-green-400' : cat.id === 'snack' ? 'bg-purple-400' : cat.id === 'yummy' ? 'bg-pink-400' : cat.id === 'drink' ? 'bg-teal-400' : 'bg-gray-400'}`} />
+            {/* Category stripe */}
+            <div className={`h-1.5 w-full ${stripeColor}`} />
 
             <div className="p-4 flex flex-col gap-2 flex-1">
                 {/* Category + Rating */}
@@ -71,15 +122,26 @@ const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend })
                     <span className={`text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ${getCategoryStyle(recipe.category)}`}>
                         {getCategoryIcon(recipe.category)} {getCategoryLabel(recipe.category)}
                     </span>
-                    {recipe.rating > 0 && (
-                        <span className="text-xs text-amber-500" title={`Оценка: ${recipe.rating}/5`}>
-                            {'⭐'.repeat(recipe.rating)}
-                        </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {recipe.rating > 0 && (
+                            <span className="text-xs text-amber-500" title={`Оценка: ${recipe.rating}/5`}>
+                                {'⭐'.repeat(recipe.rating)}
+                            </span>
+                        )}
+                        {/* Edit button */}
+                        <button
+                            onClick={() => onEdit(recipe)}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-200 transition-all duration-150 text-sm"
+                            title="Редактировать рецепт"
+                        >
+                            ✏️
+                        </button>
+                    </div>
                 </div>
 
                 {/* Title */}
-                <h3 className="text-gray-900 font-bold text-base leading-snug group-hover:text-indigo-700 transition-colors cursor-pointer line-clamp-2"
+                <h3
+                    className="text-gray-900 font-bold text-base leading-snug group-hover:text-indigo-700 transition-colors cursor-pointer line-clamp-2"
                     onClick={() => setExpanded(e => !e)}
                     title={recipe.title}
                 >
@@ -141,20 +203,29 @@ const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend })
                     <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-red-100 text-red-700 border-red-200">У:{carb}</span>
                 </div>
 
-                {/* Send to Telegram */}
-                {tgUsers.length > 0 && (
+                {/* Action buttons row */}
+                <div className={`grid gap-2 ${tgUsers.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     <button
-                        onClick={() => onSend(recipe)}
-                        disabled={isSending}
-                        className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-all duration-200
-                            ${isSending
-                                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                                : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:border-blue-400 hover:shadow-sm active:scale-95'
-                            }`}
+                        onClick={() => onEdit(recipe)}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-400 hover:shadow-sm active:scale-95 transition-all duration-200"
                     >
-                        {isSending ? '⏳ Отправляем...' : '✈️ Отправить в Telegram'}
+                        ✏️ Изменить
                     </button>
-                )}
+
+                    {tgUsers.length > 0 && (
+                        <button
+                            onClick={() => onSend(recipe)}
+                            disabled={isSending}
+                            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-all duration-200
+                                ${isSending
+                                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                    : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:border-blue-400 hover:shadow-sm active:scale-95'
+                                }`}
+                        >
+                            {isSending ? '⏳ Отправляем...' : '✈️ Telegram'}
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -171,6 +242,7 @@ const ViewRecipesPage = () => {
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [isLoading, setIsLoading] = useState(false);
     const [sendingId, setSendingId] = useState(null);
+    const [editingRecipe, setEditingRecipe] = useState(null);
     const debounceTimer = useRef(null);
 
     // Debounce search
@@ -182,24 +254,25 @@ const ViewRecipesPage = () => {
         return () => clearTimeout(debounceTimer.current);
     }, [searchTerm]);
 
-    // Load recipes when debounced search term changes
+    const loadRecipes = async (query = debouncedSearch) => {
+        setIsLoading(true);
+        try {
+            const data = await fetchRecipes(query);
+            setRecipes(Array.isArray(data) ? data : []);
+        } catch (e) {
+            console.error(e);
+            setRecipes([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Load recipes when debounced search changes
     useEffect(() => {
-        const load = async () => {
-            setIsLoading(true);
-            try {
-                const data = await fetchRecipes(debouncedSearch);
-                setRecipes(Array.isArray(data) ? data : []);
-            } catch (e) {
-                console.error(e);
-                setRecipes([]);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        load();
+        loadRecipes(debouncedSearch);
     }, [debouncedSearch]);
 
-    // Load TG users
+    // Load TG users once
     useEffect(() => {
         fetchTgUsers().then(data => {
             setTgUsers(data);
@@ -230,8 +303,22 @@ const ViewRecipesPage = () => {
         setSelectedCategory(prev => prev === id ? 'all' : id);
     };
 
+    const handleRecipeSaved = () => {
+        setEditingRecipe(null);
+        loadRecipes(debouncedSearch);
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-gray-50">
+
+            {/* Edit Modal */}
+            {editingRecipe && (
+                <EditModal
+                    recipe={editingRecipe}
+                    onClose={() => setEditingRecipe(null)}
+                    onSaved={handleRecipeSaved}
+                />
+            )}
 
             {/* ─── Hero Search ──────────────────────────────────────────── */}
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 pt-10 pb-14 shadow-lg">
@@ -361,6 +448,7 @@ const ViewRecipesPage = () => {
                                 selectedUser={selectedUser}
                                 sendingId={sendingId}
                                 onSend={handleSend}
+                                onEdit={setEditingRecipe}
                             />
                         ))}
                     </div>
