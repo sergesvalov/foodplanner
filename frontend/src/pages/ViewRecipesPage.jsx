@@ -15,6 +15,15 @@ const fetchRecipes = async (query = '') => {
     return res.json();
 };
 
+const fetchProducts = async (query = '') => {
+    const params = new URLSearchParams();
+    if (query) params.append('name', query);
+    const url = `${API_BASE}/products/?${params.toString()}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Ошибка загрузки продуктов');
+    return res.json();
+};
+
 const fetchTgUsers = async () => {
     const res = await fetch(`${API_BASE}/admin/telegram/users`);
     if (!res.ok) return [];
@@ -231,10 +240,48 @@ const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend, o
     );
 };
 
+const ProductGalleryCard = ({ product }) => {
+    return (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-indigo-200 transition-all duration-300 flex flex-col overflow-hidden group">
+            <div className="h-1.5 w-full bg-cyan-400" />
+            <div className="p-4 flex flex-col gap-2 flex-1">
+                <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border border-cyan-200 text-cyan-700 bg-cyan-50 self-start">
+                    🛒 Продукт
+                </span>
+                
+                <h3 className="text-gray-900 font-bold text-base leading-snug group-hover:text-indigo-700 transition-colors" title={product.name}>
+                    {product.name}
+                </h3>
+                
+                <div className="mt-2 text-sm text-gray-600">
+                    <p><strong>Базовая порция:</strong> {product.amount} {product.unit}</p>
+                    {product.price > 0 && <p><strong>Цена:</strong> €{product.price}</p>}
+                    {product.weight_per_piece > 0 && <p><strong>Вес 1 шт:</strong> {product.weight_per_piece}г</p>}
+                </div>
+            </div>
+
+            <div className="px-4 pb-4 flex flex-col gap-3">
+                <div className="flex flex-wrap gap-1.5">
+                    {product.calories > 0 && (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-orange-50 text-orange-700 border-orange-200">
+                            🔥 {product.calories} ккал/{product.unit === 'шт' ? 'шт' : '100г'}
+                        </span>
+                    )}
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-blue-100 text-blue-700 border-blue-200">Б:{product.proteins ?? 0}</span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-yellow-100 text-yellow-700 border-yellow-200">Ж:{product.fats ?? 0}</span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-red-100 text-red-700 border-red-200">У:{product.carbs ?? 0}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 const ViewRecipesPage = () => {
+    const [activeTab, setActiveTab] = useState('recipes'); // 'recipes' | 'products'
     const [recipes, setRecipes] = useState([]);
+    const [products, setProducts] = useState([]);
     const [tgUsers, setTgUsers] = useState([]);
     const [selectedUser, setSelectedUser] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
@@ -254,23 +301,29 @@ const ViewRecipesPage = () => {
         return () => clearTimeout(debounceTimer.current);
     }, [searchTerm]);
 
-    const loadRecipes = async (query = debouncedSearch) => {
+    const loadData = async (query = debouncedSearch, tab = activeTab) => {
         setIsLoading(true);
         try {
-            const data = await fetchRecipes(query);
-            setRecipes(Array.isArray(data) ? data : []);
+            if (tab === 'recipes') {
+                const data = await fetchRecipes(query);
+                setRecipes(Array.isArray(data) ? data : []);
+            } else {
+                const data = await fetchProducts(query);
+                setProducts(Array.isArray(data) ? data : []);
+            }
         } catch (e) {
             console.error(e);
-            setRecipes([]);
+            if (tab === 'recipes') setRecipes([]);
+            else setProducts([]);
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Load recipes when debounced search changes
+    // Load data when debounced search or activeTab changes
     useEffect(() => {
-        loadRecipes(debouncedSearch);
-    }, [debouncedSearch]);
+        loadData(debouncedSearch, activeTab);
+    }, [debouncedSearch, activeTab]);
 
     // Load TG users once
     useEffect(() => {
@@ -280,10 +333,12 @@ const ViewRecipesPage = () => {
         });
     }, []);
 
-    // Client-side category filter
+    // Client-side category filter for recipes
     const filteredRecipes = recipes
         .filter(r => selectedCategory === 'all' || r.category === selectedCategory)
         .sort((a, b) => a.title.localeCompare(b.title));
+
+    const currentItems = activeTab === 'recipes' ? filteredRecipes : products;
 
     const handleSend = async (recipe) => {
         if (!selectedUser) { alert('Выберите получателя'); return; }
@@ -305,7 +360,7 @@ const ViewRecipesPage = () => {
 
     const handleRecipeSaved = () => {
         setEditingRecipe(null);
-        loadRecipes(debouncedSearch);
+        loadData(debouncedSearch, activeTab);
     };
 
     return (
@@ -324,9 +379,35 @@ const ViewRecipesPage = () => {
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 pt-10 pb-14 shadow-lg">
                 <div className="max-w-3xl mx-auto text-center">
                     <h1 className="text-3xl font-extrabold text-white mb-2 tracking-tight">
-                        🔎 Каталог рецептов
+                        🔎 Каталог
                     </h1>
-                    <p className="text-indigo-200 text-sm mb-6">Найди идеальное блюдо по названию или категории</p>
+                    <p className="text-indigo-200 text-sm mb-6">Найди идеальное блюдо или продукт</p>
+
+                    {/* Tab Toggle */}
+                    <div className="flex justify-center mb-6">
+                        <div className="bg-white/20 p-1 rounded-2xl inline-flex backdrop-blur-sm border border-white/30">
+                            <button
+                                onClick={() => setActiveTab('recipes')}
+                                className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${
+                                    activeTab === 'recipes'
+                                    ? 'bg-white text-indigo-700 shadow flex-1'
+                                    : 'text-white hover:bg-white/10 flex-1'
+                                }`}
+                            >
+                                🍽️ Рецепты
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('products')}
+                                className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${
+                                    activeTab === 'products'
+                                    ? 'bg-white text-indigo-700 shadow flex-1'
+                                    : 'text-white hover:bg-white/10 flex-1'
+                                }`}
+                            >
+                                🛒 Продукты
+                            </button>
+                        </div>
+                    </div>
 
                     {/* Search Input */}
                     <div className="relative max-w-xl mx-auto">
@@ -334,7 +415,7 @@ const ViewRecipesPage = () => {
                         <input
                             id="view-search-input"
                             type="text"
-                            placeholder="Название блюда..."
+                            placeholder={activeTab === 'recipes' ? "Название блюда..." : "Название продукта..."}
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                             className="w-full pl-12 pr-12 py-3.5 rounded-2xl text-gray-800 bg-white shadow-xl border-0 outline-none text-base focus:ring-2 focus:ring-indigo-300 placeholder-gray-400 transition-all"
@@ -367,29 +448,31 @@ const ViewRecipesPage = () => {
                 </div>
             </div>
 
-            {/* ─── Category pills ───────────────────────────────────────── */}
-            <div className="max-w-6xl mx-auto px-4 -mt-6">
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 px-4 py-3 flex items-center gap-2 overflow-x-auto scrollbar-hide">
-                    <button
-                        onClick={() => setSelectedCategory('all')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 whitespace-nowrap
-                            ${selectedCategory === 'all'
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200 scale-105'
-                                : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600 hover:shadow-sm'
-                            }`}
-                    >
-                        🍽️ Все
-                    </button>
-                    {CATEGORIES.map(cat => (
-                        <CategoryPill
-                            key={cat.id}
-                            cat={cat}
-                            isSelected={selectedCategory === cat.id}
-                            onClick={handleCategoryClick}
-                        />
-                    ))}
+            {/* ─── Category pills (Only for recipes) ────────────────── */}
+            {activeTab === 'recipes' && (
+                <div className="max-w-6xl mx-auto px-4 -mt-6">
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 px-4 py-3 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+                        <button
+                            onClick={() => setSelectedCategory('all')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 whitespace-nowrap
+                                ${selectedCategory === 'all'
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200 scale-105'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600 hover:shadow-sm'
+                                }`}
+                        >
+                            🍽️ Все
+                        </button>
+                        {CATEGORIES.map(cat => (
+                            <CategoryPill
+                                key={cat.id}
+                                cat={cat}
+                                isSelected={selectedCategory === cat.id}
+                                onClick={handleCategoryClick}
+                            />
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* ─── Results ─────────────────────────────────────────────── */}
             <div className="max-w-6xl mx-auto px-4 py-6">
@@ -398,7 +481,13 @@ const ViewRecipesPage = () => {
                     <p className="text-sm text-gray-500">
                         {isLoading
                             ? 'Ищем...'
-                            : `${filteredRecipes.length} ${filteredRecipes.length === 1 ? 'рецепт' : filteredRecipes.length < 5 ? 'рецепта' : 'рецептов'}`
+                            : `${currentItems.length} ${
+                                currentItems.length === 1 
+                                ? (activeTab === 'recipes' ? 'рецепт' : 'продукт') 
+                                : currentItems.length < 5 
+                                    ? (activeTab === 'recipes' ? 'рецепта' : 'продукта') 
+                                    : (activeTab === 'recipes' ? 'рецептов' : 'продуктов')
+                              }`
                         }
                         {(debouncedSearch || selectedCategory !== 'all') && (
                             <button
@@ -429,27 +518,34 @@ const ViewRecipesPage = () => {
                 )}
 
                 {/* Empty state */}
-                {!isLoading && filteredRecipes.length === 0 && (
+                {!isLoading && currentItems.length === 0 && (
                     <div className="text-center py-20 text-gray-400">
-                        <div className="text-6xl mb-4">🍽️</div>
+                        <div className="text-6xl mb-4">{activeTab === 'recipes' ? '🍽️' : '🛒'}</div>
                         <p className="text-lg font-medium text-gray-500 mb-1">Ничего не найдено</p>
                         <p className="text-sm">Попробуй другой запрос или сбрось фильтры</p>
                     </div>
                 )}
 
-                {/* Recipe grid */}
-                {!isLoading && filteredRecipes.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredRecipes.map(recipe => (
-                            <RecipeGalleryCard
-                                key={recipe.id}
-                                recipe={recipe}
-                                tgUsers={tgUsers}
-                                selectedUser={selectedUser}
-                                sendingId={sendingId}
-                                onSend={handleSend}
-                                onEdit={setEditingRecipe}
-                            />
+                {/* Grid */}
+                {!isLoading && currentItems.length > 0 && (
+                    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${activeTab === 'products' ? 'mt-6' : ''}`}>
+                        {currentItems.map(item => (
+                            activeTab === 'recipes' ? (
+                                <RecipeGalleryCard
+                                    key={item.id}
+                                    recipe={item}
+                                    tgUsers={tgUsers}
+                                    selectedUser={selectedUser}
+                                    sendingId={sendingId}
+                                    onSend={handleSend}
+                                    onEdit={setEditingRecipe}
+                                />
+                            ) : (
+                                <ProductGalleryCard
+                                    key={item.id}
+                                    product={item}
+                                />
+                            )
                         ))}
                     </div>
                 )}
