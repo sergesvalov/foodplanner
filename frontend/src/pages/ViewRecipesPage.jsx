@@ -103,10 +103,149 @@ const CategoryPill = ({ cat, isSelected, onClick }) => (
     </button>
 );
 
+// ─── View Item Modal ──────────────────────────────────────────────────────────
+
+const ViewItemModal = ({ item, type, onClose, tgUsers, sendingId, onSend, onEdit }) => {
+    useEffect(() => {
+        const handler = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [onClose]);
+
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = ''; };
+    }, []);
+
+    const isRecipe = type === 'recipe';
+    const cat = isRecipe ? getCategoryById(item.category) : null;
+    const portions = isRecipe ? (item.portions || 1) : 1;
+    const prot = isRecipe ? Math.round((item.total_proteins || 0) / portions) : (item.proteins ?? 0);
+    const fat = isRecipe ? Math.round((item.total_fats || 0) / portions) : (item.fats ?? 0);
+    const carb = isRecipe ? Math.round((item.total_carbs || 0) / portions) : (item.carbs ?? 0);
+    
+    const isSending = sendingId === item.id;
+
+    const stripeColor = isRecipe ? ({
+        breakfast: 'bg-yellow-400', soup: 'bg-red-400', main: 'bg-orange-400',
+        side: 'bg-green-400', snack: 'bg-purple-400', yummy: 'bg-pink-400',
+        drink: 'bg-teal-400',
+    }[cat.id] || 'bg-gray-400') : 'bg-cyan-400';
+
+    return (
+        <div
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-8"
+            style={{ background: 'rgba(15,15,30,0.6)', backdropFilter: 'blur(5px)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-full flex flex-col overflow-hidden relative">
+                <div className={`h-3 w-full ${stripeColor}`} />
+                <button
+                    onClick={onClose}
+                    className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors text-xl font-bold"
+                >
+                    ✕
+                </button>
+
+                <div className="overflow-y-auto p-6 sm:p-8 flex-1">
+                    <div className="mb-4 pr-12">
+                        {isRecipe ? (
+                            <span className={`inline-block text-xs font-bold uppercase tracking-wide px-3 py-1 rounded border mb-3 ${getCategoryStyle(item.category)}`}>
+                                {getCategoryIcon(item.category)} {getCategoryLabel(item.category)}
+                            </span>
+                        ) : (
+                            <span className="inline-block text-xs font-bold uppercase tracking-wide px-3 py-1 rounded border border-cyan-200 text-cyan-700 bg-cyan-50 mb-3">
+                                🛒 Продукт
+                            </span>
+                        )}
+                        <h2 className="text-3xl font-extrabold text-gray-900 leading-tight">
+                            {isRecipe ? item.title : item.name}
+                        </h2>
+                        {isRecipe && item.rating > 0 && (
+                            <div className="mt-2 text-lg text-amber-500">
+                                {'⭐'.repeat(item.rating)}
+                            </div>
+                        )}
+                    </div>
+
+                    {isRecipe && item.description && (
+                        <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                            {item.description}
+                        </p>
+                    )}
+
+                    <div className="flex flex-wrap gap-2 mb-8 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                        {isRecipe ? (
+                            <>
+                                <span className="px-3 py-1.5 rounded-full border bg-green-50 text-green-700 border-green-200 font-bold">€{(item.total_cost || 0).toFixed(2)} / всего</span>
+                                {item.calories_per_portion > 0 && (
+                                    <span className="px-3 py-1.5 rounded-full border bg-orange-50 text-orange-700 border-orange-200 font-bold">🔥 {item.calories_per_portion} ккал/порция</span>
+                                )}
+                                {item.weight_per_portion > 0 && (
+                                    <span className="px-3 py-1.5 rounded-full border bg-blue-50 text-blue-700 border-blue-200 font-bold">⚖️ {item.weight_per_portion}г/порция</span>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <span className="px-3 py-1.5 rounded-full border bg-gray-100 text-gray-700 border-gray-200 font-bold">Базовая порция: {item.amount} {item.unit}</span>
+                                {item.price > 0 && <span className="px-3 py-1.5 rounded-full border bg-green-50 text-green-700 border-green-200 font-bold">€{item.price}</span>}
+                                {item.weight_per_piece > 0 && <span className="px-3 py-1.5 rounded-full border bg-indigo-50 text-indigo-700 border-indigo-200 font-bold">{item.weight_per_piece}г/шт</span>}
+                                {item.calories > 0 && <span className="px-3 py-1.5 rounded-full border bg-orange-50 text-orange-700 border-orange-200 font-bold">🔥 {item.calories} ккал/{item.unit === 'шт' ? 'шт' : '100г'}</span>}
+                            </>
+                        )}
+                        <span className="px-3 py-1.5 rounded-full border bg-blue-100 text-blue-700 border-blue-200 font-bold">Б:{prot}</span>
+                        <span className="px-3 py-1.5 rounded-full border bg-yellow-100 text-yellow-700 border-yellow-200 font-bold">Ж:{fat}</span>
+                        <span className="px-3 py-1.5 rounded-full border bg-red-100 text-red-700 border-red-200 font-bold">У:{carb}</span>
+                    </div>
+
+                    {isRecipe && item.ingredients && item.ingredients.length > 0 && (
+                        <div className="mb-8">
+                            <h3 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">Ингредиенты</h3>
+                            <ul className="space-y-2">
+                                {item.ingredients.map(ing => (
+                                    <li key={ing.id} className="flex justify-between items-center bg-gray-50 px-4 py-3 rounded-xl">
+                                        <span className="font-medium text-gray-800 text-lg">{ing.product?.name || '...'}</span>
+                                        <span className="text-gray-600 font-bold bg-white px-3 py-1.5 rounded-lg shadow-sm">
+                                            {ing.quantity} {ing.product?.unit}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {isRecipe && (
+                        <div className="pt-4 flex flex-wrap gap-4 border-t border-gray-100">
+                            <button
+                                onClick={() => { onClose(); onEdit(item); }}
+                                className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-lg font-bold border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 active:scale-95 transition-all"
+                            >
+                                ✏️ Редактировать
+                            </button>
+                            {tgUsers && tgUsers.length > 0 && (
+                                <button
+                                    onClick={() => onSend(item)}
+                                    disabled={isSending}
+                                    className={`flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-lg font-bold border transition-all
+                                        ${isSending
+                                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                            : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 active:scale-95'
+                                        }`}
+                                >
+                                    {isSending ? '⏳ Отправляем...' : '✈️ Отправить в Telegram'}
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ─── Gallery Card ─────────────────────────────────────────────────────────────
 
-const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend, onEdit }) => {
-    const [expanded, setExpanded] = useState(false);
+const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend, onEdit, onView }) => {
     const cat = getCategoryById(recipe.category);
     const portions = recipe.portions || 1;
     const prot = Math.round((recipe.total_proteins || 0) / portions);
@@ -121,7 +260,10 @@ const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend, o
     }[cat.id] || 'bg-gray-400';
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-indigo-200 transition-all duration-300 flex flex-col overflow-hidden group">
+        <div 
+            onClick={() => onView(recipe)}
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-indigo-200 transition-all duration-300 flex flex-col overflow-hidden group cursor-pointer"
+        >
             {/* Category stripe */}
             <div className={`h-1.5 w-full ${stripeColor}`} />
 
@@ -139,7 +281,7 @@ const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend, o
                         )}
                         {/* Edit button */}
                         <button
-                            onClick={() => onEdit(recipe)}
+                            onClick={(e) => { e.stopPropagation(); onEdit(recipe); }}
                             className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-200 transition-all duration-150 text-sm"
                             title="Редактировать рецепт"
                         >
@@ -150,8 +292,7 @@ const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend, o
 
                 {/* Title */}
                 <h3
-                    className="text-gray-900 font-bold text-base leading-snug group-hover:text-indigo-700 transition-colors cursor-pointer line-clamp-2"
-                    onClick={() => setExpanded(e => !e)}
+                    className="text-gray-900 font-bold text-base leading-snug group-hover:text-indigo-700 transition-colors line-clamp-2"
                     title={recipe.title}
                 >
                     {recipe.title}
@@ -159,34 +300,9 @@ const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend, o
 
                 {/* Description */}
                 {recipe.description && (
-                    <p className={`text-sm text-gray-500 leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}>
+                    <p className="text-sm text-gray-500 leading-relaxed line-clamp-2">
                         {recipe.description}
                     </p>
-                )}
-
-                {/* Ingredients (expanded) */}
-                {expanded && recipe.ingredients && recipe.ingredients.length > 0 && (
-                    <div className="mt-1 pt-3 border-t border-gray-100">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Ингредиенты</p>
-                        <ul className="text-sm text-gray-700 space-y-1">
-                            {recipe.ingredients.map(ing => (
-                                <li key={ing.id} className="flex justify-between">
-                                    <span>{ing.product?.name || '...'}</span>
-                                    <span className="text-gray-400">{ing.quantity} {ing.product?.unit}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-
-                {/* Toggle */}
-                {(recipe.description || (recipe.ingredients && recipe.ingredients.length > 0)) && (
-                    <button
-                        onClick={() => setExpanded(e => !e)}
-                        className="text-xs text-indigo-500 hover:text-indigo-700 text-left mt-auto transition-colors"
-                    >
-                        {expanded ? '▲ Свернуть' : '▼ Подробнее'}
-                    </button>
                 )}
             </div>
 
@@ -215,7 +331,7 @@ const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend, o
                 {/* Action buttons row */}
                 <div className={`grid gap-2 ${tgUsers.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     <button
-                        onClick={() => onEdit(recipe)}
+                        onClick={(e) => { e.stopPropagation(); onEdit(recipe); }}
                         className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-400 hover:shadow-sm active:scale-95 transition-all duration-200"
                     >
                         ✏️ Изменить
@@ -223,7 +339,7 @@ const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend, o
 
                     {tgUsers.length > 0 && (
                         <button
-                            onClick={() => onSend(recipe)}
+                            onClick={(e) => { e.stopPropagation(); onSend(recipe); }}
                             disabled={isSending}
                             className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-all duration-200
                                 ${isSending
@@ -240,9 +356,12 @@ const RecipeGalleryCard = ({ recipe, tgUsers, selectedUser, sendingId, onSend, o
     );
 };
 
-const ProductGalleryCard = ({ product }) => {
+const ProductGalleryCard = ({ product, onView }) => {
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-indigo-200 transition-all duration-300 flex flex-col overflow-hidden group">
+        <div 
+            onClick={() => onView(product)}
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-indigo-200 transition-all duration-300 flex flex-col overflow-hidden group cursor-pointer"
+        >
             <div className="h-1.5 w-full bg-cyan-400" />
             <div className="p-4 flex flex-col gap-2 flex-1">
                 <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border border-cyan-200 text-cyan-700 bg-cyan-50 self-start">
@@ -290,6 +409,7 @@ const ViewRecipesPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [sendingId, setSendingId] = useState(null);
     const [editingRecipe, setEditingRecipe] = useState(null);
+    const [viewingItem, setViewingItem] = useState(null);
     const debounceTimer = useRef(null);
 
     // Debounce search
@@ -365,6 +485,19 @@ const ViewRecipesPage = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-gray-50">
+
+            {/* View Modal */}
+            {viewingItem && (
+                <ViewItemModal
+                    item={viewingItem.data}
+                    type={viewingItem.type}
+                    onClose={() => setViewingItem(null)}
+                    tgUsers={tgUsers}
+                    sendingId={sendingId}
+                    onSend={handleSend}
+                    onEdit={setEditingRecipe}
+                />
+            )}
 
             {/* Edit Modal */}
             {editingRecipe && (
@@ -539,11 +672,13 @@ const ViewRecipesPage = () => {
                                     sendingId={sendingId}
                                     onSend={handleSend}
                                     onEdit={setEditingRecipe}
+                                    onView={(r) => setViewingItem({ type: 'recipe', data: r })}
                                 />
                             ) : (
                                 <ProductGalleryCard
                                     key={item.id}
                                     product={item}
+                                    onView={(p) => setViewingItem({ type: 'product', data: p })}
                                 />
                             )
                         ))}
