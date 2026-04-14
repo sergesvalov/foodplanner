@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CATEGORIES, getCategoryById, getCategoryIcon, getCategoryStyle, getCategoryLabel } from '../constants/categories';
 import RecipeBuilder from '../components/RecipeBuilder';
+import ProductForm from '../components/products/ProductForm';
 
 // ─── Utility ────────────────────────────────────────────────────────────────
 
@@ -80,6 +81,102 @@ const EditModal = ({ recipe, onClose, onSaved }) => {
                         initialData={recipe}
                         onRecipeCreated={onSaved}
                         onCancel={onClose}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ─── Product Edit Modal ──────────────────────────────────────────────────────
+
+const ProductEditModal = ({ product, onClose, onSaved }) => {
+    const UNITS = ['шт', 'кг', 'г', 'л', 'мл', 'упак'];
+    const [form, setForm] = useState({
+        name: product.name || '',
+        price: product.price || '',
+        amount: product.amount || 1,
+        unit: product.unit || 'г',
+        calories: product.calories || '',
+        proteins: product.proteins !== null ? product.proteins : '',
+        fats: product.fats !== null ? product.fats : '',
+        carbs: product.carbs !== null ? product.carbs : '',
+        weight_per_piece: product.weight_per_piece !== null ? product.weight_per_piece : ''
+    });
+
+    // Close on Escape
+    useEffect(() => {
+        const handler = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [onClose]);
+
+    // Prevent body scroll
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = ''; };
+    }, []);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const payload = {
+            name: form.name,
+            price: parseFloat(form.price),
+            amount: parseFloat(form.amount),
+            unit: form.unit,
+            calories: form.calories !== '' ? parseFloat(form.calories) : 0,
+            proteins: form.proteins !== '' && form.proteins !== null ? parseFloat(form.proteins) : null,
+            fats: form.fats !== '' && form.fats !== null ? parseFloat(form.fats) : null,
+            carbs: form.carbs !== '' && form.carbs !== null ? parseFloat(form.carbs) : null,
+            weight_per_piece: form.weight_per_piece !== '' && form.weight_per_piece !== null ? parseFloat(form.weight_per_piece) : null
+        };
+
+        try {
+            const res = await fetch(`/api/products/${product.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                onSaved();
+            } else {
+                const data = await res.json();
+                alert("Ошибка: " + data.detail);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Ошибка сети");
+        }
+    };
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+            style={{ background: 'rgba(15,15,30,0.55)', backdropFilter: 'blur(4px)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        >
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+                    <h2 className="text-lg font-bold text-indigo-700">✏️ Редактирование продукта</h2>
+                    <button
+                        onClick={onClose}
+                        className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors text-lg"
+                        title="Закрыть"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <div className="overflow-y-auto flex-1 p-6">
+                    <ProductForm
+                        form={form}
+                        setForm={setForm}
+                        handleSubmit={handleSubmit}
+                        handleCreateRecipe={() => {}} // Disabled in this modal
+                        resetForm={onClose}
+                        editingId={product.id}
+                        UNITS={UNITS}
                     />
                 </div>
             </div>
@@ -198,7 +295,7 @@ const ViewItemModal = ({ item, type, onClose, tgUsers, sendingId, onSend, onEdit
                         <span className="px-3 py-1.5 rounded-full border bg-red-100 text-red-700 border-red-200 font-bold">У:{carb}</span>
                     </div>
 
-                    {isRecipe && item.ingredients && item.ingredients.length > 0 && (
+                    {item.ingredients && item.ingredients.length > 0 && (
                         <div className="mb-8">
                             <h3 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">Ингредиенты</h3>
                             <ul className="space-y-2">
@@ -214,29 +311,27 @@ const ViewItemModal = ({ item, type, onClose, tgUsers, sendingId, onSend, onEdit
                         </div>
                     )}
 
-                    {isRecipe && (
-                        <div className="pt-4 flex flex-wrap gap-4 border-t border-gray-100">
+                    <div className="pt-4 flex flex-wrap gap-4 border-t border-gray-100">
+                        <button
+                            onClick={() => { onClose(); onEdit(item); }}
+                            className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-lg font-bold border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 active:scale-95 transition-all"
+                        >
+                            ✏️ Редактировать
+                        </button>
+                        {isRecipe && tgUsers && tgUsers.length > 0 && (
                             <button
-                                onClick={() => { onClose(); onEdit(item); }}
-                                className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-lg font-bold border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 active:scale-95 transition-all"
+                                onClick={() => onSend(item)}
+                                disabled={isSending}
+                                className={`flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-lg font-bold border transition-all
+                                    ${isSending
+                                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                        : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 active:scale-95'
+                                    }`}
                             >
-                                ✏️ Редактировать
+                                {isSending ? '⏳ Отправляем...' : '✈️ Отправить в Telegram'}
                             </button>
-                            {tgUsers && tgUsers.length > 0 && (
-                                <button
-                                    onClick={() => onSend(item)}
-                                    disabled={isSending}
-                                    className={`flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-lg font-bold border transition-all
-                                        ${isSending
-                                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                                            : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 active:scale-95'
-                                        }`}
-                                >
-                                    {isSending ? '⏳ Отправляем...' : '✈️ Отправить в Telegram'}
-                                </button>
-                            )}
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
@@ -409,6 +504,7 @@ const ViewRecipesPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [sendingId, setSendingId] = useState(null);
     const [editingRecipe, setEditingRecipe] = useState(null);
+    const [editingProduct, setEditingProduct] = useState(null);
     const [viewingItem, setViewingItem] = useState(null);
     const debounceTimer = useRef(null);
 
@@ -483,6 +579,11 @@ const ViewRecipesPage = () => {
         loadData(debouncedSearch, activeTab);
     };
 
+    const handleProductSaved = () => {
+        setEditingProduct(null);
+        loadData(debouncedSearch, activeTab);
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-gray-50">
 
@@ -495,16 +596,24 @@ const ViewRecipesPage = () => {
                     tgUsers={tgUsers}
                     sendingId={sendingId}
                     onSend={handleSend}
-                    onEdit={setEditingRecipe}
+                    onEdit={viewingItem.type === 'recipe' ? setEditingRecipe : setEditingProduct}
                 />
             )}
 
-            {/* Edit Modal */}
+            {/* Edit Modals */}
             {editingRecipe && (
                 <EditModal
                     recipe={editingRecipe}
                     onClose={() => setEditingRecipe(null)}
                     onSaved={handleRecipeSaved}
+                />
+            )}
+
+            {editingProduct && (
+                <ProductEditModal
+                    product={editingProduct}
+                    onClose={() => setEditingProduct(null)}
+                    onSaved={handleProductSaved}
                 />
             )}
 
