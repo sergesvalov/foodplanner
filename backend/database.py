@@ -1,22 +1,19 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import os
 
-# Абсолютный путь внутри контейнера.
-# Docker свяжет эту папку с папкой 'foodplanner' на твоем сервере.
-# 4 слэша (sqlite:////) означают абсолютный путь в Unix системах.
-SQL_ALCHEMY_DATABASE_URL = "sqlite:////app/data/menu_planner.db"
+# --- SQLite Connection (Primary / Old Data) ---
+SQLITE_URL = "sqlite:////app/data/menu_planner.db"
 
-# connect_args={"check_same_thread": False} обязательно для SQLite при многопоточном доступе
 engine = create_engine(
-    SQL_ALCHEMY_DATABASE_URL, 
+    SQLITE_URL, 
     connect_args={
         "check_same_thread": False,
-        "timeout": 15  # Increase timeout to wait for lock release
+        "timeout": 15
     }
 )
 
-# Enable Write-Ahead Logging (WAL) for better concurrency
 from sqlalchemy import event
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -25,5 +22,11 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# --- PostgreSQL Connection (New Data / Test) ---
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://food_user:food_password@db:5432/food_db")
+
+pg_engine = create_engine(DATABASE_URL)
+pg_SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=pg_engine)
 
 Base = declarative_base()

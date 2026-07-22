@@ -9,10 +9,13 @@ import sys
 sys.path.append(os.getcwd())
 
 # Импорт моделей
-from database import Base
+from database import Base, DATABASE_URL
 import models 
 
 config = context.config
+
+# Динамически подставляем URL из конфигурации
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

@@ -30,6 +30,19 @@ app.include_router(plan.router)
 app.include_router(shopping_list.router)
 app.include_router(admin.router) # <-- Админка подключена
 
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from dependencies import get_pg_db
+
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "FoodPlanner API is running"}
+
+@app.get("/check_pg")
+def check_pg(db: Session = Depends(get_pg_db)):
+    try:
+        result = db.execute(text("SELECT 1")).scalar()
+        return {"status": "ok", "message": "PostgreSQL connection successful", "result": result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
