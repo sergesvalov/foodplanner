@@ -99,3 +99,6 @@ class TelegramUserResponse(TelegramUserBase):
     class Config: from_attributes = True
 class TokenUpdate(BaseModel):
     token: str
+
+class PostgresUpdate(BaseModel):
+    url: str

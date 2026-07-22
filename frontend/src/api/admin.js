@@ -90,3 +90,29 @@ export const triggerImport = async (endpoint) => {
     if (!response.ok) throw new Error('Import failed');
     return response.json();
 };
+
+// Postgres Management
+export const fetchPostgresConfig = async () => {
+    const response = await fetch('/api/admin/postgres');
+    if (!response.ok) throw new Error('Failed to fetch Postgres config');
+    return response.json();
+};
+
+export const savePostgresConfig = async (url) => {
+    const response = await fetch('/api/admin/postgres', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+    });
+    if (!response.ok) throw new Error('Failed to save Postgres config');
+    return response.json();
+};
+
+export const checkPostgresConnection = async () => {
+    const response = await fetch('/api/check_pg');
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Connection check failed');
+    }
+    return response.json();
+};

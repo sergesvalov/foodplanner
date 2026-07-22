@@ -53,6 +53,23 @@ def set_bot_token(body: schemas.TokenUpdate, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "ok", "message": "Токен сохранен"}
 
+# PostgreSQL Config
+@router.get("/postgres")
+def get_postgres_url(db: Session = Depends(get_db)):
+    setting = db.query(models.AppSetting).filter(models.AppSetting.key == "postgres_url").first()
+    return {"url": setting.value if setting else ""}
+
+@router.post("/postgres")
+def set_postgres_url(body: schemas.PostgresUpdate, db: Session = Depends(get_db)):
+    setting = db.query(models.AppSetting).filter(models.AppSetting.key == "postgres_url").first()
+    if not setting:
+        setting = models.AppSetting(key="postgres_url", value=body.url)
+        db.add(setting)
+    else:
+        setting.value = body.url
+    db.commit()
+    return {"status": "ok", "message": "Настройки PostgreSQL сохранены"}
+
 # Telegram Users
 @router.get("/telegram/users", response_model=List[schemas.TelegramUserResponse])
 def get_telegram_users(db: Session = Depends(get_db)):

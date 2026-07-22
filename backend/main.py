@@ -33,16 +33,27 @@ app.include_router(admin.router) # <-- Админка подключена
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from dependencies import get_pg_db
+from dependencies import get_db
 
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "FoodPlanner API is running"}
 
 @app.get("/check_pg")
-def check_pg(db: Session = Depends(get_pg_db)):
+def check_pg(db: Session = Depends(get_db)):
     try:
-        result = db.execute(text("SELECT 1")).scalar()
+        setting = db.query(models.AppSetting).filter(models.AppSetting.key == "postgres_url").first()
+        url = setting.value if setting and setting.value else None
+        
+        if not url:
+            import os
+            url = os.getenv("DATABASE_URL", "postgresql://food_user:food_password@localhost:5432/food_db")
+            
+        from sqlalchemy import create_engine
+        temp_engine = create_engine(url)
+        with temp_engine.connect() as conn:
+            result = conn.execute(text("SELECT 1")).scalar()
+            
         return {"status": "ok", "message": "PostgreSQL connection successful", "result": result}
     except Exception as e:
         return {"status": "error", "message": str(e)}

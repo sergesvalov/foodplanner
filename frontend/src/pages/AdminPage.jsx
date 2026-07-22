@@ -3,6 +3,7 @@ import AdminAuth from '../components/admin/AdminAuth';
 import FamilyManagement from '../components/admin/FamilyManagement';
 import TelegramManagement from '../components/admin/TelegramManagement';
 import BackupManagement from '../components/admin/BackupManagement';
+import PostgresManagement from '../components/admin/PostgresManagement';
 
 const AdminPage = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -40,6 +41,11 @@ const AdminPage = () => {
                         {/* Section: Telegram */}
                         <section className="h-full">
                             <TelegramManagement />
+                        </section>
+
+                        {/* Section: Postgres */}
+                        <section className="h-full">
+                            <PostgresManagement />
                         </section>
 
                         {/* Section: Backups */}
